@@ -82,6 +82,9 @@ async def ws_exec(ws: WebSocket, session: AsyncSession = Depends(db_session)) ->
                 continue
             if mtype == "ACK":
                 continue
+            if mtype == "ECHO":
+                await ws.send_json({"type": "ECHO", "payload": msg.get("payload")})
+                continue
     except WebSocketDisconnect:
         await ws_manager.remove(lic.id)
     except Exception:

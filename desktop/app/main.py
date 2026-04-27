@@ -2,16 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QApplication,
+    QFrame,
     QFormLayout,
     QHBoxLayout,
     QLabel,
+    QListWidget,
+    QListWidgetItem,
     QLineEdit,
     QPushButton,
+    QSplitter,
+    QTextEdit,
+    QTabWidget,
     QVBoxLayout,
     QWidget,
 )
@@ -33,7 +40,7 @@ class MainWindow(QWidget):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Trading212 Executor")
-        self.setMinimumWidth(520)
+        self.setMinimumSize(900, 560)
 
         self._store = CryptoStore(Path.home() / ".t212_executor")
         self._ws_task: asyncio.Task | None = None
@@ -42,6 +49,9 @@ class MainWindow(QWidget):
         self.status_dot = QLabel("●")
         self.status_dot.setAlignment(Qt.AlignCenter)
         self.status_label = QLabel("Offline")
+        self.status_label.setMinimumWidth(120)
+        self.t212_status = QLabel("Trading212: Not configured")
+        self.t212_status.setMinimumWidth(220)
 
         self.license_key = QLineEdit()
         self.license_key.setPlaceholderText("License key (UUID)")
@@ -63,37 +73,94 @@ class MainWindow(QWidget):
         self.connect_btn.clicked.connect(self.on_connect_clicked)  # type: ignore[arg-type]
         self.disconnect_btn.clicked.connect(self.on_disconnect_clicked)  # type: ignore[arg-type]
 
-        top = QHBoxLayout()
-        top.addWidget(self.status_dot)
-        top.addWidget(self.status_label)
-        top.addStretch(1)
+        self.event_log = QTextEdit()
+        self.event_log.setReadOnly(True)
 
-        form = QFormLayout()
-        form.addRow("Server WS URL", self.ws_url)
-        form.addRow("License key", self.license_key)
-        form.addRow("T212 API key", self.t212_api_key)
-        form.addRow("T212 secret key", self.t212_secret_key)
+        self.signals_list = QListWidget()
 
-        btns = QHBoxLayout()
-        btns.addWidget(self.save_btn)
-        btns.addStretch(1)
-        btns.addWidget(self.connect_btn)
-        btns.addWidget(self.disconnect_btn)
+        self.exec_queue = QListWidget()
+        self.exec_queue.addItem("Execution queue will appear here.")
+
+        self.tabs = QTabWidget()
+        self.tabs.addTab(self._build_connection_tab(), "Connection")
+        self.tabs.addTab(self._build_activity_tab(), "Activity")
+        self.tabs.addTab(self._build_execution_tab(), "Execution")
+
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.addWidget(self.tabs)
+        splitter.addWidget(self._build_right_panel())
+        splitter.setStretchFactor(0, 2)
+        splitter.setStretchFactor(1, 3)
 
         root = QVBoxLayout()
-        root.addLayout(top)
-        root.addSpacing(8)
-        root.addLayout(form)
-        root.addSpacing(8)
-        root.addLayout(btns)
+        root.addLayout(self._build_top_bar())
+        root.addWidget(splitter, 1)
 
         self.setLayout(root)
         self._set_status("OFFLINE")
+        self._append_event("App started.")
+        self._refresh_t212_status()
 
         existing = self._store.load()
         if existing:
             self.t212_api_key.setText(existing.t212_api_key)
             self.t212_secret_key.setText(existing.t212_secret_key or "")
+            self._refresh_t212_status()
+
+    def _build_top_bar(self) -> QHBoxLayout:
+        top = QHBoxLayout()
+        top.addWidget(self.status_dot)
+        top.addWidget(self.status_label)
+        top.addSpacing(12)
+        top.addWidget(self.t212_status)
+        top.addStretch(1)
+        top.addWidget(QLabel("WS:"))
+        top.addWidget(self.ws_url, 1)
+        top.addSpacing(8)
+        top.addWidget(self.connect_btn)
+        top.addWidget(self.disconnect_btn)
+        return top
+
+    def _build_connection_tab(self) -> QWidget:
+        w = QWidget()
+        form = QFormLayout()
+        form.addRow("License key", self.license_key)
+
+        key_frame = QFrame()
+        key_layout = QVBoxLayout()
+        key_layout.setContentsMargins(0, 0, 0, 0)
+        key_layout.addWidget(self.t212_api_key)
+        key_layout.addWidget(self.t212_secret_key)
+        key_layout.addWidget(self.save_btn)
+        key_frame.setLayout(key_layout)
+
+        form.addRow("Trading212 keys", key_frame)
+        w.setLayout(form)
+        return w
+
+    def _build_activity_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Recent signals"))
+        layout.addWidget(self.signals_list, 1)
+        w.setLayout(layout)
+        return w
+
+    def _build_execution_tab(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Execution / position manager"))
+        layout.addWidget(self.exec_queue, 1)
+        w.setLayout(layout)
+        return w
+
+    def _build_right_panel(self) -> QWidget:
+        w = QWidget()
+        layout = QVBoxLayout()
+        layout.addWidget(QLabel("Event log"))
+        layout.addWidget(self.event_log, 1)
+        w.setLayout(layout)
+        return w
 
     def _set_status(self, status: str) -> None:
         text, color = _status_text(status)
@@ -103,10 +170,29 @@ class MainWindow(QWidget):
     def _on_ws_status(self, status: str) -> None:
         self._set_status(status)
 
+    def _append_event(self, message: str) -> None:
+        ts = datetime.now().strftime("%H:%M:%S")
+        self.event_log.append(f"[{ts}] {message}")
+
+    def _refresh_t212_status(self) -> None:
+        stored = self._store.load()
+        if stored and stored.t212_api_key:
+            self.t212_status.setText("Trading212: Configured (encrypted)")
+        else:
+            self.t212_status.setText("Trading212: Not configured")
+
     async def _handle_signal(self, payload: dict) -> None:
-        # Placeholder: real execution + position management will be wired next.
-        # For now, we just acknowledge the pipeline by printing.
-        print("SIGNAL:", payload)
+        sid = payload.get("id")
+        direction = payload.get("direction")
+        symbol = payload.get("symbol")
+        line = f"{sid} | {direction} | {symbol}"
+        self.signals_list.insertItem(0, QListWidgetItem(line))
+        if self.signals_list.count() > 200:
+            self.signals_list.takeItem(self.signals_list.count() - 1)
+
+        self.exec_queue.insertItem(0, QListWidgetItem(f"Queued: {line}"))
+        if self.exec_queue.count() > 200:
+            self.exec_queue.takeItem(self.exec_queue.count() - 1)
 
     @asyncSlot()
     async def on_connect_clicked(self) -> None:
@@ -117,7 +203,12 @@ class MainWindow(QWidget):
             return
 
         cfg = WsConfig(url=self.ws_url.text().strip(), license_key=lic)
-        self._ws_client = ExecWsClient(cfg=cfg, on_status=self._on_ws_status, on_signal=self._handle_signal)
+        self._ws_client = ExecWsClient(
+            cfg=cfg,
+            on_status=self._on_ws_status,
+            on_event=self._append_event,
+            on_signal=self._handle_signal,
+        )
         self._ws_task = asyncio.create_task(self._ws_client.run_forever())
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
@@ -134,6 +225,7 @@ class MainWindow(QWidget):
         self._ws_task = None
         self._ws_client = None
         self._set_status("OFFLINE")
+        self._append_event("Disconnected by user.")
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
 
@@ -144,6 +236,8 @@ class MainWindow(QWidget):
         )
         if payload.t212_api_key:
             self._store.save(payload)
+            self._append_event("Trading212 keys saved (encrypted).")
+            self._refresh_t212_status()
 
 
 def main() -> None:

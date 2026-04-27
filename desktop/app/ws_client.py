@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import json
 from dataclasses import dataclass
-from typing import Any, Callable, Awaitable
+from typing import Any, Awaitable, Callable
 
 import websockets
 
@@ -20,10 +20,12 @@ class ExecWsClient:
         *,
         cfg: WsConfig,
         on_status: Callable[[str], None],
+        on_event: Callable[[str], None],
         on_signal: Callable[[dict[str, Any]], Awaitable[None]],
     ) -> None:
         self._cfg = cfg
         self._on_status = on_status
+        self._on_event = on_event
         self._on_signal = on_signal
         self._stop = asyncio.Event()
 
@@ -36,21 +38,28 @@ class ExecWsClient:
             try:
                 async with websockets.connect(self._cfg.url, ping_interval=None) as ws:
                     self._on_status("ONLINE")
+                    self._on_event(f"Connected to {self._cfg.url}")
                     await ws.send(json.dumps({"type": "HELLO", "license_key": self._cfg.license_key}))
 
                     while not self._stop.is_set():
                         raw = await ws.recv()
                         msg = json.loads(raw)
                         mtype = msg.get("type")
+                        if mtype == "WELCOME":
+                            self._on_event("Handshake OK (WELCOME).")
+                            continue
                         if mtype == "PING":
                             await ws.send(json.dumps({"type": "PONG"}))
+                            self._on_event("PING -> PONG")
                             continue
                         if mtype == "SIGNAL":
                             payload = msg.get("payload") or {}
                             if isinstance(payload, dict):
+                                self._on_event(f"SIGNAL received (id={payload.get('id')})")
                                 await self._on_signal(payload)
                             continue
             except Exception:
                 self._on_status("OFFLINE")
+                self._on_event("Disconnected. Reconnecting in 5s...")
                 await asyncio.sleep(5.0)
 
