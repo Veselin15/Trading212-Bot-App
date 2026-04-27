@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from qasync import QEventLoop, asyncSlot
 
 from .crypto_store import CryptoStore, SecretPayload
+from .settings_store import AppSettings, SettingsStore
 from .ws_client import ExecWsClient, WsConfig
 
 
@@ -42,7 +43,9 @@ class MainWindow(QWidget):
         self.setWindowTitle("Trading212 Executor")
         self.setMinimumSize(900, 560)
 
-        self._store = CryptoStore(Path.home() / ".t212_executor")
+        self._base_dir = Path.home() / ".t212_executor"
+        self._store = CryptoStore(self._base_dir)
+        self._settings_store = SettingsStore(self._base_dir)
         self._ws_task: asyncio.Task | None = None
         self._ws_client: ExecWsClient | None = None
 
@@ -101,6 +104,12 @@ class MainWindow(QWidget):
         self._set_status("OFFLINE")
         self._append_event("App started.")
         self._refresh_t212_status()
+
+        settings = self._settings_store.load()
+        if settings.ws_url:
+            self.ws_url.setText(settings.ws_url)
+        if settings.license_key:
+            self.license_key.setText(settings.license_key)
 
         existing = self._store.load()
         if existing:
@@ -221,7 +230,9 @@ class MainWindow(QWidget):
         if not lic:
             return
 
-        cfg = WsConfig(url=self.ws_url.text().strip(), license_key=lic)
+        url = self.ws_url.text().strip()
+        cfg = WsConfig(url=url, license_key=lic)
+        self._settings_store.save(AppSettings(ws_url=url, license_key=lic))
         self._ws_client = ExecWsClient(
             cfg=cfg,
             on_status=self._on_ws_status,
