@@ -24,3 +24,6 @@ logs/
 # OS/editor
 .DS_Store
 Thumbs.db
+
+# Local dev runner
+.run/
