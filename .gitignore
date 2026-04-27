@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtualenvs
+.venv/
+venv/
+
+# Local secrets
+.env
+.env.*
+
+# Desktop runtime
+.t212_executor/
+
+# Bot runtime artifacts (do not commit)
+Server-App/t212_miner_bot/state*.json
+Server-App/t212_miner_bot/.bot_runtime.lock
+logs/
+
+# OS/editor
+.DS_Store
+Thumbs.db

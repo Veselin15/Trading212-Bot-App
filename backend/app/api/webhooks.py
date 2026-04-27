@@ -68,6 +68,7 @@ async def stripe_webhook(
     stripe_signature: str | None = Header(default=None, alias="Stripe-Signature"),
     session: AsyncSession = Depends(db_session),
 ):
+    stripe.api_key = settings.stripe_secret_key or None
     if not settings.stripe_webhook_secret:
         raise HTTPException(status_code=500, detail="Stripe webhook secret not configured")
     if not stripe_signature:
