@@ -21,7 +21,6 @@ depends_on = None
 
 def upgrade() -> None:
     license_status = postgresql.ENUM("active", "suspended", "expired", name="license_status")
-    license_status.create(op.get_bind(), checkfirst=True)
 
     op.create_table(
         "users",
@@ -39,7 +38,7 @@ def upgrade() -> None:
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True, nullable=False),
         sa.Column("license_key", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("user_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("status", sa.Enum(name="license_status"), nullable=False),
+        sa.Column("status", license_status, nullable=False),
         sa.Column("expires_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("last_ip_address", postgresql.INET(), nullable=True),
         sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=True),

@@ -6,9 +6,10 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    database_url: str
+    # Defaults are provided so tooling like Alembic can run even before a local `.env` exists.
+    database_url: str = "postgresql+asyncpg://t212_bot:t212_bot@localhost:5432/t212_bot"
 
-    jwt_secret: str
+    jwt_secret: str = "change-me"
     jwt_issuer: str = "t212-bot-backend"
     jwt_audience: str = "t212-bot-portal"
 
