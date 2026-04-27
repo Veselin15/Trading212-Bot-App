@@ -6,7 +6,7 @@ from fastapi import FastAPI
 
 from app.api.webhooks import router as webhooks_router
 from app.api.ws import heartbeat_loop, router as ws_router
-from app.strategy.demo_strategy import run_demo_strategy
+from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
 
 
 def create_app() -> FastAPI:
@@ -17,7 +17,7 @@ def create_app() -> FastAPI:
     @app.on_event("startup")
     async def _startup() -> None:
         asyncio.create_task(heartbeat_loop())
-        asyncio.create_task(run_demo_strategy())
+        asyncio.create_task(run_t212_miner_strategy_forever())
 
     return app
 
