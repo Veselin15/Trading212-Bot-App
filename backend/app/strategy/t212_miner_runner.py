@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from app.strategy.broadcaster import broadcast_signal
+from app.api.ws import ws_manager
 
 
 def _add_server_app_to_syspath() -> None:
@@ -92,9 +93,26 @@ async def run_t212_miner_strategy_forever() -> None:
         await asyncio.sleep(wait_s)
 
         signals = await get_latest_signals()
+        snapshot_payload: dict[str, dict[str, Any]] = {}
         for symbol, snap in signals.items():
             if not isinstance(snap, dict) or not snap.get("ready"):
+                snapshot_payload[symbol] = {
+                    "ready": bool(snap.get("ready")) if isinstance(snap, dict) else False,
+                    "reason": (snap.get("reason") if isinstance(snap, dict) else "invalid_snapshot"),
+                }
                 continue
+            snapshot_payload[symbol] = {
+                "ready": True,
+                "timestamp": snap.get("timestamp"),
+                "regime": snap.get("regime"),
+                "trigger": snap.get("trigger"),
+                "signal_side": snap.get("signal_side"),
+                "reason": snap.get("reason"),
+                "entry_blocked": bool(snap.get("entry_blocked")),
+                "bar_ts": snap.get("bar_ts"),
+                "bar_age_seconds": snap.get("bar_age_seconds"),
+                "market_open": snap.get("market_open"),
+            }
             if snap.get("entry_blocked"):
                 continue
 
@@ -110,4 +128,8 @@ async def run_t212_miner_strategy_forever() -> None:
             await broadcast_signal(payload)
             if ts:
                 last_emitted_by_symbol[symbol] = ts
+
+        # Always broadcast a lightweight snapshot so the desktop can display bot state,
+        # even when no ENTRY signals are emitted (market closed, stale data, etc.).
+        await ws_manager.broadcast({"type": "BOT_SNAPSHOT", "payload": snapshot_payload})
 

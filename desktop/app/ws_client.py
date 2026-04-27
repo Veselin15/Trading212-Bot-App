@@ -22,11 +22,13 @@ class ExecWsClient:
         on_status: Callable[[str], None],
         on_event: Callable[[str], None],
         on_signal: Callable[[dict[str, Any]], Awaitable[None]],
+        on_bot_snapshot: Callable[[dict[str, Any]], None],
     ) -> None:
         self._cfg = cfg
         self._on_status = on_status
         self._on_event = on_event
         self._on_signal = on_signal
+        self._on_bot_snapshot = on_bot_snapshot
         self._stop = asyncio.Event()
 
     def stop(self) -> None:
@@ -57,6 +59,11 @@ class ExecWsClient:
                             if isinstance(payload, dict):
                                 self._on_event(f"SIGNAL received (id={payload.get('id')})")
                                 await self._on_signal(payload)
+                            continue
+                        if mtype == "BOT_SNAPSHOT":
+                            payload = msg.get("payload") or {}
+                            if isinstance(payload, dict):
+                                self._on_bot_snapshot(payload)
                             continue
             except Exception:
                 self._on_status("OFFLINE")

@@ -77,6 +77,7 @@ class MainWindow(QWidget):
         self.event_log.setReadOnly(True)
 
         self.signals_list = QListWidget()
+        self.bot_state = QListWidget()
 
         self.exec_queue = QListWidget()
         self.exec_queue.addItem("Execution queue will appear here.")
@@ -141,8 +142,10 @@ class MainWindow(QWidget):
     def _build_activity_tab(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout()
+        layout.addWidget(QLabel("Bot state (latest snapshot)"))
+        layout.addWidget(self.bot_state, 1)
         layout.addWidget(QLabel("Recent signals"))
-        layout.addWidget(self.signals_list, 1)
+        layout.addWidget(self.signals_list, 2)
         w.setLayout(layout)
         return w
 
@@ -194,6 +197,22 @@ class MainWindow(QWidget):
         if self.exec_queue.count() > 200:
             self.exec_queue.takeItem(self.exec_queue.count() - 1)
 
+    def _handle_bot_snapshot(self, payload: dict) -> None:
+        # payload: { "ASML.AS": {...}, ... }
+        self.bot_state.clear()
+        for symbol in sorted(payload.keys()):
+            snap = payload.get(symbol) or {}
+            if not isinstance(snap, dict):
+                continue
+            ready = snap.get("ready")
+            regime = snap.get("regime")
+            trigger = snap.get("trigger")
+            side = snap.get("signal_side")
+            reason = snap.get("reason")
+            blocked = snap.get("entry_blocked")
+            line = f"{symbol} | ready={ready} | regime={regime} trigger={trigger} side={side} blocked={blocked} reason={reason}"
+            self.bot_state.addItem(QListWidgetItem(line))
+
     @asyncSlot()
     async def on_connect_clicked(self) -> None:
         if self._ws_task and not self._ws_task.done():
@@ -208,6 +227,7 @@ class MainWindow(QWidget):
             on_status=self._on_ws_status,
             on_event=self._append_event,
             on_signal=self._handle_signal,
+            on_bot_snapshot=self._handle_bot_snapshot,
         )
         self._ws_task = asyncio.create_task(self._ws_client.run_forever())
         self.connect_btn.setEnabled(False)
