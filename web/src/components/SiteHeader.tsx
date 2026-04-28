@@ -1,7 +1,7 @@
 import Link from "next/link";
 
-import { Container } from "@/components/Container";
-import { ButtonLink } from "@/components/Button";
+import { Container } from "@/components/ui/Container";
+import { ButtonLink } from "@/components/ui/Button";
 
 export function SiteHeader() {
   return (

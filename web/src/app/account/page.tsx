@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 
 import { getMySubscription, isActiveSubscription } from "@/lib/subscription";
-import { ButtonLink } from "@/components/Button";
-import { CopyToClipboardButton } from "@/components/CopyToClipboardButton";
+import { ButtonLink } from "@/components/ui/Button";
+import { CopyToClipboardButton } from "@/components/ui/CopyToClipboardButton";
 import { getMyLicense } from "@/lib/license";
 
 export default async function AccountPage() {

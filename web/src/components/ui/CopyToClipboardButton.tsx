@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 
-import { Button } from "@/components/Button";
+import { Button } from "@/components/ui/Button";
 
 export function CopyToClipboardButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);

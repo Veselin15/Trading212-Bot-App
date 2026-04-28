@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 
 import { getMySubscription, isActiveSubscription } from "@/lib/subscription";
-import { ButtonLink } from "@/components/Button";
+import { ButtonLink } from "@/components/ui/Button";
 
 export default async function DownloadPage() {
   const { user, subscription } = await getMySubscription();
