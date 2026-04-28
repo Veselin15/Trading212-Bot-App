@@ -2,6 +2,8 @@ import { redirect } from "next/navigation";
 
 import { getMySubscription, isActiveSubscription } from "@/lib/subscription";
 import { ButtonLink } from "@/components/Button";
+import { CopyToClipboardButton } from "@/components/CopyToClipboardButton";
+import { getMyLicense } from "@/lib/license";
 
 export default async function AccountPage() {
   const { user, subscription } = await getMySubscription();
@@ -9,6 +11,7 @@ export default async function AccountPage() {
 
   const active = isActiveSubscription(subscription);
   const stripeConfigured = Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID);
+  const { license } = await getMyLicense();
 
   return (
     <main className="flex flex-1 items-center justify-center bg-zinc-50 px-6 py-16 dark:bg-black">
@@ -40,6 +43,34 @@ export default async function AccountPage() {
             <div className="text-zinc-600 dark:text-zinc-400">Current period end</div>
             <div>{subscription?.current_period_end ?? "—"}</div>
           </div>
+        </div>
+
+        <div className="mt-6 rounded-xl border border-black/10 bg-white p-4 text-sm dark:border-white/10 dark:bg-zinc-950">
+          <div className="flex items-center justify-between gap-3">
+            <div className="font-medium">License key</div>
+            {active ? (
+              <form action="/api/license/regenerate" method="post">
+                <button className="inline-flex h-10 items-center justify-center rounded-xl border border-black/10 px-4 text-sm font-medium text-zinc-950 hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-50 dark:hover:bg-zinc-900">
+                  Regenerate
+                </button>
+              </form>
+            ) : (
+              <div className="text-zinc-500 dark:text-zinc-400">Requires active subscription</div>
+            )}
+          </div>
+
+          {active ? (
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="rounded-xl border border-black/10 bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-900 dark:border-white/10 dark:bg-zinc-900/40 dark:text-zinc-100 sm:text-sm">
+                {license?.license_key ?? "Not generated yet"}
+              </div>
+              {license?.license_key ? <CopyToClipboardButton value={license.license_key} /> : null}
+            </div>
+          ) : (
+            <div className="mt-2 text-zinc-600 dark:text-zinc-400">
+              Subscribe to generate a desktop license key.
+            </div>
+          )}
         </div>
 
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">

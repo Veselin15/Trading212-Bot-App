@@ -27,3 +27,7 @@ Thumbs.db
 
 # Local dev runner
 .run/
+
+# Next.js build artifacts (web app)
+web/.next/
+web/out/
