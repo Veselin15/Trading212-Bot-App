@@ -227,6 +227,7 @@ class MainWindow(QWidget):
                 direction = str(payload.get("direction") or "LONG").strip().upper()
                 rp = payload.get("risk_params") or {}
                 stop_loss_pct = float(rp.get("stop_loss_pct") or 0.0)
+                is_debug = bool(payload.get("debug"))
 
                 if direction != "LONG":
                     self._append_event(f"Execution skipped (direction={direction}) — SHORT not implemented yet.")
@@ -249,6 +250,17 @@ class MainWindow(QWidget):
                     self._append_event(f"Protective STOP submitted: {stop_resp}")
                 else:
                     self._append_event("Protective STOP skipped (missing price/stop_loss_pct).")
+
+                if is_debug:
+                    # Simple live test: wait for the position to appear, then close it.
+                    self._append_event("Debug trade: waiting for position, then closing...")
+                    for _ in range(10):
+                        await asyncio.sleep(1.0)
+                        pos_qty = await client.get_position_quantity(symbol)
+                        if pos_qty != 0.0:
+                            break
+                    close_resp = await client.close_position(symbol)
+                    self._append_event(f"Debug trade: close submitted: {close_resp}")
         except Exception as exc:
             self._append_event(f"EXECUTION ERROR: {exc}")
 

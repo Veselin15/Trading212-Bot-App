@@ -284,6 +284,23 @@ class T212Client:
         payload = await self._request("GET", "/api/v0/equity/orders", order_call=False, orders_list_call=True)
         return payload if isinstance(payload, list) else []
 
+    async def get_position_quantity(self, ticker: str) -> float:
+        mapped = await self.resolve_ticker(ticker)
+        for row in await self.get_portfolio():
+            if not isinstance(row, dict):
+                continue
+            row_ticker = row.get("ticker")
+            if row_ticker is None and isinstance(row.get("instrument"), dict):
+                row_ticker = row["instrument"].get("ticker")
+            if str(row_ticker or "").strip() != mapped:
+                continue
+            qty_raw = row.get("quantity")
+            try:
+                return float(qty_raw)
+            except Exception:
+                return 0.0
+        return 0.0
+
     async def place_market_order(self, ticker: str, qty: float) -> dict[str, Any]:
         return await self._submit_order_with_precision_fallback("/api/v0/equity/orders/market", ticker, qty)
 
@@ -310,6 +327,12 @@ class T212Client:
     async def cancel_order(self, order_id: str) -> dict[str, Any]:
         resp = await self._request("DELETE", f"/api/v0/equity/orders/{order_id}", order_call=True)
         return resp if isinstance(resp, dict) else {"raw": resp}
+
+    async def close_position(self, ticker: str) -> dict[str, Any]:
+        qty = await self.get_position_quantity(ticker)
+        if qty == 0.0:
+            return {"ok": True, "skipped": True, "reason": "no_position"}
+        return await self.place_market_order(ticker, qty=-qty)
 
     async def get_price_from_positions(self, ticker: str) -> float | None:
         mapped = await self.resolve_ticker(ticker)
