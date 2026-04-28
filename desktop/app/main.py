@@ -256,9 +256,12 @@ class MainWindow(QWidget):
                 resp = await client.place_market_order(symbol, qty)
                 self._append_event(f"Market order submitted: {resp}")
 
-                # Wait for fill (owned qty > 0) before placing protective stops or closing.
+                # Wait for fill before placing protective stops or closing.
+                # IMPORTANT: Do not infer fills from portfolio quantities (can include reserved/pending).
+                # Only trust order status/filledQuantity (and positions later for management).
                 order_id = resp.get("id") if isinstance(resp, dict) else None
                 filled = False
+                filled_qty = 0.0
                 for _ in range(45):  # up to ~45s
                     await asyncio.sleep(1.0)
                     if order_id is not None:
@@ -270,13 +273,15 @@ class MainWindow(QWidget):
                                 filled_qty = float(fq) if fq is not None else 0.0
                             except Exception:
                                 filled_qty = 0.0
+                            # Trace the broker's view so we can debug premarket behavior.
+                            self._append_event(f"Order poll: status={st} filledQuantity={filled_qty}")
+
+                            if st in {"CANCELLED", "REJECTED"}:
+                                break
+
                             if st in {"FILLED", "EXECUTED"} or filled_qty >= qty:
                                 filled = True
                                 break
-                    owned_qty = await client.get_owned_quantity(symbol)
-                    if owned_qty >= qty:
-                        filled = True
-                        break
 
                 if not filled:
                     self._append_event("Order not filled yet (premarket/illiquid). Skipping stop placement for now.")
@@ -288,12 +293,12 @@ class MainWindow(QWidget):
 
                     if price > 0 and stop_loss_pct > 0:
                         stop_price = price * (1.0 - stop_loss_pct / 100.0)
-                        owned_qty = await client.get_owned_quantity(symbol)
-                        if owned_qty >= qty:
+                        # Final guard: only place STOP if we actually have fills.
+                        if filled_qty >= qty:
                             stop_resp = await client.place_stop_order(symbol, qty=-qty, stop_price=stop_price)
                             self._append_event(f"Protective STOP submitted: {stop_resp}")
                         else:
-                            self._append_event("Protective STOP skipped (owned qty still 0).")
+                            self._append_event("Protective STOP skipped (filledQuantity still 0).")
                     else:
                         self._append_event("Protective STOP skipped (missing price/stop_loss_pct).")
 
