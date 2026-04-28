@@ -7,6 +7,23 @@ Set-Location $repoRoot
 
 $runDir = Join-Path $repoRoot ".run"
 New-Item -ItemType Directory -Force -Path $runDir | Out-Null
+$backendOut = Join-Path $runDir "backend.out.log"
+$backendErr = Join-Path $runDir "backend.err.log"
+$desktopOut = Join-Path $runDir "desktop.out.log"
+$desktopErr = Join-Path $runDir "desktop.err.log"
+"" | Set-Content -Path $backendOut -Encoding UTF8
+"" | Set-Content -Path $backendErr -Encoding UTF8
+"" | Set-Content -Path $desktopOut -Encoding UTF8
+"" | Set-Content -Path $desktopErr -Encoding UTF8
+
+$pythonCmd = (Get-Command python -ErrorAction SilentlyContinue)
+if (-not $pythonCmd) {
+  $pythonCmd = (Get-Command py -ErrorAction SilentlyContinue)
+}
+if (-not $pythonCmd) {
+  throw "Python was not found on PATH in this shell."
+}
+$pythonExe = $pythonCmd.Source
 
 function Write-PidFile([string]$name, [int]$procId) {
   Set-Content -Path (Join-Path $runDir "$name.pid") -Value $procId -Encoding ASCII
@@ -48,7 +65,7 @@ $backendCmd = @(
   "-Command",
   "Set-Location '$repoRoot'; `$env:PYTHONPATH='backend'; uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
 )
-$backendProc = Start-Process -FilePath "powershell.exe" -ArgumentList $backendCmd -WindowStyle Normal -PassThru
+$backendProc = Start-Process -FilePath "powershell.exe" -ArgumentList $backendCmd -WindowStyle Normal -PassThru -RedirectStandardOutput $backendOut -RedirectStandardError $backendErr
 Write-PidFile "backend" $backendProc.Id
 
 # Desktop in a separate window
@@ -57,9 +74,9 @@ $desktopCmd = @(
   "-NoProfile",
   "-ExecutionPolicy", "Bypass",
   "-Command",
-  "Set-Location '$repoRoot'; python -m desktop.app.main"
+  "Set-Location '$repoRoot'; & '$pythonExe' -m desktop.app.main"
 )
-$desktopProc = Start-Process -FilePath "powershell.exe" -ArgumentList $desktopCmd -WindowStyle Normal -PassThru
+$desktopProc = Start-Process -FilePath "powershell.exe" -ArgumentList $desktopCmd -WindowStyle Normal -PassThru -RedirectStandardOutput $desktopOut -RedirectStandardError $desktopErr
 Write-PidFile "desktop" $desktopProc.Id
 
 Write-Host ""
@@ -67,4 +84,5 @@ Write-Host "Done." -ForegroundColor Green
 Write-Host "Backend:  http://127.0.0.1:8000" -ForegroundColor Green
 Write-Host "WS:       ws://127.0.0.1:8000/ws/exec" -ForegroundColor Green
 Write-Host "Stop:     .\\stop.ps1" -ForegroundColor Yellow
+Write-Host "Logs:     .\\.run\\backend.*.log and .\\.run\\desktop.*.log" -ForegroundColor Yellow
 

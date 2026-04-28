@@ -223,13 +223,13 @@ class MainWindow(QWidget):
                 return
 
             async with T212Client(keys=T212Keys(api_key=stored.t212_api_key, secret_key=stored.t212_secret_key)) as client:
-                symbol = str(payload.get(\"symbol\") or \"\").strip()
-                direction = str(payload.get(\"direction\") or \"LONG\").strip().upper()
-                rp = payload.get(\"risk_params\") or {}
-                stop_loss_pct = float(rp.get(\"stop_loss_pct\") or 0.0)
+                symbol = str(payload.get("symbol") or "").strip()
+                direction = str(payload.get("direction") or "LONG").strip().upper()
+                rp = payload.get("risk_params") or {}
+                stop_loss_pct = float(rp.get("stop_loss_pct") or 0.0)
 
-                if direction != \"LONG\":
-                    self._append_event(f\"Execution skipped (direction={direction}) — SHORT not implemented yet.\")
+                if direction != "LONG":
+                    self._append_event(f"Execution skipped (direction={direction}) — SHORT not implemented yet.")
                     return
 
                 price = await client.get_price_from_positions(symbol)
@@ -240,17 +240,17 @@ class MainWindow(QWidget):
                 # Practice-mode smoke sizing: buy 1 share.
                 qty = 1.0
                 resp = await client.place_market_order(symbol, qty)
-                self._append_event(f\"Market order submitted: {resp}\")
+                self._append_event(f"Market order submitted: {resp}")
 
                 # Try to place protective stop: SELL stop with negative quantity.
                 if price > 0 and stop_loss_pct > 0:
                     stop_price = price * (1.0 - stop_loss_pct / 100.0)
                     stop_resp = await client.place_stop_order(symbol, qty=-qty, stop_price=stop_price)
-                    self._append_event(f\"Protective STOP submitted: {stop_resp}\")
+                    self._append_event(f"Protective STOP submitted: {stop_resp}")
                 else:
-                    self._append_event(\"Protective STOP skipped (missing price/stop_loss_pct).\" )
+                    self._append_event("Protective STOP skipped (missing price/stop_loss_pct).")
         except Exception as exc:
-            self._append_event(f\"EXECUTION ERROR: {exc}\")
+            self._append_event(f"EXECUTION ERROR: {exc}")
 
     def _handle_bot_snapshot(self, payload: dict) -> None:
         # payload: { "ASML.AS": {...}, ... }
