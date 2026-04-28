@@ -1,37 +1,6 @@
-import Link from "next/link";
-
 export default function Home() {
   return (
-    <div className="flex flex-1 flex-col bg-white font-sans text-zinc-950 dark:bg-black dark:text-zinc-50">
-      <header className="border-b border-black/10 dark:border-white/10">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-4">
-          <Link href="/" className="font-semibold tracking-tight">
-            Trading212 Bot
-          </Link>
-          <nav className="flex items-center gap-2">
-            <Link
-              href="/download"
-              className="hidden text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white sm:inline"
-            >
-              Download
-            </Link>
-            <Link
-              href="/account"
-              className="hidden text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white sm:inline"
-            >
-              Account
-            </Link>
-            <Link
-              href="/login"
-              className="inline-flex h-10 items-center justify-center rounded-xl bg-zinc-950 px-4 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-            >
-              Login
-            </Link>
-          </nav>
-        </div>
-      </header>
-
-      <main className="mx-auto w-full max-w-6xl px-6 py-14">
+    <main className="mx-auto w-full max-w-6xl px-6 py-14">
         <section className="grid gap-10 lg:grid-cols-2 lg:items-center">
           <div className="flex flex-col gap-5">
             <h1 className="text-4xl font-semibold tracking-tight sm:text-5xl">
@@ -43,18 +12,18 @@ export default function Home() {
             </p>
 
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Link
+              <a
                 href="/login"
                 className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-950 px-5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
               >
                 Get started
-              </Link>
-              <Link
-                href="/download"
+              </a>
+              <a
+                href="/pricing"
                 className="inline-flex h-11 items-center justify-center rounded-xl border border-black/10 px-5 text-sm font-medium text-zinc-950 hover:bg-zinc-50 dark:border-white/10 dark:text-zinc-50 dark:hover:bg-zinc-900"
               >
-                Download app
-              </Link>
+                View pricing
+              </a>
             </div>
           </div>
 
@@ -99,21 +68,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-      </main>
-
-      <footer className="mt-auto border-t border-black/10 dark:border-white/10">
-        <div className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6 text-sm text-zinc-600 dark:text-zinc-400">
-          <div>© {new Date().getFullYear()} Trading212 Bot</div>
-          <div className="flex items-center gap-4">
-            <Link className="hover:text-zinc-900 dark:hover:text-white" href="/account">
-              Account
-            </Link>
-            <Link className="hover:text-zinc-900 dark:hover:text-white" href="/download">
-              Download
-            </Link>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </main>
   );
 }
