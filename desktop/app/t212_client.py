@@ -311,8 +311,38 @@ class T212Client:
         payload = await self._request("GET", "/api/v0/equity/orders", order_call=False, orders_list_call=True)
         return payload if isinstance(payload, list) else []
 
+    async def fetch_history_orders(self, limit: int = 50) -> list[dict[str, Any]]:
+        lim = max(1, min(int(limit), 50))
+        payload = await self._request("GET", f"/api/v0/equity/history/orders?limit={lim}", order_call=False)
+        return payload if isinstance(payload, list) else []
+
+    async def get_order_by_id(self, order_id: int) -> dict[str, Any] | None:
+        # Best-effort: check pending orders first, then recent history.
+        for row in await self.get_pending_orders():
+            if isinstance(row, dict) and row.get("id") == order_id:
+                return row
+        for row in await self.fetch_history_orders(limit=50):
+            if isinstance(row, dict) and row.get("id") == order_id:
+                return row
+        return None
+
     async def get_position_quantity(self, ticker: str) -> float:
         mapped = await self.resolve_ticker(ticker)
+        # Prefer /positions quantity if present (more closely matches "owned" semantics).
+        for row in await self.get_positions():
+            if not isinstance(row, dict):
+                continue
+            row_ticker = str(row.get("ticker") or "").strip()
+            if not row_ticker and isinstance(row.get("instrument"), dict):
+                row_ticker = str(row["instrument"].get("ticker") or "").strip()
+            if row_ticker != mapped:
+                continue
+            qty_raw = row.get("quantity")
+            try:
+                return float(qty_raw)
+            except Exception:
+                break
+
         for row in await self.get_portfolio():
             if not isinstance(row, dict):
                 continue

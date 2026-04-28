@@ -249,8 +249,20 @@ class MainWindow(QWidget):
                 # Wait for fill (owned qty > 0) before placing protective stops or closing.
                 order_id = resp.get("id") if isinstance(resp, dict) else None
                 filled = False
-                for _ in range(30):  # up to ~30s
+                for _ in range(45):  # up to ~45s
                     await asyncio.sleep(1.0)
+                    if order_id is not None:
+                        order = await client.get_order_by_id(int(order_id))
+                        if isinstance(order, dict):
+                            fq = order.get("filledQuantity")
+                            st = str(order.get("status") or "").upper()
+                            try:
+                                filled_qty = float(fq) if fq is not None else 0.0
+                            except Exception:
+                                filled_qty = 0.0
+                            if st in {"FILLED", "EXECUTED"} or filled_qty >= qty:
+                                filled = True
+                                break
                     pos_qty = await client.get_position_quantity(symbol)
                     if pos_qty >= qty:
                         filled = True
