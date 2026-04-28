@@ -52,7 +52,6 @@ class ExecWsClient:
                             continue
                         if mtype == "PING":
                             await ws.send(json.dumps({"type": "PONG"}))
-                            self._on_event("PING -> PONG")
                             continue
                         if mtype == "SIGNAL":
                             payload = msg.get("payload") or {}

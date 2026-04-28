@@ -85,6 +85,7 @@ class MainWindow(QWidget):
 
         self.signals_list = QListWidget()
         self.bot_state = QListWidget()
+        self.market_state = QListWidget()
 
         self.exec_queue = QListWidget()
         self.exec_queue.addItem("Execution queue will appear here.")
@@ -156,6 +157,8 @@ class MainWindow(QWidget):
     def _build_activity_tab(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout()
+        layout.addWidget(QLabel("Trading212 market state"))
+        layout.addWidget(self.market_state, 1)
         layout.addWidget(QLabel("Bot state (latest snapshot)"))
         layout.addWidget(self.bot_state, 1)
         layout.addWidget(QLabel("Recent signals"))
@@ -243,22 +246,42 @@ class MainWindow(QWidget):
                 resp = await client.place_market_order(symbol, qty)
                 self._append_event(f"Market order submitted: {resp}")
 
-                # Try to place protective stop: SELL stop with negative quantity.
-                if price > 0 and stop_loss_pct > 0:
-                    stop_price = price * (1.0 - stop_loss_pct / 100.0)
-                    stop_resp = await client.place_stop_order(symbol, qty=-qty, stop_price=stop_price)
-                    self._append_event(f"Protective STOP submitted: {stop_resp}")
+                # Wait for fill (owned qty > 0) before placing protective stops or closing.
+                order_id = resp.get("id") if isinstance(resp, dict) else None
+                filled = False
+                for _ in range(30):  # up to ~30s
+                    await asyncio.sleep(1.0)
+                    pos_qty = await client.get_position_quantity(symbol)
+                    if pos_qty >= qty:
+                        filled = True
+                        break
+
+                if not filled:
+                    self._append_event("Order not filled yet (premarket/illiquid). Skipping stop placement for now.")
                 else:
-                    self._append_event("Protective STOP skipped (missing price/stop_loss_pct).")
+                    # Refresh price after fill if possible.
+                    price2 = await client.get_price_from_positions(symbol)
+                    if price2 is not None:
+                        price = float(price2)
+
+                    if price > 0 and stop_loss_pct > 0:
+                        stop_price = price * (1.0 - stop_loss_pct / 100.0)
+                        stop_resp = await client.place_stop_order(symbol, qty=-qty, stop_price=stop_price)
+                        self._append_event(f"Protective STOP submitted: {stop_resp}")
+                    else:
+                        self._append_event("Protective STOP skipped (missing price/stop_loss_pct).")
 
                 if is_debug:
                     # Simple live test: wait for the position to appear, then close it.
-                    self._append_event("Debug trade: waiting for position, then closing...")
-                    for _ in range(10):
-                        await asyncio.sleep(1.0)
-                        pos_qty = await client.get_position_quantity(symbol)
-                        if pos_qty != 0.0:
-                            break
+                    if not filled and order_id:
+                        try:
+                            cancel_resp = await client.cancel_order(str(order_id))
+                            self._append_event(f"Debug trade: cancelled unfilled order: {cancel_resp}")
+                        except Exception as exc:
+                            self._append_event(f"Debug trade: cancel failed: {exc}")
+                        return
+
+                    self._append_event("Debug trade: closing position...")
                     close_resp = await client.close_position(symbol)
                     self._append_event(f"Debug trade: close submitted: {close_resp}")
         except Exception as exc:
@@ -279,6 +302,29 @@ class MainWindow(QWidget):
             blocked = snap.get("entry_blocked")
             line = f"{symbol} | ready={ready} | regime={regime} trigger={trigger} side={side} blocked={blocked} reason={reason}"
             self.bot_state.addItem(QListWidgetItem(line))
+
+        # Update Trading212 market state panel for these symbols (best-effort).
+        asyncio.create_task(self._refresh_market_state(list(payload.keys())))
+
+    async def _refresh_market_state(self, symbols: list[str]) -> None:
+        stored = self._store.load()
+        if not stored or not stored.t212_api_key:
+            return
+        try:
+            async with T212Client(keys=T212Keys(api_key=stored.t212_api_key, secret_key=stored.t212_secret_key)) as client:
+                rows: list[str] = []
+                for sym in sorted(set(symbols)):
+                    try:
+                        state = await client.get_market_state(sym)
+                    except Exception:
+                        state = "unknown"
+                    rows.append(f"{sym}: {state}")
+        except Exception:
+            return
+
+        self.market_state.clear()
+        for r in rows:
+            self.market_state.addItem(QListWidgetItem(r))
 
     @asyncSlot()
     async def on_connect_clicked(self) -> None:

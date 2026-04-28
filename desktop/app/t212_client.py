@@ -64,6 +64,7 @@ class T212Client:
 
         self._resolved_ticker_cache: dict[str, str] = {}
         self._instrument_ticker_index: dict[str, str] | None = None
+        self._instrument_row_by_ticker_upper: dict[str, dict[str, Any]] | None = None
         self._ticker_lock = asyncio.Lock()
 
     async def __aenter__(self) -> "T212Client":
@@ -150,16 +151,42 @@ class T212Client:
                 raise T212APIError("Unexpected metadata format from /api/v0/equity/metadata/instruments.")
 
             ticker_by_upper: dict[str, str] = {}
+            row_by_upper: dict[str, dict[str, Any]] = {}
             for row in instruments:
                 if not isinstance(row, dict):
                     continue
                 raw_ticker = str(row.get("ticker", "")).strip()
                 if raw_ticker:
-                    ticker_by_upper[self._ticker_key(raw_ticker)] = raw_ticker
+                    upper = self._ticker_key(raw_ticker)
+                    ticker_by_upper[upper] = raw_ticker
+                    row_by_upper[upper] = row
             if not ticker_by_upper:
                 raise T212APIError("No tradable instruments returned by /api/v0/equity/metadata/instruments.")
             self._instrument_ticker_index = ticker_by_upper
+            self._instrument_row_by_ticker_upper = row_by_upper
             return self._instrument_ticker_index
+
+    async def get_instrument_row(self, ticker: str) -> dict[str, Any] | None:
+        mapped = await self.resolve_ticker(ticker)
+        await self._load_instrument_ticker_index()
+        if not self._instrument_row_by_ticker_upper:
+            return None
+        return self._instrument_row_by_ticker_upper.get(self._ticker_key(mapped))
+
+    async def get_market_state(self, ticker: str) -> str:
+        row = await self.get_instrument_row(ticker)
+        if not row:
+            return "unknown"
+        for key in ("marketState", "market_status", "marketStatus", "tradingStatus", "trading_state", "status"):
+            v = row.get(key)
+            if isinstance(v, str) and v.strip():
+                return v.strip()
+        # Common fallbacks
+        if isinstance(row.get("tradable"), bool):
+            return "tradable" if row["tradable"] else "not_tradable"
+        if isinstance(row.get("isTradable"), bool):
+            return "tradable" if row["isTradable"] else "not_tradable"
+        return "unknown"
 
     @staticmethod
     def _extract_symbol_root(raw_ticker: str) -> str:
