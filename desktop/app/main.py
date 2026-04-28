@@ -273,8 +273,8 @@ class MainWindow(QWidget):
                             if st in {"FILLED", "EXECUTED"} or filled_qty >= qty:
                                 filled = True
                                 break
-                    pos_qty = await client.get_position_quantity(symbol)
-                    if pos_qty >= qty:
+                    owned_qty = await client.get_owned_quantity(symbol)
+                    if owned_qty >= qty:
                         filled = True
                         break
 
@@ -288,8 +288,12 @@ class MainWindow(QWidget):
 
                     if price > 0 and stop_loss_pct > 0:
                         stop_price = price * (1.0 - stop_loss_pct / 100.0)
-                        stop_resp = await client.place_stop_order(symbol, qty=-qty, stop_price=stop_price)
-                        self._append_event(f"Protective STOP submitted: {stop_resp}")
+                        owned_qty = await client.get_owned_quantity(symbol)
+                        if owned_qty >= qty:
+                            stop_resp = await client.place_stop_order(symbol, qty=-qty, stop_price=stop_price)
+                            self._append_event(f"Protective STOP submitted: {stop_resp}")
+                        else:
+                            self._append_event("Protective STOP skipped (owned qty still 0).")
                     else:
                         self._append_event("Protective STOP skipped (missing price/stop_loss_pct).")
 

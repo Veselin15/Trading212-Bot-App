@@ -358,6 +358,27 @@ class T212Client:
                 return 0.0
         return 0.0
 
+    async def get_owned_quantity(self, ticker: str) -> float:
+        """
+        Owned quantity for execution safety.
+        Uses /positions ONLY to avoid counting reserved/pending quantities shown in /portfolio.
+        """
+        mapped = await self.resolve_ticker(ticker)
+        for row in await self.get_positions():
+            if not isinstance(row, dict):
+                continue
+            row_ticker = str(row.get("ticker") or "").strip()
+            if not row_ticker and isinstance(row.get("instrument"), dict):
+                row_ticker = str(row["instrument"].get("ticker") or "").strip()
+            if row_ticker != mapped:
+                continue
+            qty_raw = row.get("quantity")
+            try:
+                return float(qty_raw)
+            except Exception:
+                return 0.0
+        return 0.0
+
     async def place_market_order(self, ticker: str, qty: float) -> dict[str, Any]:
         return await self._submit_order_with_precision_fallback("/api/v0/equity/orders/market", ticker, qty)
 
