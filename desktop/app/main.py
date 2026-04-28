@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import subprocess
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -108,6 +109,7 @@ class MainWindow(QWidget):
         self.setLayout(root)
         self._set_status("OFFLINE")
         self._append_event("App started.")
+        self._append_event(f"Version: {self._git_version()}")
         self._refresh_t212_status()
 
         settings = self._settings_store.load()
@@ -121,6 +123,14 @@ class MainWindow(QWidget):
             self.t212_api_key.setText(existing.t212_api_key)
             self.t212_secret_key.setText(existing.t212_secret_key or "")
             self._refresh_t212_status()
+
+    def _git_version(self) -> str:
+        try:
+            repo_root = Path(__file__).resolve().parents[2]
+            out = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], cwd=str(repo_root), text=True)
+            return out.strip()
+        except Exception:
+            return "unknown"
 
     def _build_top_bar(self) -> QHBoxLayout:
         top = QHBoxLayout()
