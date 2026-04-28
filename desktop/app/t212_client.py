@@ -177,16 +177,102 @@ class T212Client:
         row = await self.get_instrument_row(ticker)
         if not row:
             return "unknown"
-        for key in ("marketState", "market_status", "marketStatus", "tradingStatus", "trading_state", "status"):
-            v = row.get(key)
-            if isinstance(v, str) and v.strip():
-                return v.strip()
-        # Common fallbacks
+
+        def _walk(obj: Any, prefix: str = "") -> list[tuple[str, Any]]:
+            out: list[tuple[str, Any]] = []
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    key = f"{prefix}.{k}" if prefix else str(k)
+                    out.append((key, v))
+                    out.extend(_walk(v, key))
+            elif isinstance(obj, list):
+                for i, v in enumerate(obj[:50]):
+                    key = f"{prefix}[{i}]"
+                    out.append((key, v))
+                    out.extend(_walk(v, key))
+            return out
+
+        # Prefer explicit string states wherever they appear.
+        preferred_keys = {
+            "marketstate",
+            "market_status",
+            "marketstatus",
+            "tradingstatus",
+            "trading_state",
+            "tradingstate",
+            "session",
+            "sessionstate",
+            "state",
+            "status",
+        }
+        known_state_tokens = {
+            "OPEN",
+            "CLOSED",
+            "PRE_MARKET",
+            "PREMARKET",
+            "POST_MARKET",
+            "POSTMARKET",
+            "HALTED",
+            "AUCTION",
+            "SUSPENDED",
+            "TRADING",
+            "NOT_TRADABLE",
+            "TRADABLE",
+        }
+
+        candidates: list[tuple[str, str]] = []
+        for key, val in _walk(row):
+            k_norm = key.split(".")[-1].replace("-", "_").replace(" ", "_").lower()
+            if k_norm in preferred_keys and isinstance(val, str) and val.strip():
+                candidates.append((key, val.strip()))
+
+        for _, v in candidates:
+            upper = v.upper().replace(" ", "_")
+            if upper in known_state_tokens:
+                return upper
+
+        # Common boolean fallbacks
+        for bool_key in ("isMarketOpen", "marketOpen", "is_open", "open"):
+            if isinstance(row.get(bool_key), bool):
+                return "OPEN" if row[bool_key] else "CLOSED"
+
         if isinstance(row.get("tradable"), bool):
-            return "tradable" if row["tradable"] else "not_tradable"
+            return "TRADABLE" if row["tradable"] else "NOT_TRADABLE"
         if isinstance(row.get("isTradable"), bool):
-            return "tradable" if row["isTradable"] else "not_tradable"
+            return "TRADABLE" if row["isTradable"] else "NOT_TRADABLE"
+
+        # Last resort: return best-looking candidate even if it's not in our token set.
+        if candidates:
+            return candidates[0][1]
         return "unknown"
+
+    async def debug_instrument_fields(self, ticker: str) -> dict[str, Any]:
+        """
+        Return a small subset of instrument fields so callers can see what the broker exposes.
+        """
+        row = await self.get_instrument_row(ticker)
+        if not row:
+            return {"ticker": ticker, "found": False}
+        keys_of_interest = [
+            "ticker",
+            "name",
+            "isin",
+            "currency",
+            "marketState",
+            "marketStatus",
+            "tradingStatus",
+            "status",
+            "tradable",
+            "isTradable",
+            "extendedHours",
+            "isMarketOpen",
+            "marketOpen",
+        ]
+        out: dict[str, Any] = {"found": True}
+        for k in keys_of_interest:
+            if k in row:
+                out[k] = row.get(k)
+        return out
 
     @staticmethod
     def _extract_symbol_root(raw_ticker: str) -> str:
