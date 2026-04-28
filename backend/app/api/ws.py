@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import httpx
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.core.config import settings
+from app.integrations.supabase_rest import SupabaseRest
 from app.ws.manager import Connection, WsManager
 
 
@@ -37,41 +37,18 @@ async def ws_exec(ws: WebSocket) -> None:
         await ws.close(code=4401)
         return
 
-    if not settings.supabase_url or not settings.supabase_service_role_key:
+    sb = SupabaseRest.from_settings()
+    if sb is None:
         await ws.close(code=1011)
         return
 
     now = datetime.now(tz=UTC)
     ip = _client_ip(ws)
 
-    async def _sb_get(client: httpx.AsyncClient, path: str) -> list[dict]:
-        resp = await client.get(
-            f"{settings.supabase_url.rstrip('/')}/rest/v1/{path.lstrip('/')}",
-            headers={
-                "apikey": settings.supabase_service_role_key,
-                "authorization": f"Bearer {settings.supabase_service_role_key}",
-            },
-        )
-        resp.raise_for_status()
-        data = resp.json()
-        return data if isinstance(data, list) else []
-
-    async def _sb_patch(client: httpx.AsyncClient, path: str, patch: dict) -> None:
-        resp = await client.patch(
-            f"{settings.supabase_url.rstrip('/')}/rest/v1/{path.lstrip('/')}",
-            headers={
-                "apikey": settings.supabase_service_role_key,
-                "authorization": f"Bearer {settings.supabase_service_role_key}",
-                "prefer": "return=minimal",
-            },
-            json=patch,
-        )
-        resp.raise_for_status()
-
     try:
         async with httpx.AsyncClient(timeout=10.0) as client:
             # 1) Validate license row.
-            lic_rows = await _sb_get(
+            lic_rows = await sb.get(
                 client,
                 f"licenses?select=id,user_id,license_key,status,revoked_at,expires_at,last_ip_address&license_key=eq.{license_key}",
             )
@@ -101,7 +78,7 @@ async def ws_exec(ws: WebSocket) -> None:
                 return
 
             # 2) Validate subscription row (latest).
-            sub_rows = await _sb_get(
+            sub_rows = await sb.get(
                 client,
                 "subscriptions?select=status,current_period_end&"
                 f"user_id=eq.{user_id}&order=created_at.desc&limit=1",
@@ -129,7 +106,7 @@ async def ws_exec(ws: WebSocket) -> None:
                 return
 
             # Persist IP lock + last seen (service role bypasses RLS).
-            await _sb_patch(
+            await sb.patch(
                 client,
                 f"licenses?id=eq.{lic['id']}",
                 {"last_ip_address": ip or None, "last_seen_at": now.isoformat()},
