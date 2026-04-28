@@ -4,12 +4,10 @@ import asyncio
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+import httpx
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.db.models import License, LicenseStatus
-from app.db.session import db_session
+from app.core.config import settings
 from app.ws.manager import Connection, WsManager
 
 
@@ -25,7 +23,7 @@ def _client_ip(ws: WebSocket) -> str:
 
 
 @router.websocket("/exec")
-async def ws_exec(ws: WebSocket, session: AsyncSession = Depends(db_session)) -> None:
+async def ws_exec(ws: WebSocket) -> None:
     await ws.accept()
 
     hello = await ws.receive_json()
@@ -39,31 +37,113 @@ async def ws_exec(ws: WebSocket, session: AsyncSession = Depends(db_session)) ->
         await ws.close(code=4401)
         return
 
-    lic = (
-        await session.execute(select(License).where(License.license_key == license_key).limit(1))
-    ).scalar_one_or_none()
-    if lic is None or lic.revoked_at is not None:
-        await ws.close(code=4404)
+    if not settings.supabase_url or not settings.supabase_service_role_key:
+        await ws.close(code=1011)
         return
 
     now = datetime.now(tz=UTC)
-    if lic.status != LicenseStatus.active or lic.expires_at <= now:
-        await ws.close(code=4403)
-        return
-
     ip = _client_ip(ws)
-    if lic.last_ip_address and str(lic.last_ip_address) != ip:
-        await ws.close(code=4409)
-        return
 
-    # Persist IP lock + last seen
-    lic.last_ip_address = ip or None
-    lic.last_seen_at = now
-    await session.commit()
+    async def _sb_get(client: httpx.AsyncClient, path: str) -> list[dict]:
+        resp = await client.get(
+            f"{settings.supabase_url.rstrip('/')}/rest/v1/{path.lstrip('/')}",
+            headers={
+                "apikey": settings.supabase_service_role_key,
+                "authorization": f"Bearer {settings.supabase_service_role_key}",
+            },
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        return data if isinstance(data, list) else []
+
+    async def _sb_patch(client: httpx.AsyncClient, path: str, patch: dict) -> None:
+        resp = await client.patch(
+            f"{settings.supabase_url.rstrip('/')}/rest/v1/{path.lstrip('/')}",
+            headers={
+                "apikey": settings.supabase_service_role_key,
+                "authorization": f"Bearer {settings.supabase_service_role_key}",
+                "prefer": "return=minimal",
+            },
+            json=patch,
+        )
+        resp.raise_for_status()
+
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            # 1) Validate license row.
+            lic_rows = await _sb_get(
+                client,
+                f"licenses?select=id,user_id,license_key,status,revoked_at,expires_at,last_ip_address&license_key=eq.{license_key}",
+            )
+            lic = lic_rows[0] if lic_rows else None
+            if not lic or lic.get("revoked_at") is not None:
+                await ws.close(code=4404)
+                return
+            if str(lic.get("status") or "inactive") != "active":
+                await ws.close(code=4403)
+                return
+
+            expires_at = lic.get("expires_at")
+            if expires_at:
+                try:
+                    exp = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
+                    if exp <= now:
+                        await ws.close(code=4403)
+                        return
+                except Exception:
+                    # If unparsable, treat as invalid.
+                    await ws.close(code=4403)
+                    return
+
+            user_id = str(lic.get("user_id") or "").strip()
+            if not user_id:
+                await ws.close(code=4404)
+                return
+
+            # 2) Validate subscription row (latest).
+            sub_rows = await _sb_get(
+                client,
+                "subscriptions?select=status,current_period_end&"
+                f"user_id=eq.{user_id}&order=created_at.desc&limit=1",
+            )
+            sub = sub_rows[0] if sub_rows else None
+            if not sub or str(sub.get("status") or "") != "active":
+                await ws.close(code=4403)
+                return
+
+            cpe = sub.get("current_period_end")
+            if cpe:
+                try:
+                    end = datetime.fromisoformat(str(cpe).replace("Z", "+00:00"))
+                    if end <= now:
+                        await ws.close(code=4403)
+                        return
+                except Exception:
+                    await ws.close(code=4403)
+                    return
+
+            # 3) Enforce one-license-per-IP (best-effort).
+            locked_ip = str(lic.get("last_ip_address") or "").strip()
+            if locked_ip and ip and locked_ip != ip:
+                await ws.close(code=4409)
+                return
+
+            # Persist IP lock + last seen (service role bypasses RLS).
+            await _sb_patch(
+                client,
+                f"licenses?id=eq.{lic['id']}",
+                {"last_ip_address": ip or None, "last_seen_at": now.isoformat()},
+            )
+    except httpx.HTTPError:
+        await ws.close(code=1011)
+        return
+    except Exception:
+        await ws.close(code=1011)
+        return
 
     conn = Connection(
-        license_id=lic.id,
-        license_key=lic.license_key,
+        license_id=uuid.UUID(str(lic["id"])),
+        license_key=license_key,
         ip=ip,
         websocket=ws,
         last_pong_at=now,

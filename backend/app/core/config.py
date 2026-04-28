@@ -17,6 +17,10 @@ class Settings(BaseSettings):
     stripe_webhook_secret: str = ""
     app_base_url: str = "http://localhost:8000"
 
+    # Supabase (used for portal-driven licenses/subscriptions)
+    supabase_url: str = ""
+    supabase_service_role_key: str = ""
+
 
 settings = Settings()  # type: ignore[call-arg]
 

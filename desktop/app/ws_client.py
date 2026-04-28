@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 import websockets
+from websockets.exceptions import ConnectionClosed
 
 
 @dataclass(frozen=True)
@@ -64,6 +65,24 @@ class ExecWsClient:
                             if isinstance(payload, dict):
                                 self._on_bot_snapshot(payload)
                             continue
+            except ConnectionClosed as exc:
+                self._on_status("OFFLINE")
+                code = getattr(exc, "code", None)
+                reason = getattr(exc, "reason", "") or ""
+                if code == 4401:
+                    self._on_event("Disconnected: invalid license key format.")
+                elif code == 4404:
+                    self._on_event("Disconnected: license not found or revoked.")
+                elif code == 4403:
+                    self._on_event("Disconnected: subscription/license not active.")
+                elif code == 4409:
+                    self._on_event("Disconnected: license already locked to a different IP.")
+                elif code == 4400:
+                    self._on_event("Disconnected: bad handshake.")
+                else:
+                    self._on_event(f"Disconnected (code={code}): {reason}".strip())
+                self._on_event("Reconnecting in 5s...")
+                await asyncio.sleep(5.0)
             except Exception:
                 self._on_status("OFFLINE")
                 self._on_event("Disconnected. Reconnecting in 5s...")
