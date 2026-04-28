@@ -7,14 +7,22 @@ Set-Location $repoRoot
 
 $runDir = Join-Path $repoRoot ".run"
 New-Item -ItemType Directory -Force -Path $runDir | Out-Null
-$backendOut = Join-Path $runDir "backend.out.log"
-$backendErr = Join-Path $runDir "backend.err.log"
-$desktopOut = Join-Path $runDir "desktop.out.log"
-$desktopErr = Join-Path $runDir "desktop.err.log"
+$stamp = Get-Date -Format "yyyyMMdd_HHmmss"
+$backendOut = Join-Path $runDir "backend.$stamp.out.log"
+$backendErr = Join-Path $runDir "backend.$stamp.err.log"
+$desktopOut = Join-Path $runDir "desktop.$stamp.out.log"
+$desktopErr = Join-Path $runDir "desktop.$stamp.err.log"
 "" | Set-Content -Path $backendOut -Encoding UTF8
 "" | Set-Content -Path $backendErr -Encoding UTF8
 "" | Set-Content -Path $desktopOut -Encoding UTF8
 "" | Set-Content -Path $desktopErr -Encoding UTF8
+
+@{
+  backend_out = $backendOut
+  backend_err = $backendErr
+  desktop_out = $desktopOut
+  desktop_err = $desktopErr
+} | ConvertTo-Json | Set-Content -Path (Join-Path $runDir "last_logs.json") -Encoding UTF8
 
 $pythonCmd = (Get-Command python -ErrorAction SilentlyContinue)
 if (-not $pythonCmd) {
