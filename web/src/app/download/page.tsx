@@ -8,7 +8,7 @@ export default async function DownloadPage() {
   if (!user) redirect("/login");
 
   const active = isActiveSubscription(subscription);
-  if (!active) redirect("/account");
+  if (!active) redirect("/dashboard");
 
   const downloadUrl = process.env.DESKTOP_DOWNLOAD_URL || "";
   const version = process.env.DESKTOP_APP_VERSION || "";
@@ -56,8 +56,8 @@ export default async function DownloadPage() {
             </a>
           ) : null}
 
-          <ButtonLink href="/account" variant="secondary" className="w-full sm:w-auto">
-            Back to account
+          <ButtonLink href="/dashboard" variant="secondary" className="w-full sm:w-auto">
+            Back to dashboard
           </ButtonLink>
         </div>
       </div>

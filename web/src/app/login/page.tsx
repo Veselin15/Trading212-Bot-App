@@ -7,7 +7,7 @@ import { LoginForm } from "./ui";
 
 export default async function LoginPage() {
   const user = await getServerUser();
-  if (user) redirect("/account");
+  if (user) redirect("/dashboard");
 
   return (
     <main className="relative flex flex-1 items-center justify-center px-6 py-16">

@@ -48,8 +48,8 @@ export default function PricingPage() {
                 <li>Download access</li>
               </ul>
               <div className="mt-6">
-                <ButtonLink href="/account" className="w-full">
-                  Go to account
+                <ButtonLink href="/dashboard" className="w-full">
+                  Go to dashboard
                 </ButtonLink>
               </div>
             </div>

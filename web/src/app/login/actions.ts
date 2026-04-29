@@ -17,7 +17,7 @@ export async function signIn(formData: FormData): Promise<{ error?: string } | v
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { error: error.message };
 
-  redirect("/account");
+  redirect("/dashboard");
 }
 
 export async function signUp(formData: FormData): Promise<{ error?: string } | void> {
@@ -27,6 +27,6 @@ export async function signUp(formData: FormData): Promise<{ error?: string } | v
   const { error } = await supabase.auth.signUp({ email, password });
   if (error) return { error: error.message };
 
-  redirect("/account");
+  redirect("/dashboard");
 }
 

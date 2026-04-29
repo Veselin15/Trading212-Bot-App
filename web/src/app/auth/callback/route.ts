@@ -11,7 +11,7 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // Always redirect to account; it will bounce to /login if session creation failed.
-  return NextResponse.redirect(new URL("/account", url.origin), { status: 303 });
+  // Always redirect to the protected dashboard; it will bounce to /login if session creation failed.
+  return NextResponse.redirect(new URL("/dashboard", url.origin), { status: 303 });
 }
 

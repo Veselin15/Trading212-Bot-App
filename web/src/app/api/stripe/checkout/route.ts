@@ -54,8 +54,8 @@ export async function POST() {
     customer: customerId,
     line_items: [{ price: requiredEnv("STRIPE_PRICE_ID"), quantity: 1 }],
     allow_promotion_codes: true,
-    success_url: `${siteUrl}/account?checkout=success`,
-    cancel_url: `${siteUrl}/account?checkout=cancel`,
+    success_url: `${siteUrl}/dashboard?checkout=success`,
+    cancel_url: `${siteUrl}/dashboard?checkout=cancel`,
   });
 
   if (!session.url) {

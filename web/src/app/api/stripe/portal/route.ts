@@ -31,7 +31,7 @@ export async function POST() {
   const stripe = getStripeClient();
   const returnUrl =
     process.env.STRIPE_CUSTOMER_PORTAL_RETURN_URL ||
-    `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/account`;
+    `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/dashboard`;
 
   const session = await stripe.billingPortal.sessions.create({
     customer: sub.stripe_customer_id,
