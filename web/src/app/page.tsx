@@ -1,5 +1,7 @@
 import { Container } from "@/components/ui/Container";
 import { ButtonLink } from "@/components/ui/Button";
+import { BacktestChart } from "@/components/BacktestChart";
+import { Activity, Brain, Shield, TrendingUp } from "lucide-react";
 
 export default function Home() {
   return (
@@ -126,6 +128,76 @@ export default function Home() {
         </section>
       </Container>
 
+      {/* The Engine */}
+      <Container>
+        <section className="pb-16 sm:pb-20">
+          <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-4">
+              <h2 className="text-3xl font-semibold tracking-tight">The Engine</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                Institutional-grade logic, explained conceptually—without exposing exact indicators or parameters.
+              </p>
+            </div>
+
+            <div className="lg:col-span-8">
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      <TrendingUp className="h-5 w-5" />
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">Macro Trend Alignment</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    The algorithm first analyzes the broader market direction. It acts as a primary filter, ensuring we
+                    only deploy capital when the underlying asset has a mathematically proven upward trajectory.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      <Activity className="h-5 w-5" />
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">Momentum Exhaustion</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    We don&apos;t buy breakouts. The system waits for temporary pullbacks and uses custom momentum oscillators
+                    to pinpoint the exact millisecond selling pressure fades.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      <Brain className="h-5 w-5" />
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">AI Sentiment Gatekeeper</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    Technical analysis isn&apos;t enough. The engine pings real-time LLM sentiment analysis to block entries
+                    during high-volatility macroeconomic events or negative earnings calls.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      <Shield className="h-5 w-5" />
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">Ruthless Risk Management</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    Capital preservation is the ultimate priority. Every trade has a hard-coded algorithmic stop-loss.
+                    Once in profit, the system dynamically trails a break-even stop to protect your principal.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </Container>
+
       {/* How it works */}
       <Container>
         <section id="features" className="pb-16 sm:pb-20">
@@ -203,43 +275,7 @@ export default function Home() {
             <div className="mt-8 grid gap-6 lg:grid-cols-12 lg:items-center">
               <div className="lg:col-span-8">
                 <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 sm:p-6">
-                  <svg viewBox="0 0 660 260" className="h-auto w-full">
-                    <g stroke="rgba(148,163,184,0.25)" strokeWidth="1">
-                      {Array.from({ length: 6 }).map((_, i) => {
-                        const y = 35 + i * 36;
-                        return <line key={i} x1="40" x2="630" y1={y} y2={y} />;
-                      })}
-                      {Array.from({ length: 7 }).map((_, i) => {
-                        const x = 40 + i * 85;
-                        return <line key={i} y1="35" y2="228" x1={x} x2={x} />;
-                      })}
-                    </g>
-
-                    {/* APY curve (dummy) */}
-                    <path
-                      d="M40 230 C80 215, 135 200, 190 178 C245 156, 310 135, 360 118 C420 98, 480 78, 535 60 C580 46, 610 40, 630 36"
-                      fill="none"
-                      stroke="#10b981"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                    />
-
-                    <path
-                      d="M40 230 C80 215, 135 200, 190 178 C245 156, 310 135, 360 118 C420 98, 480 78, 535 60 C580 46, 610 40, 630 36 L630 228 L40 228 Z"
-                      fill="#10b981"
-                      opacity="0.08"
-                    />
-
-                    {/* Endpoint */}
-                    <circle cx="630" cy="36" r="8" fill="#10b981" opacity="0.95" />
-                  </svg>
-
-                  <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                    <span>Start</span>
-                    <span>1Y</span>
-                    <span>2Y</span>
-                    <span>3Y+</span>
-                  </div>
+                  <BacktestChart />
                 </div>
               </div>
 
