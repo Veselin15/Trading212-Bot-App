@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useMemo, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -11,9 +12,22 @@ import {
 } from "recharts";
 import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
-type BacktestPoint = {
-  month: string; // e.g. "Apr 2023"
-  value: number; // portfolio value
+type EquityPoint = {
+  month: string; // e.g. "2024-01"
+  equity: number; // equity multiple (1.0 = starting capital)
+  ret_pct?: number;
+  exposure?: number;
+  breadth?: number;
+};
+
+type BacktestPayload = {
+  meta?: Record<string, unknown>;
+  points: EquityPoint[];
+};
+
+type ChartPoint = {
+  month: string;
+  value: number; // portfolio value in USD
 };
 
 function formatUSD(value: number) {
@@ -24,39 +38,12 @@ function formatUSD(value: number) {
   }).format(value);
 }
 
-function generateMockBacktestData(): BacktestPoint[] {
-  // IMPORTANT: This is mock data designed to look like real trading
-  // without revealing any actual trade log.
-  const start = 10_000;
-  const months = 36;
-
-  // Crafted monthly returns: mostly positive, with flats and minor drawdowns (2–4%).
-  // The curve ends around ~$18.5k to reflect ~29% APY over ~3 years.
-  const returns: number[] = [
-    0.018, 0.012, -0.021, 0.024, 0.008, 0.0, 0.019, -0.015, 0.028, 0.011, 0.006, 0.021,
-    0.014, -0.033, 0.026, 0.009, 0.0, 0.017, 0.022, -0.018, 0.025, 0.012, 0.007, 0.019,
-    0.016, -0.027, 0.023, 0.01, 0.004, 0.018, 0.02, -0.014, 0.021, 0.013, 0.008, 0.017,
-  ];
-
-  const now = new Date();
-  const baseYear = now.getFullYear();
-  const baseMonth = now.getMonth(); // 0..11
-
-  let v = start;
-  const data: BacktestPoint[] = [];
-
-  for (let i = months - 1; i >= 0; i -= 1) {
-    const d = new Date(baseYear, baseMonth - i, 1);
-    const label = d.toLocaleString("en-US", { month: "short", year: "numeric" });
-
-    const r = returns[months - 1 - i] ?? 0.012;
-    v = Math.max(0, v * (1 + r));
-
-    // Round to whole dollars for a cleaner tooltip.
-    data.push({ month: label, value: Math.round(v) });
-  }
-
-  return data;
+function monthLabel(yyyyMm: string) {
+  // Expected input: YYYY-MM
+  const [y, m] = yyyyMm.split("-").map((x) => Number(x));
+  if (!y || !m) return yyyyMm;
+  const d = new Date(y, m - 1, 1);
+  return d.toLocaleString("en-US", { month: "short", year: "numeric" });
 }
 
 function BacktestTooltip({ active, payload, label }: TooltipProps<ValueType, NameType>) {
@@ -74,8 +61,63 @@ function BacktestTooltip({ active, payload, label }: TooltipProps<ValueType, Nam
   );
 }
 
-export function BacktestChart({ className }: { className?: string }) {
-  const data = generateMockBacktestData();
+export function BacktestChart({
+  className,
+  startingBalance = 10_000,
+}: {
+  className?: string;
+  startingBalance?: number;
+}) {
+  const [payload, setPayload] = useState<BacktestPayload | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    // IMPORTANT: This uses an aggregated monthly equity curve (no trade log exposed).
+    fetch("/backtest_equity.json", { cache: "no-store" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return (await r.json()) as BacktestPayload;
+      })
+      .then((p) => {
+        if (!cancelled) setPayload(p);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const data = useMemo<ChartPoint[]>(() => {
+    const points = payload?.points ?? [];
+    return points.map((p) => ({
+      month: monthLabel(p.month),
+      value: Math.round(startingBalance * p.equity),
+    }));
+  }, [payload, startingBalance]);
+
+  if (error) {
+    return (
+      <div className={className}>
+        <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
+          <div className="font-medium">Failed to load backtest data.</div>
+          <div className="mt-1 font-mono text-xs text-rose-200/90">{error}</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!payload) {
+    return (
+      <div className={className}>
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+          Loading backtest…
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={className}>
@@ -84,8 +126,8 @@ export function BacktestChart({ className }: { className?: string }) {
           <AreaChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
             <defs>
               <linearGradient id="equityFill" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.26} />
-                <stop offset="55%" stopColor="#38bdf8" stopOpacity={0.12} />
+                <stop offset="0%" stopColor="#22c55e" stopOpacity={0.22} />
+                <stop offset="55%" stopColor="#38bdf8" stopOpacity={0.1} />
                 <stop offset="100%" stopColor="#020617" stopOpacity={0} />
               </linearGradient>
             </defs>

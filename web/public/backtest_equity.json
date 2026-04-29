@@ -1,0 +1,214 @@
+{
+  "meta": {
+    "days": 1095,
+    "slippage_bps": 5.0,
+    "symbols": [
+      "ASML.AS",
+      "SAP.DE",
+      "UNA.AS",
+      "AMD"
+    ],
+    "ewr": {
+      "lookback_trades": 4,
+      "min_trades": 2,
+      "z_alpha": 0.25,
+      "min_mult": 0.6,
+      "max_mult": 1.4
+    },
+    "momentum_tilt": {
+      "enabled": true,
+      "lookback_trades": 4,
+      "tilt": 0.3
+    },
+    "breadth_gate": {
+      "enabled": true,
+      "floor": 0.5,
+      "exposure": 0.85
+    }
+  },
+  "points": [
+    {
+      "month": "2024-01",
+      "equity": 1.0212628954221337,
+      "ret_pct": 2.126289542213377,
+      "exposure": 0.85,
+      "breadth": 0.0
+    },
+    {
+      "month": "2024-02",
+      "equity": 1.0519884016899943,
+      "ret_pct": 3.008579515185497,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2024-03",
+      "equity": 1.0665435470061666,
+      "ret_pct": 1.3835842004331784,
+      "exposure": 1.0,
+      "breadth": 0.5
+    },
+    {
+      "month": "2024-04",
+      "equity": 1.099853990985299,
+      "ret_pct": 3.123214619096993,
+      "exposure": 1.0,
+      "breadth": 0.5
+    },
+    {
+      "month": "2024-05",
+      "equity": 1.1888000206534048,
+      "ret_pct": 8.087076138935867,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2024-06",
+      "equity": 1.2564784481356632,
+      "ret_pct": 5.693003558753315,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2024-07",
+      "equity": 1.2873323544759514,
+      "ret_pct": 2.4555857990297163,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2024-08",
+      "equity": 1.5819587123696572,
+      "ret_pct": 22.88658067742286,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2024-09",
+      "equity": 1.594415023996089,
+      "ret_pct": 0.7873980230352107,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2024-10",
+      "equity": 1.7601862240080186,
+      "ret_pct": 10.396991844473254,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2024-11",
+      "equity": 1.7368459805692231,
+      "ret_pct": -1.326009891478906,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2024-12",
+      "equity": 1.6449777887889048,
+      "ret_pct": -5.2893689370320525,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2025-01",
+      "equity": 1.8654238289896183,
+      "ret_pct": 13.40115603402855,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2025-02",
+      "equity": 1.962098482066844,
+      "ret_pct": 5.182449777624437,
+      "exposure": 0.85,
+      "breadth": 0.25
+    },
+    {
+      "month": "2025-03",
+      "equity": 1.9588179814377635,
+      "ret_pct": -0.16719347469373252,
+      "exposure": 0.85,
+      "breadth": 0.25
+    },
+    {
+      "month": "2025-04",
+      "equity": 2.2183905034180547,
+      "ret_pct": 13.251487603241523,
+      "exposure": 1.0,
+      "breadth": 0.5
+    },
+    {
+      "month": "2025-05",
+      "equity": 2.538971744110213,
+      "ret_pct": 14.451073433564243,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2025-06",
+      "equity": 2.72752964236646,
+      "ret_pct": 7.426545753951558,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2025-07",
+      "equity": 2.872756121318337,
+      "ret_pct": 5.324469318173031,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2025-08",
+      "equity": 3.198042078790025,
+      "ret_pct": 11.323131645522729,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2025-09",
+      "equity": 3.2285857944256406,
+      "ret_pct": 0.9550754769046725,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2025-10",
+      "equity": 3.2477118621049557,
+      "ret_pct": 0.5923976904171967,
+      "exposure": 1.0,
+      "breadth": 1.0
+    },
+    {
+      "month": "2025-11",
+      "equity": 3.0841910784954627,
+      "ret_pct": -5.034953547372554,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2025-12",
+      "equity": 2.73176414810649,
+      "ret_pct": -11.426883789602776,
+      "exposure": 1.0,
+      "breadth": 0.75
+    },
+    {
+      "month": "2026-01",
+      "equity": 2.9526595535227957,
+      "ret_pct": 8.08618143588342,
+      "exposure": 0.85,
+      "breadth": 0.25
+    },
+    {
+      "month": "2026-02",
+      "equity": 2.9493960852417613,
+      "ret_pct": -0.1105263990608433,
+      "exposure": 0.85,
+      "breadth": 0.25
+    }
+  ]
+}
+

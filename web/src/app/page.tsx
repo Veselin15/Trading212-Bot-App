@@ -260,7 +260,7 @@ export default function Home() {
               <div>
                 <h2 className="text-3xl font-semibold tracking-tight">Performance preview</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                  Dummy chart for now. Your real results come from the live strategy and your subscription state.
+                  Equity curve from a multi-year backtest (monthly aggregation). Execution still happens locally on your machine.
                 </p>
               </div>
 
