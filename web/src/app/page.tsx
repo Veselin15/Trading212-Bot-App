@@ -1,7 +1,9 @@
 import { Container } from "@/components/ui/Container";
 import { ButtonLink } from "@/components/ui/Button";
 import { BacktestChart } from "@/components/BacktestChart";
-import { Activity, Brain, Shield, TrendingUp } from "lucide-react";
+import { BacktestSummary } from "@/components/BacktestSummary";
+import { SetupFlow } from "@/components/SetupFlow";
+import { Activity, Lock, Shield, TrendingUp, Workflow } from "lucide-react";
 
 export default function Home() {
   return (
@@ -15,37 +17,37 @@ export default function Home() {
             <div className="lg:col-span-6">
               <div className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-white/5 px-3 py-1 text-xs text-slate-300 backdrop-blur">
                 <span className="font-medium text-slate-50">Trading212 Bot</span>
-                <span className="text-slate-400">signals → desktop executor</span>
+                <span className="text-slate-400">portal + licensed desktop executor</span>
               </div>
 
               <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-                Algorithmic Trading for European Stocks
+                A safer way to automate Trading212 execution
               </h1>
 
               <p className="mt-4 max-w-xl text-pretty text-base leading-7 text-slate-300">
-                Connect once, then let the strategy stream signals through Supabase. Your desktop app executes orders
-                locally using encrypted Trading212 keys—no broker credentials on the web.
+                The portal manages your account, subscription, and license key. The Windows desktop app connects to
+                Trading212 locally and executes orders on your machine — so broker keys never touch the website.
               </p>
 
               <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <ButtonLink href="/login">Start Free Trial</ButtonLink>
-                <ButtonLink href="/pricing" variant="secondary">
-                  View Performance
+                <ButtonLink href="/login">Create account</ButtonLink>
+                <ButtonLink href="/product" variant="secondary">
+                  See how it works
                 </ButtonLink>
               </div>
 
               <div className="mt-8 grid gap-4 sm:grid-cols-3">
                 <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4 backdrop-blur">
-                  <div className="text-sm font-medium text-slate-50">Low latency</div>
-                  <div className="mt-1 text-sm text-slate-300">Signals stream in milliseconds.</div>
+                  <div className="text-sm font-medium text-slate-50">Local execution</div>
+                  <div className="mt-1 text-sm text-slate-300">Orders are placed from your desktop.</div>
                 </div>
                 <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4 backdrop-blur">
                   <div className="text-sm font-medium text-slate-50">Local security</div>
-                  <div className="mt-1 text-sm text-slate-300">Keys stay encrypted on your PC.</div>
+                  <div className="mt-1 text-sm text-slate-300">Trading212 keys stay encrypted on-device.</div>
                 </div>
                 <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4 backdrop-blur">
-                  <div className="text-sm font-medium text-slate-50">Access control</div>
-                  <div className="mt-1 text-sm text-slate-300">Subscription-gated with RLS.</div>
+                  <div className="text-sm font-medium text-slate-50">Licensed access</div>
+                  <div className="mt-1 text-sm text-slate-300">Subscriptions gate the feed + downloads.</div>
                 </div>
               </div>
             </div>
@@ -57,10 +59,8 @@ export default function Home() {
                 <div className="relative">
                   <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <div className="text-sm font-medium text-slate-200">Backtest equity curve</div>
-                      <div className="mt-1 text-xs text-slate-400">
-                        36 months • monthly aggregation • starting balance $10,000
-                      </div>
+                      <div className="text-sm font-medium text-slate-200">Backtest preview</div>
+                      <div className="mt-1 text-xs text-slate-400">Monthly aggregation • simulated results</div>
                     </div>
                     <div className="rounded-full border border-slate-800/70 bg-slate-950/50 px-2 py-1 text-xs text-slate-300">
                       Hover for exact values
@@ -71,26 +71,13 @@ export default function Home() {
                     <BacktestChart />
                     <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
                       <span>Start: $10k</span>
-                      <span className="font-mono text-slate-200">equity_curve.json</span>
-                      <span>End: ~18.5k</span>
+                      <span className="font-mono text-slate-200">backtest_equity.json</span>
+                      <span>End: derived from data</span>
                     </div>
                   </div>
 
-                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                    <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Execution model</div>
-                      <div className="mt-2 text-sm text-slate-200">
-                        Signals are published to Supabase. Your desktop app executes locally.
-                      </div>
-                      <div className="mt-2 text-xs text-slate-400">Your Trading212 API key never touches the website.</div>
-                    </div>
-                    <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4">
-                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Trust posture</div>
-                      <div className="mt-2 text-sm text-slate-200">
-                        Subscription gating + RLS. Keys encrypted on-device. No server-side broker access.
-                      </div>
-                      <div className="mt-2 text-xs text-slate-400">Designed for “Connect &amp; Forget”.</div>
-                    </div>
+                  <div className="mt-5">
+                    <BacktestSummary />
                   </div>
                 </div>
               </div>
@@ -99,17 +86,15 @@ export default function Home() {
         </section>
       </Container>
 
-      {/* The Engine */}
+      {/* Architecture */}
       <Container>
         <section className="pb-16 sm:pb-20">
           <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
             <div className="lg:col-span-4">
-              <h2 className="text-3xl font-semibold tracking-tight">The Engine</h2>
+              <h2 className="text-3xl font-semibold tracking-tight">Designed for trust</h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Institutional-grade logic, explained clearly—without exposing exact indicators or parameters you could copy.
-                <span className="block pt-2 text-slate-400">
-                  The system uses a two-timeframe stack: 15m candles define market regime, 5m candles time entries.
-                </span>
+                The portal handles licensing and access. The desktop executor handles Trading212 locally. This split keeps
+                broker credentials out of the browser and out of the backend.
               </p>
             </div>
 
@@ -118,48 +103,37 @@ export default function Home() {
                 <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
                   <div className="flex items-center gap-3">
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      <Workflow className="h-5 w-5" />
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">Signal → execute architecture</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    Signals are published to Supabase in real-time. Your desktop app subscribes and places orders locally.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">No broker keys on the website</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    Your Trading212 API key is entered only in the desktop executor and stored encrypted on your machine.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
                       <TrendingUp className="h-5 w-5" />
                     </div>
-                    <div className="text-sm font-medium text-slate-50">Macro Trend Alignment</div>
+                    <div className="text-sm font-medium text-slate-50">Strategy stack (high level)</div>
                   </div>
                   <div className="mt-3 text-sm text-slate-300">
-                    The algorithm first analyzes the broader market direction. It acts as a primary filter, ensuring we
-                    only deploy capital when the underlying asset has a mathematically proven upward trajectory.
-                    <span className="block pt-2 text-xs text-slate-400">
-                      Implemented on 15m candles to reduce noise and avoid trading against the larger move.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
-                      <Activity className="h-5 w-5" />
-                    </div>
-                    <div className="text-sm font-medium text-slate-50">Momentum Exhaustion</div>
-                  </div>
-                  <div className="mt-3 text-sm text-slate-300">
-                    We don&apos;t buy breakouts. The system waits for temporary pullbacks and uses custom momentum oscillators
-                    to pinpoint the exact millisecond selling pressure fades.
-                    <span className="block pt-2 text-xs text-slate-400">
-                      Entries are timed on 5m candles, only after the 15m regime is aligned.
-                    </span>
-                  </div>
-                </div>
-
-                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
-                  <div className="flex items-center gap-3">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
-                      <Brain className="h-5 w-5" />
-                    </div>
-                    <div className="text-sm font-medium text-slate-50">AI Sentiment Gatekeeper</div>
-                  </div>
-                  <div className="mt-3 text-sm text-slate-300">
-                    Technical analysis isn&apos;t enough. The engine pings real-time LLM sentiment analysis to block entries
-                    during high-volatility macroeconomic events or negative earnings calls.
-                    <span className="block pt-2 text-xs text-slate-400">
-                      This prevents “good-looking” 5m setups during periods where downside tail-risk dominates.
-                    </span>
+                    Two-timeframe approach: a higher timeframe defines regime; a lower timeframe times entries/exits.
+                    Exact indicators/parameters are intentionally not exposed.
                   </div>
                 </div>
 
@@ -168,14 +142,10 @@ export default function Home() {
                     <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
                       <Shield className="h-5 w-5" />
                     </div>
-                    <div className="text-sm font-medium text-slate-50">Ruthless Risk Management</div>
+                    <div className="text-sm font-medium text-slate-50">Risk controls</div>
                   </div>
                   <div className="mt-3 text-sm text-slate-300">
-                    Capital preservation is the ultimate priority. Every trade has a hard-coded algorithmic stop-loss.
-                    Once in profit, the system dynamically trails a break-even stop to protect your principal.
-                    <span className="block pt-2 text-xs text-slate-400">
-                      Risk controls operate on every tick, independent of timeframe, so protection is always on.
-                    </span>
+                    Stop-loss and protective behavior are enforced by the executor so risk handling is part of the runtime.
                   </div>
                 </div>
               </div>
@@ -191,7 +161,7 @@ export default function Home() {
             <div className="lg:col-span-4">
               <h2 className="text-3xl font-semibold tracking-tight">How it works</h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                A “connect & forget” flow designed for trust, low risk, and local execution.
+                A simple, repeatable setup. Start in paper/monitoring mode, then enable automation when you’re ready.
               </p>
             </div>
 
@@ -202,10 +172,10 @@ export default function Home() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
                       1
                     </div>
-                    <div className="text-sm font-medium text-slate-50">Create Account</div>
+                    <div className="text-sm font-medium text-slate-50">Create account</div>
                   </div>
                   <div className="mt-3 text-sm text-slate-300">
-                    Sign in with email/password (or Google) via Supabase Auth.
+                    Sign in to access subscription status, license key, and downloads.
                   </div>
                 </div>
 
@@ -214,10 +184,10 @@ export default function Home() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
                       2
                     </div>
-                    <div className="text-sm font-medium text-slate-50">Download App</div>
+                    <div className="text-sm font-medium text-slate-50">Download executor</div>
                   </div>
                   <div className="mt-3 text-sm text-slate-300">
-                    Get the desktop client and keep Trading212 keys encrypted on your machine.
+                    Pro users download the Windows desktop app that performs execution.
                   </div>
                 </div>
 
@@ -226,36 +196,38 @@ export default function Home() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
                       3
                     </div>
-                    <div className="text-sm font-medium text-slate-50">Connect API</div>
+                    <div className="text-sm font-medium text-slate-50">Connect Trading212 locally</div>
                   </div>
                   <div className="mt-3 text-sm text-slate-300">
-                    Generate your Trading212 API key and paste it into the desktop app.
+                    Paste your Trading212 API key into the desktop app and enter your license key.
                   </div>
                 </div>
               </div>
             </div>
           </div>
+
+          <div className="mt-8">
+            <SetupFlow />
+          </div>
         </section>
       </Container>
 
-      {/* Performance / Social proof */}
+      {/* Backtest */}
       <Container>
         <section className="pb-16 sm:pb-20">
           <div className="rounded-3xl border border-slate-800/70 bg-white/5 p-6 shadow-sm sm:p-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <h2 className="text-3xl font-semibold tracking-tight">Performance preview</h2>
+                <h2 className="text-3xl font-semibold tracking-tight">Backtest preview</h2>
                 <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
-                  Equity curve from a multi-year backtest (monthly aggregation). Execution still happens locally on your machine.
+                  This is simulated performance (monthly aggregation). Live results can differ due to slippage, spreads,
+                  outages, and market regime changes.
                 </p>
               </div>
 
-              <div className="flex items-center gap-4">
-                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-center">
-                  <div className="text-xs text-slate-400">Simulated</div>
-                  <div className="mt-1 text-3xl font-semibold tracking-tight text-emerald-300">+29% APY</div>
-                </div>
-              </div>
+              <ButtonLink href="/pricing" variant="secondary">
+                See pricing
+              </ButtonLink>
             </div>
 
             <div className="mt-8 grid gap-6 lg:grid-cols-12 lg:items-center">
@@ -270,7 +242,7 @@ export default function Home() {
                   <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
                     <div className="text-sm font-medium text-slate-50">Compound growth</div>
                     <div className="mt-2 text-sm text-slate-300">
-                      Designed around steady execution cadence and subscription gating.
+                      Evaluated as a system (signals + execution cadence), not as a single “magic trade”.
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
@@ -280,7 +252,7 @@ export default function Home() {
                     </div>
                   </div>
                   <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
-                    <div className="text-sm font-medium text-slate-50">Secure access</div>
+                    <div className="text-sm font-medium text-slate-50">Access gating</div>
                     <div className="mt-2 text-sm text-slate-300">
                       Supabase RLS keeps reads scoped to active subscriptions.
                     </div>
@@ -288,6 +260,7 @@ export default function Home() {
                 </div>
               </div>
             </div>
+
           </div>
         </section>
       </Container>
@@ -298,7 +271,7 @@ export default function Home() {
           <div className="flex flex-col gap-3">
             <h2 className="text-3xl font-semibold tracking-tight">Pricing</h2>
             <p className="max-w-2xl text-sm leading-6 text-slate-300">
-              Start with Paper Trading for free, then upgrade to Pro Automation when you want fully automated execution.
+              Start free to explore the portal, then upgrade to Pro for the live feed and desktop downloads.
             </p>
           </div>
 
@@ -316,7 +289,7 @@ export default function Home() {
 
               <div className="mt-7">
                 <ButtonLink href="/login" variant="secondary" className="w-full sm:w-auto">
-                  Start Free Trial
+                  Start free
                 </ButtonLink>
               </div>
             </div>
@@ -341,14 +314,15 @@ export default function Home() {
                 </div>
 
                 <div className="mt-4 text-xs text-slate-400">
-                  Stripe checkout and webhooks will activate Pro subscription status in Supabase.
+                  Stripe checkout activates Pro in Supabase and unlocks the feed + downloads.
                 </div>
               </div>
             </div>
           </div>
 
           <div className="mt-8 rounded-2xl border border-slate-800/70 bg-white/5 p-5 text-sm text-slate-300">
-            No Trading212 API key is collected on the website. The desktop app accepts it locally during setup.
+            Not financial advice. Trading is risky. No Trading212 API key is collected on the website — the desktop app
+            accepts it locally during setup.
           </div>
         </section>
       </Container>

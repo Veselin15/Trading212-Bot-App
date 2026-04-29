@@ -18,6 +18,12 @@ export async function SiteHeader() {
 
           <nav className="flex items-center gap-2">
             <Link
+              href="/product"
+              className="hidden text-sm text-slate-300 hover:text-white sm:inline"
+            >
+              Product
+            </Link>
+            <Link
               href="/pricing"
               className="hidden text-sm text-slate-300 hover:text-white sm:inline"
             >

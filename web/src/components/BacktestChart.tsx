@@ -6,11 +6,9 @@ import {
   AreaChart,
   ResponsiveContainer,
   Tooltip,
-  type TooltipProps,
   XAxis,
   YAxis,
 } from "recharts";
-import type { NameType, ValueType } from "recharts/types/component/DefaultTooltipContent";
 
 type EquityPoint = {
   month: string; // e.g. "2024-01"
@@ -46,7 +44,12 @@ function monthLabel(yyyyMm: string) {
   return d.toLocaleString("en-US", { month: "short", year: "numeric" });
 }
 
-function BacktestTooltip({ active, payload, label }: TooltipProps<ValueType, NameType>) {
+function BacktestTooltip(props: unknown) {
+  const { active, payload, label } = props as {
+    active?: boolean;
+    payload?: Array<{ value?: unknown }>;
+    label?: string;
+  };
   if (!active || !payload?.length) return null;
   const v = payload[0]?.value;
   if (typeof v !== "number") return null;
