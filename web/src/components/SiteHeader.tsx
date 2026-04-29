@@ -5,7 +5,7 @@ import { ButtonLink } from "@/components/ui/Button";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-20 border-b border-black/10 bg-white/80 backdrop-blur dark:border-white/10 dark:bg-black/60">
+    <header className="sticky top-0 z-20 border-b border-slate-800/60 bg-slate-950/70 backdrop-blur">
       <Container>
         <div className="flex items-center justify-between py-4">
           <Link href="/" className="font-semibold tracking-tight">

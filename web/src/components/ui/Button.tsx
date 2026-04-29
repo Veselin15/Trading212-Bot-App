@@ -18,10 +18,10 @@ export function Button({
       className={cx(
         "inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-medium transition-colors disabled:opacity-60",
         variant === "primary" &&
-          "bg-zinc-950 text-white shadow-sm shadow-black/10 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200",
+          "bg-sky-500 text-slate-950 shadow-sm shadow-sky-500/20 hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/60",
         variant === "secondary" &&
-          "border border-black/10 bg-white/70 text-zinc-950 backdrop-blur hover:bg-white dark:border-white/10 dark:bg-black/30 dark:text-zinc-50 dark:hover:bg-black/50",
-        variant === "ghost" && "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900",
+          "border border-slate-800/90 bg-white/5 text-slate-50 backdrop-blur hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/10",
+        variant === "ghost" && "text-slate-300 hover:bg-white/5",
         className,
       )}
     />
@@ -40,10 +40,10 @@ export function ButtonLink({
       className={cx(
         "inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-medium transition-colors",
         variant === "primary" &&
-          "bg-zinc-950 text-white shadow-sm shadow-black/10 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200",
+          "bg-sky-500 text-slate-950 shadow-sm shadow-sky-500/20 hover:bg-sky-400 focus:outline-none focus:ring-2 focus:ring-sky-400/60",
         variant === "secondary" &&
-          "border border-black/10 bg-white/70 text-zinc-950 backdrop-blur hover:bg-white dark:border-white/10 dark:bg-black/30 dark:text-zinc-50 dark:hover:bg-black/50",
-        variant === "ghost" && "text-zinc-700 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-900",
+          "border border-slate-800/90 bg-white/5 text-slate-50 backdrop-blur hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/10",
+        variant === "ghost" && "text-slate-300 hover:bg-white/5",
         className,
       )}
     >
