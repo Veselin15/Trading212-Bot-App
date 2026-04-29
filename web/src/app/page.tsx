@@ -1,87 +1,335 @@
+import { Container } from "@/components/ui/Container";
+import { ButtonLink } from "@/components/ui/Button";
+
 export default function Home() {
   return (
-    <main className="relative">
-      <div className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-[28rem] bg-[radial-gradient(70%_60%_at_50%_0%,rgba(24,24,27,0.14),transparent_65%)] dark:bg-[radial-gradient(70%_60%_at_50%_0%,rgba(244,244,245,0.12),transparent_65%)]" />
+    <main className="relative overflow-hidden">
+      <div className="pointer-events-none absolute inset-x-0 -top-24 -z-10 h-[30rem] bg-[radial-gradient(70%_60%_at_50%_0%,rgba(56,189,248,0.18),transparent_65%)]" />
 
-      <div className="mx-auto w-full max-w-6xl px-6 py-16 sm:py-20">
-        <section className="grid gap-10 lg:grid-cols-2 lg:items-center">
-          <div className="flex flex-col gap-6">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-black/10 bg-white/60 px-3 py-1 text-xs text-zinc-700 backdrop-blur dark:border-white/10 dark:bg-black/30 dark:text-zinc-300">
-              <span className="font-medium text-zinc-900 dark:text-zinc-50">Trading212 Bot</span>
-              <span className="text-zinc-500 dark:text-zinc-400">signals → desktop executor</span>
-            </div>
-
-            <h1 className="text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-              Realtime trading signals, with execution that stays on your machine.
-            </h1>
-            <p className="max-w-xl text-pretty text-base leading-7 text-zinc-600 dark:text-zinc-300">
-              The strategy publishes signals to Supabase. Your desktop executor listens and places orders locally using
-              encrypted Trading212 keys—so your credentials never live on a server.
-            </p>
-
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <a
-                href="/login"
-                className="inline-flex h-11 items-center justify-center rounded-xl bg-zinc-950 px-5 text-sm font-medium text-white shadow-sm shadow-black/10 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-950 dark:hover:bg-zinc-200"
-              >
-                Get started
-              </a>
-              <a
-                href="/pricing"
-                className="inline-flex h-11 items-center justify-center rounded-xl border border-black/10 bg-white/60 px-5 text-sm font-medium text-zinc-950 backdrop-blur hover:bg-white dark:border-white/10 dark:bg-black/30 dark:text-zinc-50 dark:hover:bg-black/50"
-              >
-                View pricing
-              </a>
-            </div>
-
-            <div className="grid gap-4 pt-2 sm:grid-cols-3">
-              <div className="rounded-2xl border border-black/10 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-black/30">
-                <div className="text-sm font-medium">Low latency</div>
-                <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Signals stream in milliseconds.</div>
+      {/* Hero */}
+      <Container>
+        <section className="pb-16 pt-14 sm:pb-20 sm:pt-20">
+          <div className="grid items-center gap-10 lg:grid-cols-12">
+            <div className="lg:col-span-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-slate-800/70 bg-white/5 px-3 py-1 text-xs text-slate-300 backdrop-blur">
+                <span className="font-medium text-slate-50">Trading212 Bot</span>
+                <span className="text-slate-400">signals → desktop executor</span>
               </div>
-              <div className="rounded-2xl border border-black/10 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-black/30">
-                <div className="text-sm font-medium">Local security</div>
-                <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Keys stay encrypted on your PC.</div>
-              </div>
-              <div className="rounded-2xl border border-black/10 bg-white/70 p-4 backdrop-blur dark:border-white/10 dark:bg-black/30">
-                <div className="text-sm font-medium">Access control</div>
-                <div className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Subscription-gated with RLS.</div>
-              </div>
-            </div>
-          </div>
 
-          <div className="relative overflow-hidden rounded-3xl border border-black/10 bg-zinc-50 p-6 shadow-sm dark:border-white/10 dark:bg-zinc-950">
-            <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-zinc-900/10 blur-3xl dark:bg-zinc-50/10" />
-            <div className="relative">
-              <div className="text-sm font-medium">How it works</div>
-              <div className="mt-4 grid gap-3 text-sm text-zinc-700 dark:text-zinc-300">
-                <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black">
-                  <div className="font-medium">1) Sign in</div>
-                  <div className="mt-1 text-zinc-600 dark:text-zinc-400">Supabase Auth (email/password or Google).</div>
+              <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
+                Algorithmic Trading for European Stocks
+              </h1>
+
+              <p className="mt-4 max-w-xl text-pretty text-base leading-7 text-slate-300">
+                Connect once, then let the strategy stream signals through Supabase. Your desktop app executes orders
+                locally using encrypted Trading212 keys—no broker credentials on the web.
+              </p>
+
+              <div className="mt-7 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <ButtonLink href="/login">Start Free Trial</ButtonLink>
+                <ButtonLink href="/pricing" variant="secondary">
+                  View Performance
+                </ButtonLink>
+              </div>
+
+              <div className="mt-8 grid gap-4 sm:grid-cols-3">
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4 backdrop-blur">
+                  <div className="text-sm font-medium text-slate-50">Low latency</div>
+                  <div className="mt-1 text-sm text-slate-300">Signals stream in milliseconds.</div>
                 </div>
-                <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black">
-                  <div className="font-medium">2) Subscribe</div>
-                  <div className="mt-1 text-zinc-600 dark:text-zinc-400">Unlock signal access + desktop downloads.</div>
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4 backdrop-blur">
+                  <div className="text-sm font-medium text-slate-50">Local security</div>
+                  <div className="mt-1 text-sm text-slate-300">Keys stay encrypted on your PC.</div>
                 </div>
-                <div className="rounded-2xl border border-black/10 bg-white p-4 dark:border-white/10 dark:bg-black">
-                  <div className="font-medium">3) Run the executor</div>
-                  <div className="mt-1 text-zinc-600 dark:text-zinc-400">
-                    Connect using your license key. Execution happens locally.
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4 backdrop-blur">
+                  <div className="text-sm font-medium text-slate-50">Access control</div>
+                  <div className="mt-1 text-sm text-slate-300">Subscription-gated with RLS.</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Mockup / abstract chart placeholder */}
+            <div className="lg:col-span-6">
+              <div className="relative overflow-hidden rounded-3xl border border-slate-800/70 bg-white/5 p-6 shadow-sm">
+                <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl" />
+                <div className="relative">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="text-sm font-medium text-slate-200">Live readiness</div>
+                    <div className="rounded-full border border-slate-800/70 bg-slate-950/50 px-2 py-1 text-xs text-slate-300">
+                      Connect & Forget
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="mt-6 rounded-2xl border border-black/10 bg-white p-4 text-xs text-zinc-600 dark:border-white/10 dark:bg-black dark:text-zinc-300">
-                <div className="font-mono">
-                  HELLO → WELCOME → PING/PONG
-                  <br />
-                  SIGNAL(payload) → local execution
+                  <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4">
+                    <div className="flex items-center gap-2 text-xs text-slate-400">
+                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
+                      <span>Heartbeat:</span>
+                      <span className="font-mono text-emerald-300">PONG</span>
+                    </div>
+
+                    <div className="mt-4">
+                      <svg viewBox="0 0 520 220" className="h-auto w-full">
+                        {/* Grid */}
+                        <g stroke="rgba(148,163,184,0.25)" strokeWidth="1">
+                          {Array.from({ length: 6 }).map((_, i) => {
+                            const y = 20 + i * 32;
+                            return <line key={i} x1="40" x2="500" y1={y} y2={y} />;
+                          })}
+                          {Array.from({ length: 8 }).map((_, i) => {
+                            const x = 40 + i * 60;
+                            return <line key={i} y1="20" y2="205" x1={x} x2={x} />;
+                          })}
+                        </g>
+
+                        {/* Curve (dummy) */}
+                        <path
+                          d="M40 185 C90 165, 130 150, 170 132 C210 114, 260 100, 300 86 C340 72, 390 58, 430 45 C460 35, 480 28, 500 22"
+                          fill="none"
+                          stroke="#38bdf8"
+                          strokeWidth="3"
+                          strokeLinecap="round"
+                        />
+
+                        {/* Glow */}
+                        <path
+                          d="M40 185 C90 165, 130 150, 170 132 C210 114, 260 100, 300 86 C340 72, 390 58, 430 45 C460 35, 480 28, 500 22"
+                          fill="none"
+                          stroke="#38bdf8"
+                          strokeWidth="9"
+                          opacity="0.12"
+                          strokeLinecap="round"
+                        />
+
+                        {/* Endpoint marker */}
+                        <circle cx="500" cy="22" r="7" fill="#38bdf8" opacity="0.95" />
+                      </svg>
+                    </div>
+
+                    <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+                      <span>Signals</span>
+                      <span className="font-mono text-slate-200">subscribed</span>
+                      <span>Executor: local</span>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 rounded-2xl border border-slate-800/70 bg-white/5 p-4">
+                    <div className="font-mono text-xs text-slate-300">
+                      HELLO → WELCOME → PING/PONG
+                      <br />
+                      SIGNAL(payload) → local execution
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
         </section>
-      </div>
+      </Container>
+
+      {/* How it works */}
+      <Container>
+        <section id="features" className="pb-16 sm:pb-20">
+          <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
+            <div className="lg:col-span-4">
+              <h2 className="text-3xl font-semibold tracking-tight">How it works</h2>
+              <p className="mt-3 text-sm leading-6 text-slate-300">
+                A “connect & forget” flow designed for trust, low risk, and local execution.
+              </p>
+            </div>
+
+            <div className="lg:col-span-8">
+              <div className="grid gap-4 sm:grid-cols-3">
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      1
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">Create Account</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    Sign in with email/password (or Google) via Supabase Auth.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      2
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">Download App</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    Get the desktop client and keep Trading212 keys encrypted on your machine.
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                      3
+                    </div>
+                    <div className="text-sm font-medium text-slate-50">Connect API</div>
+                  </div>
+                  <div className="mt-3 text-sm text-slate-300">
+                    Generate your Trading212 API key and paste it into the desktop app.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </Container>
+
+      {/* Performance / Social proof */}
+      <Container>
+        <section className="pb-16 sm:pb-20">
+          <div className="rounded-3xl border border-slate-800/70 bg-white/5 p-6 shadow-sm sm:p-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <h2 className="text-3xl font-semibold tracking-tight">Performance preview</h2>
+                <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
+                  Dummy chart for now. Your real results come from the live strategy and your subscription state.
+                </p>
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-center">
+                  <div className="text-xs text-slate-400">Simulated</div>
+                  <div className="mt-1 text-3xl font-semibold tracking-tight text-emerald-300">+29% APY</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-8 grid gap-6 lg:grid-cols-12 lg:items-center">
+              <div className="lg:col-span-8">
+                <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4 sm:p-6">
+                  <svg viewBox="0 0 660 260" className="h-auto w-full">
+                    <g stroke="rgba(148,163,184,0.25)" strokeWidth="1">
+                      {Array.from({ length: 6 }).map((_, i) => {
+                        const y = 35 + i * 36;
+                        return <line key={i} x1="40" x2="630" y1={y} y2={y} />;
+                      })}
+                      {Array.from({ length: 7 }).map((_, i) => {
+                        const x = 40 + i * 85;
+                        return <line key={i} y1="35" y2="228" x1={x} x2={x} />;
+                      })}
+                    </g>
+
+                    {/* APY curve (dummy) */}
+                    <path
+                      d="M40 230 C80 215, 135 200, 190 178 C245 156, 310 135, 360 118 C420 98, 480 78, 535 60 C580 46, 610 40, 630 36"
+                      fill="none"
+                      stroke="#10b981"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                    />
+
+                    <path
+                      d="M40 230 C80 215, 135 200, 190 178 C245 156, 310 135, 360 118 C420 98, 480 78, 535 60 C580 46, 610 40, 630 36 L630 228 L40 228 Z"
+                      fill="#10b981"
+                      opacity="0.08"
+                    />
+
+                    {/* Endpoint */}
+                    <circle cx="630" cy="36" r="8" fill="#10b981" opacity="0.95" />
+                  </svg>
+
+                  <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                    <span>Start</span>
+                    <span>1Y</span>
+                    <span>2Y</span>
+                    <span>3Y+</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="lg:col-span-4">
+                <div className="space-y-3">
+                  <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                    <div className="text-sm font-medium text-slate-50">Compound growth</div>
+                    <div className="mt-2 text-sm text-slate-300">
+                      Designed around steady execution cadence and subscription gating.
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                    <div className="text-sm font-medium text-slate-50">Local execution</div>
+                    <div className="mt-2 text-sm text-slate-300">
+                      Your Trading212 keys remain encrypted on-device. Web only coordinates signals.
+                    </div>
+                  </div>
+                  <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+                    <div className="text-sm font-medium text-slate-50">Secure access</div>
+                    <div className="mt-2 text-sm text-slate-300">
+                      Supabase RLS keeps reads scoped to active subscriptions.
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </Container>
+
+      {/* Pricing */}
+      <Container>
+        <section className="pb-16 sm:pb-20">
+          <div className="flex flex-col gap-3">
+            <h2 className="text-3xl font-semibold tracking-tight">Pricing</h2>
+            <p className="max-w-2xl text-sm leading-6 text-slate-300">
+              Start with Paper Trading for free, then upgrade to Pro Automation when you want fully automated execution.
+            </p>
+          </div>
+
+          <div className="mt-10 grid gap-6 lg:grid-cols-2">
+            <div className="rounded-3xl border border-slate-800/70 bg-white/5 p-7 shadow-sm">
+              <div className="text-sm font-medium text-slate-300">Paper Trading / Free</div>
+              <div className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">€0</div>
+              <div className="mt-2 text-sm text-slate-300">Explore the flow through the portal.</div>
+
+              <ul className="mt-6 space-y-2 text-sm text-slate-200">
+                <li>Portal access</li>
+                <li>Account + license management</li>
+                <li>Desktop download (gated)</li>
+              </ul>
+
+              <div className="mt-7">
+                <ButtonLink href="/login" variant="secondary" className="w-full sm:w-auto">
+                  Start Free Trial
+                </ButtonLink>
+              </div>
+            </div>
+
+            <div className="relative overflow-hidden rounded-3xl border border-sky-500/40 bg-sky-500/10 p-7 shadow-sm">
+              <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-sky-500/20 blur-3xl" />
+              <div className="relative">
+                <div className="text-sm font-medium text-sky-200">Pro Automation / €49/mo</div>
+                <div className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">€49</div>
+                <div className="mt-2 text-sm text-slate-300">Realtime signals + automated desktop execution.</div>
+
+                <ul className="mt-6 space-y-2 text-sm text-slate-200">
+                  <li>Signals feed (RLS gated)</li>
+                  <li>License key for the executor</li>
+                  <li>Desktop download access</li>
+                </ul>
+
+                <div className="mt-7">
+                  <ButtonLink href="/login" className="w-full sm:w-auto">
+                    Upgrade to Pro
+                  </ButtonLink>
+                </div>
+
+                <div className="mt-4 text-xs text-slate-400">
+                  Stripe checkout and webhooks will activate Pro subscription status in Supabase.
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-8 rounded-2xl border border-slate-800/70 bg-white/5 p-5 text-sm text-slate-300">
+            No Trading212 API key is collected on the website. The desktop app accepts it locally during setup.
+          </div>
+        </section>
+      </Container>
     </main>
   );
 }
