@@ -50,75 +50,46 @@ export default function Home() {
               </div>
             </div>
 
-            {/* Mockup / abstract chart placeholder */}
+            {/* Proof block: real backtest curve + execution model */}
             <div className="lg:col-span-6">
               <div className="relative overflow-hidden rounded-3xl border border-slate-800/70 bg-white/5 p-6 shadow-sm">
                 <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-sky-500/10 blur-3xl" />
                 <div className="relative">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="text-sm font-medium text-slate-200">Live readiness</div>
+                  <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <div className="text-sm font-medium text-slate-200">Backtest equity curve</div>
+                      <div className="mt-1 text-xs text-slate-400">
+                        36 months • monthly aggregation • starting balance $10,000
+                      </div>
+                    </div>
                     <div className="rounded-full border border-slate-800/70 bg-slate-950/50 px-2 py-1 text-xs text-slate-300">
-                      Connect & Forget
+                      Hover for exact values
                     </div>
                   </div>
 
                   <div className="mt-5 rounded-2xl border border-slate-800/70 bg-slate-950/40 p-4">
-                    <div className="flex items-center gap-2 text-xs text-slate-400">
-                      <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-                      <span>Heartbeat:</span>
-                      <span className="font-mono text-emerald-300">PONG</span>
-                    </div>
-
-                    <div className="mt-4">
-                      <svg viewBox="0 0 520 220" className="h-auto w-full">
-                        {/* Grid */}
-                        <g stroke="rgba(148,163,184,0.25)" strokeWidth="1">
-                          {Array.from({ length: 6 }).map((_, i) => {
-                            const y = 20 + i * 32;
-                            return <line key={i} x1="40" x2="500" y1={y} y2={y} />;
-                          })}
-                          {Array.from({ length: 8 }).map((_, i) => {
-                            const x = 40 + i * 60;
-                            return <line key={i} y1="20" y2="205" x1={x} x2={x} />;
-                          })}
-                        </g>
-
-                        {/* Curve (dummy) */}
-                        <path
-                          d="M40 185 C90 165, 130 150, 170 132 C210 114, 260 100, 300 86 C340 72, 390 58, 430 45 C460 35, 480 28, 500 22"
-                          fill="none"
-                          stroke="#38bdf8"
-                          strokeWidth="3"
-                          strokeLinecap="round"
-                        />
-
-                        {/* Glow */}
-                        <path
-                          d="M40 185 C90 165, 130 150, 170 132 C210 114, 260 100, 300 86 C340 72, 390 58, 430 45 C460 35, 480 28, 500 22"
-                          fill="none"
-                          stroke="#38bdf8"
-                          strokeWidth="9"
-                          opacity="0.12"
-                          strokeLinecap="round"
-                        />
-
-                        {/* Endpoint marker */}
-                        <circle cx="500" cy="22" r="7" fill="#38bdf8" opacity="0.95" />
-                      </svg>
-                    </div>
-
-                    <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
-                      <span>Signals</span>
-                      <span className="font-mono text-slate-200">subscribed</span>
-                      <span>Executor: local</span>
+                    <BacktestChart />
+                    <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
+                      <span>Start: $10k</span>
+                      <span className="font-mono text-slate-200">equity_curve.json</span>
+                      <span>End: ~18.5k</span>
                     </div>
                   </div>
 
-                  <div className="mt-5 rounded-2xl border border-slate-800/70 bg-white/5 p-4">
-                    <div className="font-mono text-xs text-slate-300">
-                      HELLO → WELCOME → PING/PONG
-                      <br />
-                      SIGNAL(payload) → local execution
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Execution model</div>
+                      <div className="mt-2 text-sm text-slate-200">
+                        Signals are published to Supabase. Your desktop app executes locally.
+                      </div>
+                      <div className="mt-2 text-xs text-slate-400">Your Trading212 API key never touches the website.</div>
+                    </div>
+                    <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-4">
+                      <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Trust posture</div>
+                      <div className="mt-2 text-sm text-slate-200">
+                        Subscription gating + RLS. Keys encrypted on-device. No server-side broker access.
+                      </div>
+                      <div className="mt-2 text-xs text-slate-400">Designed for “Connect &amp; Forget”.</div>
                     </div>
                   </div>
                 </div>
@@ -135,7 +106,10 @@ export default function Home() {
             <div className="lg:col-span-4">
               <h2 className="text-3xl font-semibold tracking-tight">The Engine</h2>
               <p className="mt-3 text-sm leading-6 text-slate-300">
-                Institutional-grade logic, explained conceptually—without exposing exact indicators or parameters.
+                Institutional-grade logic, explained clearly—without exposing exact indicators or parameters you could copy.
+                <span className="block pt-2 text-slate-400">
+                  The system uses a two-timeframe stack: 15m candles define market regime, 5m candles time entries.
+                </span>
               </p>
             </div>
 
@@ -151,6 +125,9 @@ export default function Home() {
                   <div className="mt-3 text-sm text-slate-300">
                     The algorithm first analyzes the broader market direction. It acts as a primary filter, ensuring we
                     only deploy capital when the underlying asset has a mathematically proven upward trajectory.
+                    <span className="block pt-2 text-xs text-slate-400">
+                      Implemented on 15m candles to reduce noise and avoid trading against the larger move.
+                    </span>
                   </div>
                 </div>
 
@@ -164,6 +141,9 @@ export default function Home() {
                   <div className="mt-3 text-sm text-slate-300">
                     We don&apos;t buy breakouts. The system waits for temporary pullbacks and uses custom momentum oscillators
                     to pinpoint the exact millisecond selling pressure fades.
+                    <span className="block pt-2 text-xs text-slate-400">
+                      Entries are timed on 5m candles, only after the 15m regime is aligned.
+                    </span>
                   </div>
                 </div>
 
@@ -177,6 +157,9 @@ export default function Home() {
                   <div className="mt-3 text-sm text-slate-300">
                     Technical analysis isn&apos;t enough. The engine pings real-time LLM sentiment analysis to block entries
                     during high-volatility macroeconomic events or negative earnings calls.
+                    <span className="block pt-2 text-xs text-slate-400">
+                      This prevents “good-looking” 5m setups during periods where downside tail-risk dominates.
+                    </span>
                   </div>
                 </div>
 
@@ -190,6 +173,9 @@ export default function Home() {
                   <div className="mt-3 text-sm text-slate-300">
                     Capital preservation is the ultimate priority. Every trade has a hard-coded algorithmic stop-loss.
                     Once in profit, the system dynamically trails a break-even stop to protect your principal.
+                    <span className="block pt-2 text-xs text-slate-400">
+                      Risk controls operate on every tick, independent of timeframe, so protection is always on.
+                    </span>
                   </div>
                 </div>
               </div>
