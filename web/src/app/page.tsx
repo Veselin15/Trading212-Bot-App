@@ -71,7 +71,7 @@ export default function Home() {
                     <BacktestChart />
                     <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
                       <span>Start: $10k</span>
-                      <span className="font-mono text-slate-200">backtest_equity.json</span>
+                      <span className="font-mono text-slate-200">backtest_report.json</span>
                       <span>End: derived from data</span>
                     </div>
                   </div>

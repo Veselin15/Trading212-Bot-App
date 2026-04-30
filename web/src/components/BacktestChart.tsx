@@ -19,7 +19,17 @@ type EquityPoint = {
 };
 
 type BacktestPayload = {
-  meta?: Record<string, unknown>;
+  meta?: {
+    start_utc?: string;
+    end_utc?: string;
+    symbols?: string[];
+    slippage_bps?: number;
+  };
+  summary?: {
+    total_return_pct?: number;
+    cagr_pct?: number;
+    max_drawdown_pct?: number;
+  };
   points: EquityPoint[];
 };
 
@@ -77,7 +87,7 @@ export function BacktestChart({
   useEffect(() => {
     let cancelled = false;
     // IMPORTANT: This uses an aggregated monthly equity curve (no trade log exposed).
-    fetch("/backtest_equity.json", { cache: "no-store" })
+    fetch("/backtest_report.json", { cache: "no-store" })
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return (await r.json()) as BacktestPayload;

@@ -1,0 +1,154 @@
+{
+  "meta": {
+    "days": null,
+    "slippage_bps": 5.0,
+    "symbols": [
+      "ASML.AS",
+      "SAP.DE",
+      "UNA.AS",
+      "NVDA"
+    ],
+    "start_utc": "2024-01-02T14:30:00+00:00",
+    "end_utc": "2026-02-20T20:55:00+00:00",
+    "params_snapshot": {
+      "symbol_strategy_mode": {
+        "ASML.AS": "ATR",
+        "SAP.DE": "ATR",
+        "UNA.AS": "ATR",
+        "NVDA": "BASE"
+      },
+      "profit_lock_by_symbol": {
+        "NVDA": [
+          0.04,
+          0.02
+        ]
+      },
+      "atr_dynamic_params_by_symbol": {
+        "ASML.AS": [
+          2.5,
+          10.0,
+          1.0
+        ],
+        "SAP.DE": [
+          3.0,
+          10.0,
+          1.0
+        ],
+        "UNA.AS": [
+          3.5,
+          10.0,
+          1.0
+        ]
+      },
+      "morning_protect_symbol_enabled": {
+        "ASML.AS": false,
+        "SAP.DE": false,
+        "UNA.AS": false,
+        "NVDA": false
+      },
+      "edge_weighted_risk_enabled": true,
+      "edge_momentum_tilt_enabled": true,
+      "edge_multi_logic_enabled": true
+    },
+    "ewr": {
+      "lookback_trades": 4,
+      "min_trades": 2,
+      "z_alpha": 0.25,
+      "min_mult": 0.6,
+      "max_mult": 1.4
+    },
+    "momentum_tilt": {
+      "enabled": true,
+      "lookback_trades": 4,
+      "tilt": 0.3
+    },
+    "breadth_gate": {
+      "enabled": true,
+      "floor": 0.5,
+      "exposure": 0.85
+    },
+    "multi_logic": {
+      "enabled": true,
+      "regime": {
+        "lookback_trades": 3,
+        "vol_soft": 4.5,
+        "vol_hard": 7.0,
+        "win_soft": 0.5,
+        "win_hard": 0.35,
+        "exposure_soft": 0.85,
+        "exposure_hard": 0.6
+      },
+      "drawdown": {
+        "level1": 0.1,
+        "level2": 0.18,
+        "exposure1": 0.8,
+        "exposure2": 0.6
+      },
+      "correlation": {
+        "lookback_trades": 3,
+        "soft": 0.5,
+        "hard": 0.7,
+        "exposure_soft": 0.9,
+        "exposure_hard": 0.7
+      }
+    }
+  },
+  "summary": {
+    "months": 26,
+    "total_return_pct": 99.29070694994489,
+    "cagr_pct": 37.47533646398937,
+    "max_drawdown_pct": 12.142768928998859,
+    "avg_monthly_return_pct": 2.8179826460901345,
+    "monthly_volatility_pct": 5.219061238531478,
+    "win_rate_months": 0.7307692307692307,
+    "best_month_ret_pct": 17.32322954655467,
+    "worst_month_ret_pct": -6.436342185773862,
+    "avg_exposure": 0.8538461538461538
+  },
+  "symbols": {
+    "total_return_pct": {
+      "ASML.AS": 27.036878854209423,
+      "SAP.DE": 345.2967650396805,
+      "UNA.AS": 265.7642718517265,
+      "NVDA": 10.033745922731985
+    },
+    "total_trades": {
+      "ASML.AS": 201,
+      "SAP.DE": 158,
+      "UNA.AS": 171,
+      "NVDA": 138
+    }
+  },
+  "points": [
+    { "month": "2024-01", "equity": 1.0816030884449275, "ret_pct": 8.160308844492755, "exposure": 0.85, "breadth": 0.0, "avg_corr": 0.0, "drawdown": 0.0 },
+    { "month": "2024-02", "equity": 1.1686304605305533, "ret_pct": 8.046146781140333, "exposure": 1.0, "breadth": 1.0, "avg_corr": 0.0, "drawdown": 0.0 },
+    { "month": "2024-03", "equity": 1.231338614062088, "ret_pct": 5.365952339036723, "exposure": 1.0, "breadth": 1.0, "avg_corr": 0.0, "drawdown": 0.0 },
+    { "month": "2024-04", "equity": 1.234491013809929, "ret_pct": 0.2560140412913282, "exposure": 1.0, "breadth": 0.75, "avg_corr": -0.08730735154814018, "drawdown": 0.0 },
+    { "month": "2024-05", "equity": 1.448344725863813, "ret_pct": 17.32322954655467, "exposure": 1.0, "breadth": 1.0, "avg_corr": 0.05300773025686207, "drawdown": 0.0 },
+    { "month": "2024-06", "equity": 1.505376735964909, "ret_pct": 3.937737272256195, "exposure": 0.6, "breadth": 1.0, "avg_corr": 0.15758453636408823, "drawdown": 0.0 },
+    { "month": "2024-07", "equity": 1.5024719807936566, "ret_pct": -0.1929586861451389, "exposure": 0.6, "breadth": 1.0, "avg_corr": -0.029806646888024892, "drawdown": 0.0019295868614513708 },
+    { "month": "2024-08", "equity": 1.6564058820609149, "ret_pct": 10.245375836289812, "exposure": 0.6, "breadth": 0.75, "avg_corr": 0.11620525688298226, "drawdown": 0.0 },
+    { "month": "2024-09", "equity": 1.6597733736147777, "ret_pct": 0.20330111057519828, "exposure": 1.0, "breadth": 1.0, "avg_corr": 0.21830780572105965, "drawdown": 0.0 },
+    { "month": "2024-10", "equity": 1.6822588954236288, "ret_pct": 1.3547344575049096, "exposure": 0.85, "breadth": 0.75, "avg_corr": 0.19959745988440816, "drawdown": 0.0 },
+    { "month": "2024-11", "equity": 1.7210634557265292, "ret_pct": 2.3066937204768614, "exposure": 1.0, "breadth": 1.0, "avg_corr": 0.08966705564492294, "drawdown": 0.0 },
+    { "month": "2024-12", "equity": 1.7289392128002588, "ret_pct": 0.4576099183051176, "exposure": 1.0, "breadth": 1.0, "avg_corr": -0.32304405079416293, "drawdown": 0.0 },
+    { "month": "2025-01", "equity": 1.8920019605608516, "ret_pct": 9.431375409462193, "exposure": 1.0, "breadth": 0.5, "avg_corr": -0.0236132926107205, "drawdown": 0.0 },
+    { "month": "2025-02", "equity": 1.903531889645226, "ret_pct": 0.6094036541567136, "exposure": 1.0, "breadth": 1.0, "avg_corr": -0.25342300607506807, "drawdown": 0.0 },
+    { "month": "2025-03", "equity": 1.806942495795802, "ret_pct": -5.074219894862171, "exposure": 1.0, "breadth": 0.5, "avg_corr": -0.29400388264450994, "drawdown": 0.05074219894862177 },
+    { "month": "2025-04", "equity": 1.881343972758424, "ret_pct": 4.1175342954040515, "exposure": 0.85, "breadth": 0.5, "avg_corr": -0.192619850595243, "drawdown": 0.01165618343853294 },
+    { "month": "2025-05", "equity": 2.0173482974004475, "ret_pct": 7.22910465132082, "exposure": 1.0, "breadth": 0.75, "avg_corr": -0.27740489856482303, "drawdown": 0.0 },
+    { "month": "2025-06", "equity": 1.978722326167005, "ret_pct": -1.9146902536966919, "exposure": 0.85, "breadth": 0.5, "avg_corr": 0.18005519286225902, "drawdown": 0.01914690253696689 },
+    { "month": "2025-07", "equity": 1.9517012993099645, "ret_pct": -1.3655795206689412, "exposure": 1.0, "breadth": 0.5, "avg_corr": -0.3325641157582568, "drawdown": 0.032541231563768966 },
+    { "month": "2025-08", "equity": 2.0849950054878317, "ret_pct": 6.829616100834394, "exposure": 0.6, "breadth": 0.5, "avg_corr": -0.28468278868273117, "drawdown": 0.0 },
+    { "month": "2025-09", "equity": 2.1370489473058805, "ret_pct": 2.496597914193551, "exposure": 0.6, "breadth": 0.75, "avg_corr": -0.22067823563484823, "drawdown": 0.0 },
+    { "month": "2025-10", "equity": 2.059356438711115, "ret_pct": -3.6355044039917743, "exposure": 1.0, "breadth": 0.75, "avg_corr": -0.2803518966521791, "drawdown": 0.036355044039917815 },
+    { "month": "2025-11", "equity": 2.00671080588028, "ret_pct": -2.556411888744462, "exposure": 1.0, "breadth": 0.75, "avg_corr": -0.16778844880415425, "drawdown": 0.06098977825936761 },
+    { "month": "2025-12", "equity": 1.8775520317349248, "ret_pct": -6.436342185773862, "exposure": 0.6, "breadth": 0.5, "avg_corr": -0.20872164429646445, "drawdown": 0.1214276892899886 },
+    { "month": "2026-01", "equity": 1.961639242374774, "ret_pct": 4.478555545656413, "exposure": 0.6, "breadth": 0.25, "avg_corr": -0.3240278926256637, "drawdown": 0.08208034034608368 },
+    { "month": "2026-02", "equity": 1.9929070694994488, "ret_pct": 1.5939641932744983, "exposure": 0.6, "breadth": 0.25, "avg_corr": -0.17100776858441177, "drawdown": 0.06744902964817318 }
+  ],
+  "weights": [
+    { "month": "2024-01", "w_ASML.AS": 0.25, "w_SAP.DE": 0.25, "w_UNA.AS": 0.25, "w_NVDA": 0.25 }
+  ]
+}
+
