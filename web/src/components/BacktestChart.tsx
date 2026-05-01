@@ -115,7 +115,7 @@ export function BacktestChart({
     return (
       <div className={className}>
         <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-          <div className="font-medium">Failed to load backtest data.</div>
+          <div className="font-medium">Could not load chart data.</div>
           <div className="mt-1 font-mono text-xs text-rose-200/90">{error}</div>
         </div>
       </div>
@@ -126,7 +126,7 @@ export function BacktestChart({
     return (
       <div className={className}>
         <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-          Loading backtest…
+          Loading chart…
         </div>
       </div>
     );

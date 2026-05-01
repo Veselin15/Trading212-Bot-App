@@ -77,7 +77,7 @@ export function BacktestSummary() {
   if (error) {
     return (
       <div className="rounded-2xl border border-rose-500/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-100">
-        <div className="font-medium">Failed to load backtest summary.</div>
+        <div className="font-medium">Could not load results.</div>
         <div className="mt-1 font-mono text-xs text-rose-200/90">{error}</div>
       </div>
     );
@@ -86,7 +86,7 @@ export function BacktestSummary() {
   if (!summary) {
     return (
       <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
-        Loading summary…
+        Loading…
       </div>
     );
   }
@@ -94,7 +94,7 @@ export function BacktestSummary() {
   return (
     <div className="grid gap-3 sm:grid-cols-3">
       <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Backtest window</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</div>
         <div className="mt-1 text-sm font-medium text-slate-50">
           {summary.dateRange ?? "—"}
         </div>
@@ -104,11 +104,11 @@ export function BacktestSummary() {
       </div>
 
       <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total return (simulated)</div>
+        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total return</div>
         <div className="mt-1 text-2xl font-semibold tracking-tight text-emerald-300">
           {typeof summary.totalReturnPct === "number" ? formatPct(summary.totalReturnPct / 100) : "—"}
         </div>
-        <div className="mt-1 text-xs text-slate-400">From the strategy report snapshot</div>
+        <div className="mt-1 text-xs text-slate-400">Over the period above (model)</div>
       </div>
 
       <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
@@ -117,7 +117,7 @@ export function BacktestSummary() {
           {typeof summary.cagrPct === "number" ? formatPct(summary.cagrPct / 100) : "—"} /{" "}
           {typeof summary.maxDrawdownPct === "number" ? formatPct(Math.abs(summary.maxDrawdownPct) / 100) : "—"}
         </div>
-        <div className="mt-1 text-xs text-slate-400">Backtest metrics are simulated</div>
+        <div className="mt-1 text-xs text-slate-400">For the same historical window</div>
       </div>
     </div>
   );
