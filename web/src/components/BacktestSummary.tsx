@@ -1,10 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
+import CountUp from "react-countup";
+
+import { fadeUpItem, fadeUpItemInstant, fadeUpParent, fadeUpParentInstant } from "@/components/motion/variants";
 
 type EquityPoint = {
-  month: string; // e.g. "2024-01"
-  equity: number; // equity multiple (1.0 = starting capital)
+  month: string;
+  equity: number;
 };
 
 type BacktestPayload = {
@@ -21,13 +25,6 @@ type BacktestPayload = {
   points: EquityPoint[];
 };
 
-function formatPct(value: number) {
-  return new Intl.NumberFormat("en-US", {
-    style: "percent",
-    maximumFractionDigits: 0,
-  }).format(value);
-}
-
 function formatDateRange(startUtc?: string, endUtc?: string) {
   if (!startUtc || !endUtc) return null;
   const start = new Date(startUtc);
@@ -36,9 +33,51 @@ function formatDateRange(startUtc?: string, endUtc?: string) {
   return `${start.toLocaleDateString("en-US", { year: "numeric", month: "short" })} → ${end.toLocaleDateString("en-US", { year: "numeric", month: "short" })}`;
 }
 
+function MetricCount({
+  end,
+  decimals,
+  suffix = "",
+  prefix = "",
+  active,
+}: {
+  end: number;
+  decimals: number;
+  suffix?: string;
+  prefix?: string;
+  active: boolean;
+}) {
+  const reduce = useReducedMotion();
+  if (!active) return <span className="tabular-nums">—</span>;
+  if (reduce) {
+    return (
+      <span className="tabular-nums">
+        {prefix}
+        {end.toFixed(decimals)}
+        {suffix}
+      </span>
+    );
+  }
+  return (
+    <CountUp
+      className="tabular-nums"
+      duration={1.05}
+      start={0}
+      end={end}
+      decimals={decimals}
+      prefix={prefix}
+      suffix={suffix}
+      preserveValue
+      useEasing
+    />
+  );
+}
+
 export function BacktestSummary() {
   const [payload, setPayload] = useState<BacktestPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(rootRef, { once: true, margin: "-10% 0px" });
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     let cancelled = false;
@@ -91,35 +130,65 @@ export function BacktestSummary() {
     );
   }
 
+  const parentVars = reduce ? fadeUpParentInstant : fadeUpParent;
+  const itemVars = reduce ? fadeUpItemInstant : fadeUpItem;
+
   return (
-    <div className="grid gap-3 sm:grid-cols-3">
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
+    <motion.div
+      ref={rootRef}
+      className="grid gap-3 sm:grid-cols-3"
+      variants={parentVars}
+      initial="hidden"
+      animate={inView ? "visible" : "hidden"}
+    >
+      <motion.div
+        variants={itemVars}
+        className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]"
+      >
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</div>
-        <div className="mt-1 text-sm font-medium text-slate-50">
-          {summary.dateRange ?? "—"}
-        </div>
+        <div className="mt-1 text-sm font-medium text-slate-50">{summary.dateRange ?? "—"}</div>
         {summary.symbols.length ? (
           <div className="mt-1 text-xs text-slate-400">Universe: {summary.symbols.join(", ")}</div>
         ) : null}
-      </div>
+      </motion.div>
 
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
+      <motion.div
+        variants={itemVars}
+        className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]"
+      >
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total return</div>
         <div className="mt-1 text-2xl font-semibold tracking-tight text-emerald-300">
-          {typeof summary.totalReturnPct === "number" ? formatPct(summary.totalReturnPct / 100) : "—"}
+          {typeof summary.totalReturnPct === "number" ? (
+            <MetricCount
+              end={summary.totalReturnPct}
+              decimals={1}
+              suffix="%"
+              active={inView}
+            />
+          ) : (
+            "—"
+          )}
         </div>
         <div className="mt-1 text-xs text-slate-400">Over the period above (model)</div>
-      </div>
+      </motion.div>
 
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3">
+      <motion.div
+        variants={itemVars}
+        className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]"
+      >
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">CAGR / max drawdown</div>
         <div className="mt-1 text-sm font-medium text-slate-50">
-          {typeof summary.cagrPct === "number" ? formatPct(summary.cagrPct / 100) : "—"} /{" "}
-          {typeof summary.maxDrawdownPct === "number" ? formatPct(Math.abs(summary.maxDrawdownPct) / 100) : "—"}
+          {typeof summary.cagrPct === "number" && typeof summary.maxDrawdownPct === "number" ? (
+            <>
+              <MetricCount end={summary.cagrPct} decimals={1} suffix="%" active={inView} /> /{" "}
+              <MetricCount end={Math.abs(summary.maxDrawdownPct)} decimals={1} suffix="%" active={inView} />
+            </>
+          ) : (
+            "— / —"
+          )}
         </div>
         <div className="mt-1 text-xs text-slate-400">For the same historical window</div>
-      </div>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }
-

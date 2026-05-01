@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useInView, useReducedMotion } from "framer-motion";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
@@ -65,7 +66,10 @@ function BacktestTooltip(props: unknown) {
   if (typeof v !== "number") return null;
 
   return (
-    <div className="rounded-2xl border border-slate-800/80 bg-slate-950/90 px-4 py-3 shadow-lg backdrop-blur">
+    <div
+      className="rounded-2xl border border-slate-800/80 bg-slate-950/90 px-4 py-3 shadow-lg backdrop-blur transition-[transform,opacity] duration-150 ease-out"
+      style={{ willChange: "transform" }}
+    >
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Month</div>
       <div className="mt-1 text-sm font-medium text-slate-50">{label}</div>
       <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Portfolio Value</div>
@@ -81,6 +85,9 @@ export function BacktestChart({
   className?: string;
   startingBalance?: number;
 }) {
+  const wrapRef = useRef<HTMLDivElement>(null);
+  const inView = useInView(wrapRef, { once: true, amount: 0.22, margin: "0px 0px -10% 0px" });
+  const reduceMotion = useReducedMotion();
   const [payload, setPayload] = useState<BacktestPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +118,8 @@ export function BacktestChart({
     }));
   }, [payload, startingBalance]);
 
+  const allowDrawAnimation = Boolean(!reduceMotion && inView && data.length > 0);
+
   if (error) {
     return (
       <div className={className}>
@@ -133,7 +142,7 @@ export function BacktestChart({
   }
 
   return (
-    <div className={className}>
+    <div ref={wrapRef} className={className}>
       <div className="h-[260px] w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 10, right: 12, left: 0, bottom: 0 }}>
@@ -161,7 +170,13 @@ export function BacktestChart({
               domain={["dataMin - 600", "dataMax + 600"]}
             />
 
-            <Tooltip cursor={{ stroke: "rgba(148,163,184,0.25)", strokeWidth: 1 }} content={<BacktestTooltip />} />
+            <Tooltip
+              animationDuration={160}
+              animationEasing="ease-out"
+              cursor={{ stroke: "rgba(148,163,184,0.35)", strokeWidth: 1 }}
+              content={<BacktestTooltip />}
+              allowEscapeViewBox={{ x: false, y: true }}
+            />
 
             <Area
               type="monotone"
@@ -171,6 +186,9 @@ export function BacktestChart({
               fill="url(#equityFill)"
               fillOpacity={1}
               dot={false}
+              isAnimationActive={allowDrawAnimation}
+              animationDuration={reduceMotion ? 0 : 1150}
+              animationEasing="ease-out"
               activeDot={{ r: 4, strokeWidth: 2, stroke: "#0f172a", fill: "#34d399" }}
             />
           </AreaChart>
