@@ -1,6 +1,9 @@
 "use client";
 
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { motion, useReducedMotion } from "framer-motion";
+import { type ReactNode } from "react";
+
+import { easeOutSnappy } from "@/components/motion/variants";
 
 export function RevealOnScroll({
   children,
@@ -11,41 +14,25 @@ export function RevealOnScroll({
   className?: string;
   delayMs?: number;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
+  const reduce = useReducedMotion();
 
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    if (mq.matches) {
-      queueMicrotask(() => setVisible(true));
-      return;
-    }
-
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (!e?.isIntersecting) return;
-        window.setTimeout(() => setVisible(true), delayMs);
-        obs.disconnect();
-      },
-      { rootMargin: "0px 0px -8% 0px", threshold: 0.08 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [delayMs]);
+  if (reduce) {
+    return <div className={className}>{children}</div>;
+  }
 
   return (
-    <div
-      ref={ref}
-      className={`transform-gpu transition-[opacity,transform,filter] duration-700 ease-out motion-safe:duration-[850ms] ${
-        visible
-          ? "translate-y-0 opacity-100 motion-safe:blur-none"
-          : "translate-y-8 opacity-0 motion-safe:blur-sm"
-      } ${className}`}
+    <motion.div
+      className={className}
+      initial={{ opacity: 0, y: 20, filter: "blur(6px)" }}
+      whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      viewport={{ once: true, amount: 0.12, margin: "0px 0px -32px 0px" }}
+      transition={{
+        duration: 0.42,
+        delay: delayMs / 1000,
+        ease: easeOutSnappy,
+      }}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

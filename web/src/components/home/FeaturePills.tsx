@@ -15,6 +15,11 @@ const ITEMS = [
     label: "No specialised trading account",
     detail: "No margin account, no options chain — keep complexity off your plate.",
   },
+  {
+    label: "EU Börse focus",
+    detail:
+      "The bot is built mainly around European exchanges (e.g. Xetra and other EU listings). Holdings are picked so dividend withholding and similar frictions stay very low — often close to none versus typical US-heavy portfolios. Tax rules depend on your residency; not tax advice.",
+  },
 ] as const;
 
 export function FeaturePills() {
@@ -38,7 +43,7 @@ export function FeaturePills() {
               <span className="block">{item.label}</span>
               <span
                 className={`mt-1 block max-w-[min(100vw-4rem,20rem)] text-[11px] font-normal leading-snug text-sky-200/90 transition-[max-height,opacity,margin] duration-200 sm:max-w-xs ${
-                  on ? "mt-1 max-h-28 opacity-100" : "mt-0 max-h-0 overflow-hidden opacity-0"
+                  on ? "mt-1 max-h-40 opacity-100" : "mt-0 max-h-0 overflow-hidden opacity-0"
                 }`}
               >
                 {item.detail}

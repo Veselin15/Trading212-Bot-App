@@ -2,7 +2,9 @@ import { Container } from "@/components/ui/Container";
 import { ButtonLink } from "@/components/ui/Button";
 import { BacktestChart } from "@/components/BacktestChart";
 import { BacktestSummary } from "@/components/BacktestSummary";
+import { BotTerminal } from "@/components/home/BotTerminal";
 import { FeaturePills } from "@/components/home/FeaturePills";
+import { HeroGridMotion } from "@/components/home/HeroGridMotion";
 import { HeroSpotlightCard } from "@/components/home/HeroSpotlightCard";
 import { RevealOnScroll } from "@/components/home/RevealOnScroll";
 import { StepsAccordion } from "@/components/home/StepsAccordion";
@@ -15,11 +17,11 @@ export default function Home() {
 
       <Container>
         <section className="scroll-mt-24 pb-16 pt-8 sm:scroll-mt-28 sm:pb-20 sm:pt-10">
-          <RevealOnScroll>
-            <div className="grid items-start gap-10 lg:grid-cols-12 lg:gap-12">
+          <HeroGridMotion
+            left={
               <div
                 id="results"
-                className="order-2 scroll-mt-24 rounded-3xl border border-slate-800/70 bg-white/5 p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-sky-500/25 hover:bg-white/[0.07] hover:shadow-xl hover:shadow-sky-500/[0.07] sm:p-6 lg:order-1 lg:col-span-7"
+                className="scroll-mt-24 rounded-3xl border border-slate-800/70 bg-white/5 p-5 shadow-sm transition-all duration-300 hover:-translate-y-0.5 hover:border-sky-500/25 hover:bg-white/[0.07] hover:shadow-xl hover:shadow-sky-500/[0.07] sm:p-6"
               >
                 <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
                   <div>
@@ -40,8 +42,9 @@ export default function Home() {
                   Shown for illustration — not a promise of live performance.
                 </p>
               </div>
-
-              <div id="overview" className="order-1 scroll-mt-24 lg:order-2 lg:col-span-5">
+            }
+            right={
+              <div id="overview" className="scroll-mt-24">
                 <div className="inline-flex cursor-default items-center gap-2 rounded-full border border-slate-800/70 bg-white/5 px-3 py-1 text-xs text-slate-300 shadow-sm backdrop-blur transition-all duration-300 hover:border-sky-500/30 hover:bg-white/[0.08] hover:shadow-md hover:shadow-sky-500/5">
                   <span className="font-medium text-slate-50">Trading212 Bot</span>
                   <span className="text-slate-400">long-only · invest</span>
@@ -50,6 +53,8 @@ export default function Home() {
                 <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
                   Automated investing on Trading212 — without a pro setup
                 </h1>
+
+                <BotTerminal />
 
                 <HeroSpotlightCard>
                   <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
@@ -67,7 +72,9 @@ export default function Home() {
                       <p className="mt-3 text-pretty text-sm leading-6 text-slate-200 sm:text-base sm:leading-7">
                         The bot is <span className="font-semibold text-white">long-only</span> and built around{" "}
                         <span className="font-semibold text-white">investing</span> (holding and adding over time),
-                        not day-trading or complex products.
+                        not day-trading or complex products. It is aimed mainly at{" "}
+                        <span className="font-semibold text-white">EU-listed names</span> so frictions like heavy
+                        withholding are usually tiny.
                       </p>
                       <FeaturePills />
                     </div>
@@ -89,11 +96,12 @@ export default function Home() {
                 </div>
 
                 <p className="mt-8 text-xs leading-5 text-slate-500">
-                  Not financial advice. Trading involves risk; past results do not guarantee future returns.
+                  Not financial advice. Trading involves risk; past results do not guarantee future returns. Tax treatment
+                  depends on your country and rules — not tax advice.
                 </p>
               </div>
-            </div>
-          </RevealOnScroll>
+            }
+          />
         </section>
       </Container>
 
