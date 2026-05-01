@@ -44,8 +44,9 @@ export function GlowHoverCard({
         <Card
           {...cardProps}
           className={cx(
-            "h-full rounded-[calc(1.5rem-2px)] border-slate-800/85 transition-[border-color,box-shadow] duration-200 ease-out",
+            "h-full rounded-[calc(1.5rem-2px)] border-slate-800/85 bg-slate-950/70 transition-[border-color,box-shadow,background-color] duration-200 ease-out",
             "group-hover/gh:border-sky-500/35 group-hover/gh:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]",
+            "group-hover/gh:bg-slate-950/75",
             className,
           )}
         >

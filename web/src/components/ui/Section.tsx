@@ -16,15 +16,10 @@ export function Section({
   return (
     <Container>
       <section id={id} className="pb-16 sm:pb-20">
-        <div className="grid gap-10 lg:grid-cols-12 lg:items-end">
-          <div className="lg:col-span-4">
-            <h2 className="text-3xl font-semibold tracking-tight">{title}</h2>
-            {lead ? <p className="mt-3 text-sm leading-6 text-slate-300">{lead}</p> : null}
-          </div>
-          <div className="lg:col-span-8">{children}</div>
-        </div>
+        <h2 className="text-3xl font-semibold tracking-tight">{title}</h2>
+        {lead ? <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">{lead}</p> : null}
+        <div className="mt-8 w-full min-w-0">{children}</div>
       </section>
     </Container>
   );
 }
-

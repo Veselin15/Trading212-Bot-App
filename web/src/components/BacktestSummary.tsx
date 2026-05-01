@@ -1,10 +1,8 @@
 "use client";
 
-import { motion, useInView, useReducedMotion } from "framer-motion";
+import { useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CountUp from "react-countup";
-
-import { fadeUpItem, fadeUpItemInstant, fadeUpParent, fadeUpParentInstant } from "@/components/motion/variants";
 
 type EquityPoint = {
   month: string;
@@ -47,16 +45,14 @@ function MetricCount({
   active: boolean;
 }) {
   const reduce = useReducedMotion();
-  if (!active) return <span className="tabular-nums">—</span>;
-  if (reduce) {
-    return (
-      <span className="tabular-nums">
-        {prefix}
-        {end.toFixed(decimals)}
-        {suffix}
-      </span>
-    );
-  }
+  const staticText = (
+    <span className="tabular-nums">
+      {prefix}
+      {end.toFixed(decimals)}
+      {suffix}
+    </span>
+  );
+  if (reduce || !active) return staticText;
   return (
     <CountUp
       className="tabular-nums"
@@ -76,8 +72,7 @@ export function BacktestSummary() {
   const [payload, setPayload] = useState<BacktestPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
-  const inView = useInView(rootRef, { once: true, margin: "-10% 0px" });
-  const reduce = useReducedMotion();
+  const inView = useInView(rootRef, { once: true, amount: 0.05, margin: "0px 0px 80px 0px" });
 
   useEffect(() => {
     let cancelled = false;
@@ -130,65 +125,44 @@ export function BacktestSummary() {
     );
   }
 
-  const parentVars = reduce ? fadeUpParentInstant : fadeUpParent;
-  const itemVars = reduce ? fadeUpItemInstant : fadeUpItem;
-
   return (
-    <motion.div
-      ref={rootRef}
-      className="grid gap-3 sm:grid-cols-3"
-      variants={parentVars}
-      initial="hidden"
-      animate={inView ? "visible" : "hidden"}
-    >
-      <motion.div
-        variants={itemVars}
-        className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]"
-      >
+    <div ref={rootRef} className="mt-4 flex flex-col gap-3 sm:mt-5">
+      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</div>
         <div className="mt-1 text-sm font-medium text-slate-50">{summary.dateRange ?? "—"}</div>
         {summary.symbols.length ? (
           <div className="mt-1 text-xs text-slate-400">Universe: {summary.symbols.join(", ")}</div>
         ) : null}
-      </motion.div>
+      </div>
 
-      <motion.div
-        variants={itemVars}
-        className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]"
-      >
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total return</div>
-        <div className="mt-1 text-2xl font-semibold tracking-tight text-emerald-300">
-          {typeof summary.totalReturnPct === "number" ? (
-            <MetricCount
-              end={summary.totalReturnPct}
-              decimals={1}
-              suffix="%"
-              active={inView}
-            />
-          ) : (
-            "—"
-          )}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total return</div>
+          <div className="mt-1 text-2xl font-semibold tracking-tight text-emerald-300">
+            {typeof summary.totalReturnPct === "number" ? (
+              <MetricCount end={summary.totalReturnPct} decimals={1} suffix="%" active={inView} />
+            ) : (
+              "—"
+            )}
+          </div>
+          <div className="mt-1 text-xs text-slate-400">Over the period above (model)</div>
         </div>
-        <div className="mt-1 text-xs text-slate-400">Over the period above (model)</div>
-      </motion.div>
 
-      <motion.div
-        variants={itemVars}
-        className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]"
-      >
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">CAGR / max drawdown</div>
-        <div className="mt-1 text-sm font-medium text-slate-50">
-          {typeof summary.cagrPct === "number" && typeof summary.maxDrawdownPct === "number" ? (
-            <>
-              <MetricCount end={summary.cagrPct} decimals={1} suffix="%" active={inView} /> /{" "}
-              <MetricCount end={Math.abs(summary.maxDrawdownPct)} decimals={1} suffix="%" active={inView} />
-            </>
-          ) : (
-            "— / —"
-          )}
+        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">CAGR / max drawdown</div>
+          <div className="mt-1 text-sm font-medium text-slate-50">
+            {typeof summary.cagrPct === "number" && typeof summary.maxDrawdownPct === "number" ? (
+              <>
+                <MetricCount end={summary.cagrPct} decimals={1} suffix="%" active={inView} /> /{" "}
+                <MetricCount end={Math.abs(summary.maxDrawdownPct)} decimals={1} suffix="%" active={inView} />
+              </>
+            ) : (
+              "— / —"
+            )}
+          </div>
+          <div className="mt-1 text-xs text-slate-400">For the same historical window</div>
         </div>
-        <div className="mt-1 text-xs text-slate-400">For the same historical window</div>
-      </motion.div>
-    </motion.div>
+      </div>
+    </div>
   );
 }

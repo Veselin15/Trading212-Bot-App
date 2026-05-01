@@ -1,27 +1,155 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+import { Check } from "lucide-react";
+
+import { RevealOnScroll } from "@/components/home/RevealOnScroll";
+import { GlowHoverCard } from "@/components/motion/GlowHoverCard";
+import { Badge } from "@/components/ui/Badge";
+import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 
-import { PricingTiers } from "./PricingTiers";
+function AnimatedEuro({ amount }: { amount: number }) {
+  const [count, setCount] = useState(0);
+
+  useEffect(() => {
+    const duration = 1000;
+    const steps = 30;
+    const increment = amount / steps;
+    let current = 0;
+
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= amount) {
+        setCount(amount);
+        clearInterval(timer);
+      } else {
+        setCount(Math.floor(current));
+      }
+    }, duration / steps);
+
+    return () => clearInterval(timer);
+  }, [amount]);
+
+  return <span>€{count}</span>;
+}
+
+const tiers = [
+  {
+    name: "Paper / Free",
+    price: 0,
+    description: "Explore the platform with paper trading",
+    features: ["View signals (read-only)", "Paper trading simulation", "Historical performance data", "Community support"],
+    cta: "Start free",
+    href: "/login",
+    accent: false,
+  },
+  {
+    name: "Pro Automation",
+    price: 49,
+    description: "Full automation with desktop execution",
+    features: [
+      "Live trading signals",
+      "Desktop app download",
+      "License key activation",
+      "Priority support",
+      "Risk management tools",
+    ],
+    cta: "Upgrade to Pro",
+    href: "/login",
+    accent: true,
+    popular: true,
+    footnote: "Trading212 API key stored only in desktop app",
+  },
+  {
+    name: "Enterprise",
+    price: null as null | number,
+    description: "Custom solutions for institutions",
+    features: ["Custom signal strategies", "Multiple accounts", "Dedicated support", "SLA guarantees", "Custom integration"],
+    cta: "Contact",
+    href: "mailto:enterprise@trading212bot.example",
+    accent: false,
+  },
+];
 
 export default function PricingPage() {
   return (
     <main>
-      <Container>
-        <section className="py-16 sm:py-20">
-          <div className="flex flex-col gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">Pricing</h1>
-            <p className="max-w-2xl text-sm leading-6 text-slate-300">
-              The portal manages your account + license. The desktop executor handles Trading212 locally on your machine.
-              When Stripe is enabled, checkout automatically activates Pro in Supabase.
+      <Container className="py-20">
+        <RevealOnScroll className="mx-auto mb-16 max-w-3xl text-center">
+          <h1 className="mb-6 text-5xl">Pricing</h1>
+          <p className="text-lg text-slate-300">
+            Transparent pricing powered by Stripe and Supabase. Start free, upgrade when ready. Cancel anytime.
+          </p>
+        </RevealOnScroll>
+
+        <div className="mb-12 grid gap-8 md:grid-cols-3">
+          {tiers.map((tier) => (
+            <RevealOnScroll key={tier.name}>
+              <GlowHoverCard className="relative flex h-full flex-col p-8" disableLift={false}>
+                {tier.popular ? <Badge className="absolute right-4 top-4 bg-sky-600 text-slate-50">Most popular</Badge> : null}
+
+                <div className="mb-6">
+                  <h3 className="mb-2 text-2xl">{tier.name}</h3>
+                  <p className="text-sm text-slate-400">{tier.description}</p>
+                </div>
+
+                <div className="mb-6">
+                  {tier.price !== null ? (
+                    <div className="text-4xl">
+                      <AnimatedEuro amount={tier.price} />
+                      <span className="text-lg text-slate-400">/mo</span>
+                    </div>
+                  ) : (
+                    <div className="text-4xl text-sky-400">Custom</div>
+                  )}
+                </div>
+
+                <ul className="mb-8 flex-1 space-y-3">
+                  {tier.features.map((feature) => (
+                    <li key={feature} className="flex items-start gap-2">
+                      <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400" />
+                      <span className="text-sm text-slate-300">{feature}</span>
+                    </li>
+                  ))}
+                </ul>
+
+                {tier.href.startsWith("mailto:") ? (
+                  <a
+                    href={tier.href}
+                    className={`inline-flex h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-medium transition-colors ${
+                      tier.accent
+                        ? "bg-sky-600 text-slate-950 shadow-sm shadow-sky-500/20 hover:bg-sky-700 focus:outline-none focus:ring-2 focus:ring-sky-400/60"
+                        : "border border-slate-800/90 bg-white/5 text-slate-50 backdrop-blur hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/10"
+                    }`}
+                  >
+                    {tier.cta}
+                  </a>
+                ) : (
+                  <ButtonLink
+                    href={tier.href}
+                    variant={tier.accent ? "primary" : "secondary"}
+                    className={tier.accent ? "w-full bg-sky-600 hover:bg-sky-700" : "w-full"}
+                  >
+                    {tier.cta}
+                  </ButtonLink>
+                )}
+
+                {tier.footnote ? <p className="mt-4 text-center text-xs text-slate-500">{tier.footnote}</p> : null}
+              </GlowHoverCard>
+            </RevealOnScroll>
+          ))}
+        </div>
+
+        <RevealOnScroll>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-6 text-center">
+            <p className="text-sm text-slate-400">
+              <strong className="text-slate-300">Risk disclosure:</strong> Not financial advice. Trading carries
+              substantial risk of loss. Only risk capital you can afford to lose.
             </p>
           </div>
-
-          <PricingTiers />
-
-          <div className="mt-10 rounded-2xl border border-slate-800/70 bg-white/5 p-5 text-sm text-slate-300 backdrop-blur transition-[border-color,box-shadow] duration-200 hover:border-sky-500/20 hover:shadow-[0_0_28px_-12px_rgba(56,189,248,0.15)]">
-            Not financial advice. Trading involves risk. Past performance (including backtests) does not guarantee future
-            results.
-          </div>
-        </section>
+        </RevealOnScroll>
       </Container>
     </main>
   );
