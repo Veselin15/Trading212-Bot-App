@@ -1,8 +1,16 @@
 "use client";
 
+import { motion, useReducedMotion } from "framer-motion";
 import { CreditCard, Download, Link2, UserPlus } from "lucide-react";
 import { useState } from "react";
 
+import {
+  easeOutSnappy,
+  fadeUpItem,
+  fadeUpItemInstant,
+  fadeUpParent,
+  fadeUpParentInstant,
+} from "@/components/motion/variants";
 import { ButtonLink } from "@/components/ui/Button";
 
 const STEPS = [
@@ -30,13 +38,30 @@ const STEPS = [
 
 export function StepsAccordion() {
   const [open, setOpen] = useState(0);
+  const reduce = useReducedMotion();
+  const parentVars = reduce ? fadeUpParentInstant : fadeUpParent;
+  const itemVars = reduce ? fadeUpItemInstant : fadeUpItem;
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h2 className="text-center text-xl font-semibold tracking-tight text-slate-50 sm:text-2xl">Get started</h2>
-      <p className="mx-auto mt-2 max-w-lg text-center text-sm text-slate-400">
+      <motion.h2
+        className="text-center text-xl font-semibold tracking-tight text-slate-50 sm:text-2xl"
+        initial={reduce ? false : { opacity: 0, y: 14 }}
+        whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.35 }}
+        transition={{ duration: 0.34, ease: easeOutSnappy }}
+      >
+        Get started
+      </motion.h2>
+      <motion.p
+        className="mx-auto mt-2 max-w-lg text-center text-sm text-slate-400"
+        initial={reduce ? false : { opacity: 0, y: 12 }}
+        whileInView={reduce ? undefined : { opacity: 1, y: 0 }}
+        viewport={{ once: true, amount: 0.35 }}
+        transition={{ duration: 0.34, ease: easeOutSnappy, delay: 0.04 }}
+      >
         Open a step for details. Execution stays on your machine — nothing here touches your broker keys.
-      </p>
+      </motion.p>
 
       <div className="mt-3 flex justify-center gap-1.5 sm:mt-4" role="tablist" aria-label="Steps">
         {STEPS.map((_, i) => {
@@ -58,13 +83,21 @@ export function StepsAccordion() {
         })}
       </div>
 
-      <div className="mt-8 space-y-3" role="list">
+      <motion.div
+        className="mt-8 space-y-3"
+        role="list"
+        variants={parentVars}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.08, margin: "0px 0px -40px 0px" }}
+      >
         {STEPS.map((step, i) => {
           const isOpen = open === i;
           const Icon = step.Icon;
           return (
-            <div
+            <motion.div
               key={step.title}
+              variants={itemVars}
               role="listitem"
               className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ease-out ${
                 isOpen
@@ -128,10 +161,10 @@ export function StepsAccordion() {
                   </p>
                 </div>
               </div>
-            </div>
+            </motion.div>
           );
         })}
-      </div>
+      </motion.div>
 
       <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
         <ButtonLink href="/product" variant="secondary" className="transition-transform hover:scale-[1.02] active:scale-[0.98]">
