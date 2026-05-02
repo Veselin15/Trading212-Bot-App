@@ -3,11 +3,14 @@ from __future__ import annotations
 import asyncio
 import subprocess
 import sys
+import uuid
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QPoint, Qt, QUrl
+from PySide6.QtGui import QAction, QDesktopServices, QFont
 from PySide6.QtWidgets import (
+    QAbstractItemView,
     QApplication,
     QCheckBox,
     QFrame,
@@ -17,8 +20,13 @@ from PySide6.QtWidgets import (
     QListWidget,
     QListWidgetItem,
     QLineEdit,
+    QMenu,
+    QMessageBox,
     QPushButton,
+    QSizePolicy,
     QSplitter,
+    QTableWidget,
+    QTableWidgetItem,
     QTextEdit,
     QTabWidget,
     QVBoxLayout,
@@ -28,8 +36,8 @@ from qasync import QEventLoop, asyncSlot
 
 from .crypto_store import CryptoStore, SecretPayload
 from .settings_store import AppSettings, SettingsStore
-from .t212_client import T212Client, T212Keys
-from .ws_client import ExecWsClient, WsConfig
+from .t212_client import T212APIError, T212Client, T212Keys
+from .ws_client import ExecWsClient, WsConfig, _smoke_health_url
 
 
 def _status_text(status: str) -> tuple[str, str]:
@@ -60,17 +68,34 @@ class MainWindow(QWidget):
         self.t212_status.setMinimumWidth(220)
         self.exec_mode = QCheckBox("LIVE execution")
         self.exec_mode.setChecked(False)
+        self.exec_mode.setToolTip(
+            "Unchecked: signals are logged only (safe). Checked: LONG signals place real orders on your Trading212 account."
+        )
 
         self.license_key = QLineEdit()
         self.license_key.setPlaceholderText("License key (UUID)")
+        self.license_key.setToolTip("Portal subscription license (UUID format).")
 
-        self.ws_url = QLineEdit("ws://localhost:8000/ws/exec")
+        self.ws_url = QLineEdit("ws://127.0.0.1:8010/ws/exec")
+        self.ws_url.setMinimumWidth(300)
+        self.ws_url.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.ws_url.setToolTip("Backend WebSocket URL. Use 127.0.0.1 if the server binds to IPv4 only.")
 
         self.t212_api_key = QLineEdit()
         self.t212_api_key.setPlaceholderText("Trading212 API key")
+        self.t212_api_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.t212_secret_key = QLineEdit()
         self.t212_secret_key.setPlaceholderText("Trading212 secret (optional)")
+        self.t212_secret_key.setEchoMode(QLineEdit.EchoMode.Password)
+
+        self.show_t212_secrets = QCheckBox("Show keys")
+        self.show_t212_secrets.setToolTip("Reveal API key and secret on screen (disable when someone can see your display).")
+        self.show_t212_secrets.toggled.connect(self._on_show_t212_secrets_toggled)  # type: ignore[arg-type]
+
+        self.test_t212_btn = QPushButton("Test Trading212 connection")
+        self.test_t212_btn.setToolTip("Call the broker API with the key fields above (does not save to disk).")
+        self.test_t212_btn.clicked.connect(self.on_test_t212_clicked)  # type: ignore[arg-type]
 
         self.save_btn = QPushButton("Save keys (encrypted)")
         self.connect_btn = QPushButton("Connect")
@@ -83,10 +108,32 @@ class MainWindow(QWidget):
 
         self.event_log = QTextEdit()
         self.event_log.setReadOnly(True)
+        self.event_log.document().setMaximumBlockCount(500)
+        _mono = QFont("Cascadia Mono", 10)
+        if not _mono.exactMatch():
+            _mono = QFont("Consolas", 10)
+        self.event_log.setFont(_mono)
 
-        self.signals_list = QListWidget()
-        self.bot_state = QListWidget()
-        self.market_state = QListWidget()
+        self._last_bot_snapshot: dict[str, dict] = {}
+        self._signal_rows: list[tuple[str, str, str, str, str]] = []
+        self._market_rows: list[tuple[str, str]] = []
+
+        self.activity_symbol_filter = QLineEdit()
+        self.activity_symbol_filter.setPlaceholderText("Filter rows by symbol (substring)…")
+
+        self.market_table = QTableWidget(0, 2)
+        self.market_table.setHorizontalHeaderLabels(["Symbol", "Market state"])
+        self._wire_activity_table(self.market_table)
+
+        self.bot_table = QTableWidget(0, 7)
+        self.bot_table.setHorizontalHeaderLabels(
+            ["Symbol", "Ready", "Regime", "Trigger", "Side", "Blocked", "Reason"],
+        )
+        self._wire_activity_table(self.bot_table)
+
+        self.signals_table = QTableWidget(0, 5)
+        self.signals_table.setHorizontalHeaderLabels(["Time", "ID", "Dir", "Symbol", "Summary"])
+        self._wire_activity_table(self.signals_table)
 
         self.exec_queue = QListWidget()
         self.exec_queue.addItem("Execution queue will appear here.")
@@ -124,6 +171,8 @@ class MainWindow(QWidget):
             self.t212_secret_key.setText(existing.t212_secret_key or "")
             self._refresh_t212_status()
 
+        self.activity_symbol_filter.textChanged.connect(self._on_activity_filter_changed)  # type: ignore[arg-type]
+
     def _git_version(self) -> str:
         try:
             repo_root = Path(__file__).resolve().parents[2]
@@ -139,7 +188,6 @@ class MainWindow(QWidget):
         top.addSpacing(12)
         top.addWidget(self.t212_status)
         top.addWidget(self.exec_mode)
-        top.addStretch(1)
         top.addWidget(QLabel("WS:"))
         top.addWidget(self.ws_url, 1)
         top.addSpacing(8)
@@ -152,11 +200,24 @@ class MainWindow(QWidget):
         form = QFormLayout()
         form.addRow("License key", self.license_key)
 
+        diag_row = QHBoxLayout()
+        self.diagnostics_btn = QPushButton("Open backend health in browser")
+        self.diagnostics_btn.setToolTip("Opens /health/supabase-smoke for the host/port in the WS URL (lengths only, no secrets).")
+        self.diagnostics_btn.clicked.connect(self._open_backend_diagnostics)  # type: ignore[arg-type]
+        diag_row.addWidget(self.diagnostics_btn)
+        diag_row.addStretch(1)
+        form.addRow("Diagnostics", diag_row)
+
         key_frame = QFrame()
         key_layout = QVBoxLayout()
         key_layout.setContentsMargins(0, 0, 0, 0)
         key_layout.addWidget(self.t212_api_key)
         key_layout.addWidget(self.t212_secret_key)
+        key_btns = QHBoxLayout()
+        key_btns.addWidget(self.show_t212_secrets)
+        key_btns.addWidget(self.test_t212_btn)
+        key_btns.addStretch(1)
+        key_layout.addLayout(key_btns)
         key_layout.addWidget(self.save_btn)
         key_frame.setLayout(key_layout)
 
@@ -167,12 +228,16 @@ class MainWindow(QWidget):
     def _build_activity_tab(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout()
+        filt = QHBoxLayout()
+        filt.addWidget(QLabel("Symbol filter"))
+        filt.addWidget(self.activity_symbol_filter, 1)
+        layout.addLayout(filt)
         layout.addWidget(QLabel("Trading212 market state"))
-        layout.addWidget(self.market_state, 1)
+        layout.addWidget(self.market_table, 1)
         layout.addWidget(QLabel("Bot state (latest snapshot)"))
-        layout.addWidget(self.bot_state, 1)
+        layout.addWidget(self.bot_table, 2)
         layout.addWidget(QLabel("Recent signals"))
-        layout.addWidget(self.signals_list, 2)
+        layout.addWidget(self.signals_table, 2)
         w.setLayout(layout)
         return w
 
@@ -187,10 +252,137 @@ class MainWindow(QWidget):
     def _build_right_panel(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Event log"))
+        log_head = QHBoxLayout()
+        log_head.addWidget(QLabel("Event log"))
+        clear_log = QPushButton("Clear")
+        clear_log.setToolTip("Clear the on-screen log (does not affect the server).")
+        clear_log.clicked.connect(self.event_log.clear)  # type: ignore[arg-type]
+        log_head.addStretch(1)
+        log_head.addWidget(clear_log)
+        layout.addLayout(log_head)
         layout.addWidget(self.event_log, 1)
         w.setLayout(layout)
         return w
+
+    def _open_backend_diagnostics(self) -> None:
+        url = QUrl(_smoke_health_url(self.ws_url.text()))
+        if not QDesktopServices.openUrl(url):
+            self._append_event(f"Could not open browser for {url.toString()}")
+
+    def _on_show_t212_secrets_toggled(self, checked: bool) -> None:
+        mode = QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
+        self.t212_api_key.setEchoMode(mode)
+        self.t212_secret_key.setEchoMode(mode)
+
+    @asyncSlot()
+    async def on_test_t212_clicked(self) -> None:
+        api = self.t212_api_key.text().strip()
+        sec = self.t212_secret_key.text().strip() or None
+        if not api:
+            QMessageBox.warning(self, "API key required", "Enter your Trading212 API key to test the connection.")
+            return
+        self.test_t212_btn.setEnabled(False)
+        try:
+            async with T212Client(keys=T212Keys(api_key=api, secret_key=sec)) as client:
+                funds = await client.get_free_funds()
+                pending = len(await client.get_pending_orders())
+            QMessageBox.information(
+                self,
+                "Trading212 connection OK",
+                "API credentials were accepted.\n\n"
+                f"Free funds: {funds:.2f}\n"
+                f"Pending orders: {pending}\n\n"
+                "Default client uses the Trading212 demo API host unless you change it in code.",
+            )
+            self._append_event(f"T212 test OK: freeFunds≈{funds:.2f}, pendingOrders={pending}")
+        except T212APIError as exc:
+            QMessageBox.critical(self, "Trading212 API error", str(exc))
+            self._append_event(f"T212 test failed: {exc}")
+        except Exception as exc:
+            QMessageBox.critical(self, "Trading212 test failed", str(exc))
+            self._append_event(f"T212 test failed: {exc}")
+        finally:
+            self.test_t212_btn.setEnabled(True)
+
+    def _wire_activity_table(self, table: QTableWidget) -> None:
+        table.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+        table.customContextMenuRequested.connect(self._activity_table_context_menu)  # type: ignore[arg-type]
+        table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        table.setAlternatingRowColors(True)
+        table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
+        table.horizontalHeader().setStretchLastSection(True)
+        _tf = QFont("Cascadia Mono", 9)
+        if not _tf.exactMatch():
+            _tf = QFont("Consolas", 9)
+        table.setFont(_tf)
+
+    def _activity_table_context_menu(self, pos: QPoint) -> None:
+        table = self.sender()
+        if not isinstance(table, QTableWidget):
+            return
+        idx = table.indexAt(pos)
+        if not idx.isValid():
+            return
+        row = idx.row()
+        parts: list[str] = []
+        for c in range(table.columnCount()):
+            it = table.item(row, c)
+            parts.append(it.text() if it is not None else "")
+        line = "\t".join(parts)
+        menu = QMenu(self)
+        act = QAction("Copy row", self)
+        act.triggered.connect(lambda _checked=False, text=line: QApplication.clipboard().setText(text))
+        menu.addAction(act)
+        menu.exec(table.viewport().mapToGlobal(pos))
+
+    def _symbol_filter_matches(self, symbol: str) -> bool:
+        flt = self.activity_symbol_filter.text().strip()
+        if not flt:
+            return True
+        return flt.upper() in str(symbol).upper()
+
+    def _on_activity_filter_changed(self, _text: str) -> None:
+        self._refresh_bot_table()
+        self._refresh_signals_table()
+        self._refresh_market_table()
+
+    def _refresh_bot_table(self) -> None:
+        rows: list[tuple[str, str, str, str, str, str, str]] = []
+        for sym in sorted(self._last_bot_snapshot.keys()):
+            if not self._symbol_filter_matches(sym):
+                continue
+            snap = self._last_bot_snapshot.get(sym) or {}
+            if not isinstance(snap, dict):
+                continue
+            rows.append(
+                (
+                    sym,
+                    str(snap.get("ready")),
+                    str(snap.get("regime")),
+                    str(snap.get("trigger")),
+                    str(snap.get("signal_side")),
+                    str(snap.get("entry_blocked")),
+                    str(snap.get("reason")),
+                ),
+            )
+        self.bot_table.setRowCount(len(rows))
+        for r, row in enumerate(rows):
+            for c, val in enumerate(row):
+                self.bot_table.setItem(r, c, QTableWidgetItem(val))
+
+    def _refresh_signals_table(self) -> None:
+        rows = [t for t in self._signal_rows if self._symbol_filter_matches(t[3])]
+        self.signals_table.setRowCount(len(rows))
+        for r, row in enumerate(rows):
+            for c, val in enumerate(row):
+                self.signals_table.setItem(r, c, QTableWidgetItem(val))
+
+    def _refresh_market_table(self) -> None:
+        rows = [t for t in self._market_rows if self._symbol_filter_matches(t[0])]
+        self.market_table.setRowCount(len(rows))
+        for r, row in enumerate(rows):
+            for c, val in enumerate(row):
+                self.market_table.setItem(r, c, QTableWidgetItem(val))
 
     def _set_status(self, status: str) -> None:
         text, color = _status_text(status)
@@ -216,9 +408,14 @@ class MainWindow(QWidget):
         direction = payload.get("direction")
         symbol = payload.get("symbol")
         line = f"{sid} | {direction} | {symbol}"
-        self.signals_list.insertItem(0, QListWidgetItem(line))
-        if self.signals_list.count() > 200:
-            self.signals_list.takeItem(self.signals_list.count() - 1)
+        ts = datetime.now().strftime("%H:%M:%S")
+        self._signal_rows.insert(
+            0,
+            (ts, str(sid), str(direction), str(symbol), line),
+        )
+        if len(self._signal_rows) > 200:
+            self._signal_rows.pop()
+        self._refresh_signals_table()
 
         self.exec_queue.insertItem(0, QListWidgetItem(f"Queued: {line}"))
         if self.exec_queue.count() > 200:
@@ -320,19 +517,12 @@ class MainWindow(QWidget):
 
     def _handle_bot_snapshot(self, payload: dict) -> None:
         # payload: { "ASML.AS": {...}, ... }
-        self.bot_state.clear()
-        for symbol in sorted(payload.keys()):
-            snap = payload.get(symbol) or {}
-            if not isinstance(snap, dict):
-                continue
-            ready = snap.get("ready")
-            regime = snap.get("regime")
-            trigger = snap.get("trigger")
-            side = snap.get("signal_side")
-            reason = snap.get("reason")
-            blocked = snap.get("entry_blocked")
-            line = f"{symbol} | ready={ready} | regime={regime} trigger={trigger} side={side} blocked={blocked} reason={reason}"
-            self.bot_state.addItem(QListWidgetItem(line))
+        snap: dict[str, dict] = {}
+        for symbol, raw in payload.items():
+            if isinstance(raw, dict):
+                snap[str(symbol)] = raw
+        self._last_bot_snapshot = snap
+        self._refresh_bot_table()
 
         # Update Trading212 market state panel for these symbols (best-effort).
         asyncio.create_task(self._refresh_market_state(list(payload.keys())))
@@ -341,21 +531,20 @@ class MainWindow(QWidget):
         stored = self._store.load()
         if not stored or not stored.t212_api_key:
             return
+        parsed: list[tuple[str, str]] = []
         try:
             async with T212Client(keys=T212Keys(api_key=stored.t212_api_key, secret_key=stored.t212_secret_key)) as client:
-                rows: list[str] = []
                 for sym in sorted(set(symbols)):
                     try:
                         state = await client.get_market_state(sym)
                     except Exception:
                         state = "unknown"
-                    rows.append(f"{sym}: {state}")
+                    parsed.append((sym, state))
         except Exception:
             return
 
-        self.market_state.clear()
-        for r in rows:
-            self.market_state.addItem(QListWidgetItem(r))
+        self._market_rows = parsed
+        self._refresh_market_table()
 
     @asyncSlot()
     async def on_connect_clicked(self) -> None:
@@ -363,6 +552,16 @@ class MainWindow(QWidget):
             return
         lic = self.license_key.text().strip()
         if not lic:
+            QMessageBox.information(self, "License required", "Enter your portal license key (UUID) before connecting.")
+            return
+        try:
+            uuid.UUID(lic)
+        except ValueError:
+            QMessageBox.warning(
+                self,
+                "Invalid license format",
+                "The license key must be a UUID, for example:\n550e8400-e29b-41d4-a716-446655440000",
+            )
             return
 
         url = self.ws_url.text().strip()

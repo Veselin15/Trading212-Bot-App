@@ -7,7 +7,8 @@ from pathlib import Path
 
 @dataclass(frozen=True)
 class AppSettings:
-    ws_url: str = "ws://localhost:8000/ws/exec"
+    # Match uvicorn ``--host 127.0.0.1``; ``localhost`` can prefer IPv6 (::1) and miss that listener.
+    ws_url: str = "ws://127.0.0.1:8010/ws/exec"
     license_key: str = ""
 
 
