@@ -4,9 +4,26 @@ import asyncio
 import json
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
+from urllib.parse import urlparse
 
 import websockets
 from websockets.exceptions import ConnectionClosed
+
+
+def _smoke_health_url(ws_url: str) -> str:
+    """Map ``ws://host:port/...`` to ``http://host:port/health/supabase-smoke`` for diagnostics."""
+    try:
+        p = urlparse(ws_url.strip())
+        if p.scheme in ("ws", "wss") and p.hostname:
+            http_scheme = "https" if p.scheme == "wss" else "http"
+            if p.port:
+                netloc = f"{p.hostname}:{p.port}"
+            else:
+                netloc = p.hostname
+            return f"{http_scheme}://{netloc}/health/supabase-smoke"
+    except Exception:
+        pass
+    return "http://127.0.0.1:8010/health/supabase-smoke"
 
 
 @dataclass(frozen=True)
@@ -39,7 +56,12 @@ class ExecWsClient:
         while not self._stop.is_set():
             self._on_status("CONNECTING")
             try:
-                async with websockets.connect(self._cfg.url, ping_interval=None) as ws:
+                async with websockets.connect(
+                    self._cfg.url,
+                    ping_interval=25,
+                    ping_timeout=20,
+                    close_timeout=10,
+                ) as ws:
                     self._on_status("ONLINE")
                     self._on_event(f"Connected to {self._cfg.url}")
                     await ws.send(json.dumps({"type": "HELLO", "license_key": self._cfg.license_key}))
@@ -79,6 +101,15 @@ class ExecWsClient:
                     self._on_event("Disconnected: license already locked to a different IP.")
                 elif code == 4400:
                     self._on_event("Disconnected: bad handshake.")
+                elif code == 4420:
+                    smoke = _smoke_health_url(self._cfg.url)
+                    self._on_event(
+                        "Disconnected: backend could not load Supabase URL + service role key. "
+                        f"Open {smoke} in a browser (lengths only, no secrets). "
+                        "If the WS URL uses 'localhost', try '127.0.0.1' to match uvicorn --host 127.0.0.1."
+                    )
+                    if reason.strip():
+                        self._on_event(f"Server close reason: {reason.strip()}")
                 else:
                     self._on_event(f"Disconnected (code={code}): {reason}".strip())
                 self._on_event("Reconnecting in 5s...")
