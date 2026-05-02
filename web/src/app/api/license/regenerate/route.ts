@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { type SubscriptionRow, isActiveSubscription } from "@/lib/subscription";
+import { type SubscriptionRow, canUseProFeatures } from "@/lib/subscription-model";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -25,7 +25,11 @@ export async function POST() {
     .limit(1)
     .maybeSingle();
 
-  if (!isActiveSubscription((subRow as SubscriptionRow | null) ?? null)) {
+  const sub = (subRow as SubscriptionRow | null) ?? null;
+  if (sub?.status === "canceled") {
+    return NextResponse.json({ error: "Subscription canceled — license cannot be issued or rotated." }, { status: 403 });
+  }
+  if (!canUseProFeatures(sub)) {
     return NextResponse.json({ error: "Subscription not active" }, { status: 403 });
   }
 
@@ -53,8 +57,7 @@ export async function POST() {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  return NextResponse.redirect(new URL("/account?license=regenerated", process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"), {
-    status: 303,
-  });
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return NextResponse.redirect(new URL("/dashboard?license=regenerated", site), { status: 303 });
 }
 

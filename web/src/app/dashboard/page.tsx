@@ -1,6 +1,13 @@
 import { redirect } from "next/navigation";
 
+import { getMyLicenseKey } from "@/lib/license";
+import { revokeLicensesIfSubscriptionTerminal } from "@/lib/billing-license-sync";
+import { getMySubscription, canUseProFeatures } from "@/lib/subscription";
+import { isStripeCheckoutConfigured, isStripePortalConfigured } from "@/lib/stripe-env";
+import { refreshSubscriptionRowFromStripe } from "@/lib/stripe-subscription-refresh";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
+
 import { DashboardShell } from "./DashboardShell";
 
 export default async function DashboardPage() {
@@ -9,6 +16,31 @@ export default async function DashboardPage() {
 
   if (!data.user) redirect("/login");
 
-  return <DashboardShell userEmail={data.user.email ?? null} />;
+  await refreshSubscriptionRowFromStripe(data.user.id);
+
+  const admin = createSupabaseAdminClient();
+  const { data: statusRow } = await admin
+    .from("subscriptions")
+    .select("status")
+    .eq("user_id", data.user.id)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (statusRow?.status) {
+    await revokeLicensesIfSubscriptionTerminal(admin, data.user.id, String(statusRow.status));
+  }
+
+  const [{ subscription }, licenseKey] = await Promise.all([getMySubscription(), getMyLicenseKey()]);
+
+  return (
+    <DashboardShell
+      userEmail={data.user.email ?? null}
+      subscription={subscription}
+      licenseKey={licenseKey}
+      planTier={canUseProFeatures(subscription) ? "pro" : "free"}
+      stripeCheckoutEnabled={isStripeCheckoutConfigured()}
+      stripePortalEnabled={isStripePortalConfigured()}
+    />
+  );
 }
 

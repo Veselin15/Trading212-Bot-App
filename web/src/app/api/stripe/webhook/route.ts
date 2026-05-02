@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 
 import Stripe from "stripe";
 
+import {
+  applyLicenseEffectForStripeCustomer,
+  licenseEffectFromSubscriptionRow,
+} from "@/lib/billing-license-sync";
+import { getStripeSubscriptionPeriodEndUnix } from "@/lib/stripe-subscription-period";
 import { requiredEnv } from "@/lib/env";
 import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -22,9 +27,15 @@ export async function POST(request: Request) {
 
   const admin = createSupabaseAdminClient();
 
-  async function upsertByCustomer(customerId: string, patch: Record<string, unknown>) {
-    // Ensure we have a row; if it doesn't exist, insert a new one with no user_id mapping yet.
-    // (In practice, checkout route creates a placeholder row mapped to user_id.)
+  /**
+   * Updates the latest row for this Stripe customer. Inserts only when `insertUserId` is set
+   * (schema requires `user_id` — never insert a row without a Supabase user id).
+   */
+  async function upsertByCustomer(
+    customerId: string,
+    patch: Record<string, unknown>,
+    insertUserId?: string | null,
+  ) {
     const { data: existing } = await admin
       .from("subscriptions")
       .select("id,user_id,stripe_customer_id")
@@ -38,7 +49,14 @@ export async function POST(request: Request) {
       return;
     }
 
-    await admin.from("subscriptions").insert({ stripe_customer_id: customerId, status: "inactive", ...patch });
+    if (!insertUserId) return;
+
+    await admin.from("subscriptions").insert({
+      user_id: insertUserId,
+      stripe_customer_id: customerId,
+      status: "inactive",
+      ...patch,
+    });
   }
 
   try {
@@ -48,10 +66,32 @@ export async function POST(request: Request) {
         const customer = session.customer;
         if (typeof customer !== "string") break;
 
-        // When checkout completes, Stripe subscription may be created; we still mark active best-effort here.
-        await upsertByCustomer(customer, {
-          status: "active",
-        });
+        let stripe_subscription_id: string | undefined;
+        if (typeof session.subscription === "string") {
+          stripe_subscription_id = session.subscription;
+        } else if (
+          session.subscription &&
+          typeof session.subscription === "object" &&
+          "id" in session.subscription
+        ) {
+          stripe_subscription_id = (session.subscription as { id: string }).id;
+        }
+
+        const metaUid =
+          typeof session.metadata?.supabase_user_id === "string" && session.metadata.supabase_user_id.length > 0
+            ? session.metadata.supabase_user_id
+            : null;
+
+        await upsertByCustomer(
+          customer,
+          {
+            status: "active",
+            ...(stripe_subscription_id ? { stripe_subscription_id } : {}),
+          },
+          metaUid,
+        );
+
+        await applyLicenseEffectForStripeCustomer(admin, customer, "ensure");
         break;
       }
 
@@ -63,14 +103,18 @@ export async function POST(request: Request) {
         if (!customerId) break;
 
         const status = String(sub.status || "inactive");
-        const currentPeriodEndUnix = (sub as unknown as { current_period_end?: number }).current_period_end;
-        const currentPeriodEnd = currentPeriodEndUnix ? new Date(currentPeriodEndUnix * 1000).toISOString() : null;
+        const currentPeriodEndUnix = getStripeSubscriptionPeriodEndUnix(sub);
+        const currentPeriodEnd =
+          currentPeriodEndUnix != null ? new Date(currentPeriodEndUnix * 1000).toISOString() : null;
 
         await upsertByCustomer(customerId, {
           stripe_subscription_id: sub.id,
           status: status === "active" ? "active" : status,
           current_period_end: currentPeriodEnd,
         });
+
+        const effect = licenseEffectFromSubscriptionRow(status, currentPeriodEnd);
+        await applyLicenseEffectForStripeCustomer(admin, customerId, effect);
         break;
       }
 
@@ -82,11 +126,26 @@ export async function POST(request: Request) {
         break;
       }
 
-      case "invoice.payment_succeeded": {
+      case "invoice.payment_succeeded":
+      case "invoice.paid": {
         const invoice = event.data.object as Stripe.Invoice;
         const customerId = typeof invoice.customer === "string" ? invoice.customer : "";
         if (!customerId) break;
-        await upsertByCustomer(customerId, { status: "active" });
+
+        const linePeriod = invoice.lines?.data?.[0]?.period;
+        const lineEnd = linePeriod && typeof linePeriod.end === "number" ? linePeriod.end : null;
+        const invEnd = typeof invoice.period_end === "number" ? invoice.period_end : null;
+        const periodUnix = lineEnd ?? invEnd;
+        const current_period_end =
+          periodUnix != null && Number.isFinite(periodUnix) && periodUnix > 0
+            ? new Date(periodUnix * 1000).toISOString()
+            : null;
+
+        await upsertByCustomer(customerId, {
+          status: "active",
+          ...(current_period_end ? { current_period_end } : {}),
+        });
+        await applyLicenseEffectForStripeCustomer(admin, customerId, "ensure");
         break;
       }
 
@@ -97,7 +156,5 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: `Webhook handler error: ${String(err)}` }, { status: 500 });
   }
 
-  // Return 200 so Stripe doesn't retry.
   return NextResponse.json({ ok: true });
 }
-

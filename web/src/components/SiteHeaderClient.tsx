@@ -9,16 +9,27 @@ import { Menu, X, Zap } from "lucide-react";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 
-const NAV_LINKS = [
+const BASE_NAV_LINKS = [
   { href: "/product", label: "Product" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/download", label: "Download" },
   { href: "/faq", label: "FAQ" },
-];
+] as const;
 
-export function SiteHeaderClient({ isAuthed }: { isAuthed: boolean }) {
+export function SiteHeaderClient({
+  isAuthed,
+  hasProAccess,
+}: {
+  isAuthed: boolean;
+  hasProAccess: boolean;
+}) {
   const pathname = usePathname() || "/";
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const navLinks = [
+    ...BASE_NAV_LINKS.slice(0, 2),
+    ...(hasProAccess ? ([{ href: "/download", label: "Download" }] as const) : []),
+    ...BASE_NAV_LINKS.slice(2),
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
@@ -37,7 +48,7 @@ export function SiteHeaderClient({ isAuthed }: { isAuthed: boolean }) {
           </Link>
 
           <nav className="hidden items-center gap-1 md:flex">
-            {NAV_LINKS.map((link) => {
+            {navLinks.map((link) => {
               const active = pathname === link.href;
               return (
                 <Link
@@ -108,7 +119,7 @@ export function SiteHeaderClient({ isAuthed }: { isAuthed: boolean }) {
           >
             <Container>
               <nav className="flex flex-col gap-1 py-4">
-                {NAV_LINKS.map((link) => (
+                {navLinks.map((link) => (
                   <Link
                     key={link.href}
                     href={link.href}

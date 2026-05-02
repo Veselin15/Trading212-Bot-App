@@ -1,11 +1,15 @@
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export type SubscriptionRow = {
-  status: string;
-  current_period_end: string | null;
-  stripe_customer_id: string | null;
-  stripe_subscription_id: string | null;
-};
+import { type SubscriptionRow } from "@/lib/subscription-model";
+
+export type { SubscriptionRow } from "@/lib/subscription-model";
+export {
+  canCancelStripeSubscription,
+  canUseProFeatures,
+  isActiveSubscription,
+  isPastDueWithGrace,
+  subscriptionPeriodStillOpen,
+} from "@/lib/subscription-model";
 
 export async function getMySubscription() {
   const supabase = await createSupabaseServerClient();
@@ -23,12 +27,3 @@ export async function getMySubscription() {
 
   return { user: userRes.user, subscription: (data as SubscriptionRow | null) ?? null };
 }
-
-export function isActiveSubscription(row: SubscriptionRow | null): boolean {
-  if (!row) return false;
-  if (row.status !== "active") return false;
-  if (!row.current_period_end) return true;
-  const end = new Date(row.current_period_end).getTime();
-  return Number.isFinite(end) ? end > Date.now() : false;
-}
-

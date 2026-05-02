@@ -5,8 +5,9 @@ import { SiteHeader } from "@/components/SiteHeader";
 import { Toaster } from "@/components/ui/Toaster";
 
 export const metadata: Metadata = {
-  title: "Trading212 Bot",
-  description: "Signals + desktop executor for Trading212.",
+  title: "Trading212 Bot — signals & local execution",
+  description:
+    "Web portal for subscription and licensing, Windows desktop executor for Trading212. Broker API keys stay on your device.",
 };
 
 export default function RootLayout({

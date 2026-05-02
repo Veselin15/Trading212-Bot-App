@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 
-import { getMySubscription, isActiveSubscription } from "@/lib/subscription";
+import { getMySubscription, canUseProFeatures } from "@/lib/subscription";
 import { ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { Container } from "@/components/ui/Container";
@@ -9,7 +9,7 @@ export default async function DownloadPage() {
   const { user, subscription } = await getMySubscription();
   if (!user) redirect("/login");
 
-  const active = isActiveSubscription(subscription);
+  const active = canUseProFeatures(subscription);
   if (!active) redirect("/dashboard");
 
   const downloadUrl = process.env.DESKTOP_DOWNLOAD_URL || "";
