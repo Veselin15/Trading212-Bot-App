@@ -15,11 +15,13 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
     QFormLayout,
+    QGroupBox,
     QHBoxLayout,
     QLabel,
     QListWidget,
     QListWidgetItem,
     QLineEdit,
+    QMainWindow,
     QMenu,
     QMessageBox,
     QPushButton,
@@ -42,17 +44,71 @@ from .ws_client import ExecWsClient, WsConfig, _smoke_health_url
 
 def _status_text(status: str) -> tuple[str, str]:
     if status == "ONLINE":
-        return ("Online", "green")
+        return ("Connected to bot server", "green")
     if status == "CONNECTING":
-        return ("Connecting...", "goldenrod")
-    return ("Offline", "red")
+        return ("Connecting to server…", "goldenrod")
+    return ("Not connected", "red")
 
 
-class MainWindow(QWidget):
+def _apply_desktop_styles(app: QApplication) -> None:
+    app.setStyleSheet(
+        """
+        QMainWindow, QWidget {
+            font-family: "Segoe UI", "SF Pro Text", system-ui, sans-serif;
+            font-size: 10pt;
+        }
+        QGroupBox {
+            font-weight: 600;
+            margin-top: 10px;
+            padding-top: 8px;
+            border: 1px solid palette(mid);
+            border-radius: 6px;
+        }
+        QGroupBox::title {
+            subcontrol-origin: margin;
+            left: 10px;
+            padding: 0 6px;
+        }
+        QPushButton {
+            padding: 6px 14px;
+            min-height: 24px;
+        }
+        QLineEdit, QTextEdit {
+            padding: 5px 8px;
+        }
+        QTabWidget::pane {
+            border: 1px solid palette(mid);
+            border-radius: 4px;
+            top: -1px;
+        }
+        QTabBar::tab {
+            padding: 8px 16px;
+        }
+        """
+    )
+
+
+def _hint_label(text: str) -> QLabel:
+    lab = QLabel(text)
+    lab.setWordWrap(True)
+    lab.setStyleSheet("color: palette(mid); font-size: 9pt;")
+    return lab
+
+
+def _section_title(text: str) -> QLabel:
+    lab = QLabel(text)
+    f = lab.font()
+    f.setBold(True)
+    lab.setFont(f)
+    return lab
+
+
+class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("Trading212 Executor")
-        self.setMinimumSize(900, 560)
+        self.setWindowTitle("Trading212 Bot — Desktop")
+        self.setMinimumSize(960, 620)
+        self.resize(1040, 680)
 
         self._base_dir = Path.home() / ".t212_executor"
         self._store = CryptoStore(self._base_dir)
@@ -62,43 +118,49 @@ class MainWindow(QWidget):
 
         self.status_dot = QLabel("●")
         self.status_dot.setAlignment(Qt.AlignCenter)
-        self.status_label = QLabel("Offline")
-        self.status_label.setMinimumWidth(120)
-        self.t212_status = QLabel("Trading212: Not configured")
-        self.t212_status.setMinimumWidth(220)
-        self.exec_mode = QCheckBox("LIVE execution")
+        self.status_label = QLabel("Not connected")
+        self.status_label.setMinimumWidth(230)
+        self.t212_status = QLabel("Broker: not set up yet")
+        self.t212_status.setMinimumWidth(240)
+        self.exec_mode = QCheckBox("Place real trades (live mode)")
         self.exec_mode.setChecked(False)
         self.exec_mode.setToolTip(
-            "Unchecked: signals are logged only (safe). Checked: LONG signals place real orders on your Trading212 account."
+            "Off (recommended while learning): incoming signals appear in the log and queue only — no orders.\n"
+            "On: LONG signals can place real orders on your Trading212 account."
         )
+        self.exec_mode.toggled.connect(self._on_live_mode_toggled)  # type: ignore[arg-type]
 
         self.license_key = QLineEdit()
-        self.license_key.setPlaceholderText("License key (UUID)")
-        self.license_key.setToolTip("Portal subscription license (UUID format).")
+        self.license_key.setPlaceholderText("Paste your license key from the portal")
+        self.license_key.setToolTip("Your subscription license from the web portal (looks like 550e8400-e29b-41d4-a716-446655440000).")
 
         self.ws_url = QLineEdit("ws://127.0.0.1:8010/ws/exec")
         self.ws_url.setMinimumWidth(300)
         self.ws_url.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
-        self.ws_url.setToolTip("Backend WebSocket URL. Use 127.0.0.1 if the server binds to IPv4 only.")
+        self.ws_url.setToolTip(
+            "Address of the bot backend on your PC. Default works if you run the app’s server locally. "
+            "Use 127.0.0.1 instead of “localhost” if connection fails."
+        )
 
         self.t212_api_key = QLineEdit()
-        self.t212_api_key.setPlaceholderText("Trading212 API key")
+        self.t212_api_key.setPlaceholderText("API key from Trading212 → Settings → API")
         self.t212_api_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.t212_secret_key = QLineEdit()
-        self.t212_secret_key.setPlaceholderText("Trading212 secret (optional)")
+        self.t212_secret_key.setPlaceholderText("API secret (only if your broker page shows one)")
         self.t212_secret_key.setEchoMode(QLineEdit.EchoMode.Password)
 
-        self.show_t212_secrets = QCheckBox("Show keys")
-        self.show_t212_secrets.setToolTip("Reveal API key and secret on screen (disable when someone can see your display).")
+        self.show_t212_secrets = QCheckBox("Show keys on screen")
+        self.show_t212_secrets.setToolTip("Temporarily show keys. Turn off if someone else can see your screen.")
         self.show_t212_secrets.toggled.connect(self._on_show_t212_secrets_toggled)  # type: ignore[arg-type]
 
-        self.test_t212_btn = QPushButton("Test Trading212 connection")
-        self.test_t212_btn.setToolTip("Call the broker API with the key fields above (does not save to disk).")
+        self.test_t212_btn = QPushButton("Test connection to Trading212")
+        self.test_t212_btn.setToolTip("Checks your keys with the broker. Nothing is saved until you click Save.")
         self.test_t212_btn.clicked.connect(self.on_test_t212_clicked)  # type: ignore[arg-type]
 
-        self.save_btn = QPushButton("Save keys (encrypted)")
-        self.connect_btn = QPushButton("Connect")
+        self.save_btn = QPushButton("Save broker keys securely")
+        self.save_btn.setToolTip("Encrypts and stores keys on this computer.")
+        self.connect_btn = QPushButton("Connect to bot server")
         self.disconnect_btn = QPushButton("Disconnect")
         self.disconnect_btn.setEnabled(False)
 
@@ -109,9 +171,9 @@ class MainWindow(QWidget):
         self.event_log = QTextEdit()
         self.event_log.setReadOnly(True)
         self.event_log.document().setMaximumBlockCount(500)
-        _mono = QFont("Cascadia Mono", 10)
+        _mono = QFont("Cascadia Mono", 11)
         if not _mono.exactMatch():
-            _mono = QFont("Consolas", 10)
+            _mono = QFont("Consolas", 11)
         self.event_log.setFont(_mono)
 
         self._last_bot_snapshot: dict[str, dict] = {}
@@ -136,12 +198,21 @@ class MainWindow(QWidget):
         self._wire_activity_table(self.signals_table)
 
         self.exec_queue = QListWidget()
-        self.exec_queue.addItem("Execution queue will appear here.")
+        self.exec_queue.addItem("When the bot sends a trade signal, it will show up here.")
 
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_connection_tab(), "Connection")
-        self.tabs.addTab(self._build_activity_tab(), "Activity")
-        self.tabs.addTab(self._build_execution_tab(), "Execution")
+        self.tabs.addTab(self._build_connection_tab(), "Setup")
+        self.tabs.setTabToolTip(
+            0,
+            "License, server address, and Trading212 keys. Start here before you connect.",
+        )
+        self.tabs.addTab(self._build_activity_tab(), "Markets & bot")
+        self.tabs.setTabToolTip(
+            1,
+            "Live view of market hours, what the bot thinks per symbol, and recent signals.",
+        )
+        self.tabs.addTab(self._build_execution_tab(), "Trades")
+        self.tabs.setTabToolTip(2, "Queue of signals and what the app did with each one.")
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.tabs)
@@ -150,10 +221,15 @@ class MainWindow(QWidget):
         splitter.setStretchFactor(1, 3)
 
         root = QVBoxLayout()
+        root.setContentsMargins(10, 10, 10, 10)
+        root.setSpacing(10)
         root.addLayout(self._build_top_bar())
         root.addWidget(splitter, 1)
 
-        self.setLayout(root)
+        central = QWidget()
+        central.setLayout(root)
+        self.setCentralWidget(central)
+        self._build_menu_bar()
         self._set_status("OFFLINE")
         self._append_event("App started.")
         self._append_event(f"Version: {self._git_version()}")
@@ -183,60 +259,138 @@ class MainWindow(QWidget):
 
     def _build_top_bar(self) -> QHBoxLayout:
         top = QHBoxLayout()
-        top.addWidget(self.status_dot)
-        top.addWidget(self.status_label)
-        top.addSpacing(12)
+        top.setSpacing(10)
+        status_frame = QFrame()
+        status_frame.setFrameShape(QFrame.Shape.StyledPanel)
+        sf = QHBoxLayout(status_frame)
+        sf.setContentsMargins(10, 6, 10, 6)
+        sf.addWidget(self.status_dot)
+        sf.addWidget(self.status_label)
+        top.addWidget(status_frame)
         top.addWidget(self.t212_status)
         top.addWidget(self.exec_mode)
-        top.addWidget(QLabel("WS:"))
-        top.addWidget(self.ws_url, 1)
-        top.addSpacing(8)
+        top.addStretch(1)
         top.addWidget(self.connect_btn)
         top.addWidget(self.disconnect_btn)
         return top
 
+    def _build_menu_bar(self) -> None:
+        bar = self.menuBar()
+        help_menu = bar.addMenu("&Help")
+        about = QAction("&About this app", self)
+        about.triggered.connect(self._show_about)  # type: ignore[arg-type]
+        help_menu.addAction(about)
+        tips = QAction("Quick &tips", self)
+        tips.triggered.connect(self._show_quick_tips)  # type: ignore[arg-type]
+        help_menu.addAction(tips)
+
+    def _show_about(self) -> None:
+        QMessageBox.about(
+            self,
+            "About this app",
+            "Trading212 Bot — Desktop\n\n"
+            "Connects to your bot server, shows what the strategy is doing, and optionally "
+            "sends orders to Trading212 when you turn on live mode.\n\n"
+            f"Build: {self._git_version()}",
+        )
+
+    def _show_quick_tips(self) -> None:
+        QMessageBox.information(
+            self,
+            "Quick tips",
+            "• Setup — Enter your license key and leave the server address as default unless the backend runs on another machine.\n\n"
+            "• Broker keys — Use “Test connection” before saving. Keys are stored encrypted on this PC.\n\n"
+            "• Connect — Use the top bar when you are ready. Watch the activity log on the right.\n\n"
+            "• Live mode — Leave off while you are learning; turn on only when you want real orders.",
+        )
+
+    def _on_live_mode_toggled(self, checked: bool) -> None:
+        if not checked:
+            return
+        r =         QMessageBox.warning(
+            self,
+            "Live trading",
+            "Live mode can place real-money orders on your Trading212 account when the bot sends a LONG signal.\n\n"
+            "Keep this off if you only want to watch signals in the log.",
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        if r != QMessageBox.StandardButton.Ok:
+            self.exec_mode.blockSignals(True)
+            self.exec_mode.setChecked(False)
+            self.exec_mode.blockSignals(False)
+
     def _build_connection_tab(self) -> QWidget:
         w = QWidget()
-        form = QFormLayout()
-        form.addRow("License key", self.license_key)
+        outer = QVBoxLayout()
+        outer.setSpacing(14)
+        outer.addWidget(
+            _hint_label(
+                "Fill this in once, then use “Connect to bot server” in the bar at the top. "
+                "The server address is under “Subscription & server” below.",
+            ),
+        )
 
-        diag_row = QHBoxLayout()
-        self.diagnostics_btn = QPushButton("Open backend health in browser")
-        self.diagnostics_btn.setToolTip("Opens /health/supabase-smoke for the host/port in the WS URL (lengths only, no secrets).")
-        self.diagnostics_btn.clicked.connect(self._open_backend_diagnostics)  # type: ignore[arg-type]
-        diag_row.addWidget(self.diagnostics_btn)
-        diag_row.addStretch(1)
-        form.addRow("Diagnostics", diag_row)
+        sub_box = QGroupBox("Subscription & server")
+        sub_form = QFormLayout()
+        sub_form.addRow("License key", self.license_key)
+        sub_form.addRow(_hint_label("From your account on the website — copy and paste the full key."))
+        sub_form.addRow("Bot server address", self.ws_url)
+        sub_form.addRow(
+            _hint_label(
+                "Usually leave this unchanged. If the app cannot connect, confirm the backend is running and the port matches.",
+            ),
+        )
+        sub_box.setLayout(sub_form)
+        outer.addWidget(sub_box)
 
-        key_frame = QFrame()
-        key_layout = QVBoxLayout()
-        key_layout.setContentsMargins(0, 0, 0, 0)
-        key_layout.addWidget(self.t212_api_key)
-        key_layout.addWidget(self.t212_secret_key)
+        keys_box = QGroupBox("Trading212 API (for real trades)")
+        keys_outer = QVBoxLayout()
+        keys_outer.addWidget(_hint_label("Only needed if you use live mode or market status. Keys stay on this computer."))
+        keys_outer.addWidget(self.t212_api_key)
+        keys_outer.addWidget(self.t212_secret_key)
         key_btns = QHBoxLayout()
         key_btns.addWidget(self.show_t212_secrets)
         key_btns.addWidget(self.test_t212_btn)
         key_btns.addStretch(1)
-        key_layout.addLayout(key_btns)
-        key_layout.addWidget(self.save_btn)
-        key_frame.setLayout(key_layout)
+        keys_outer.addLayout(key_btns)
+        keys_outer.addWidget(self.save_btn)
+        keys_box.setLayout(keys_outer)
+        outer.addWidget(keys_box)
 
-        form.addRow("Trading212 keys", key_frame)
-        w.setLayout(form)
+        diag_box = QGroupBox("Troubleshooting")
+        diag_layout = QVBoxLayout()
+        diag_layout.addWidget(
+            _hint_label("If something looks wrong with the backend or database link, this opens a technical status page."),
+        )
+        self.diagnostics_btn = QPushButton("Open backend health check in browser")
+        self.diagnostics_btn.setToolTip("Opens a health URL for the host in your server address (no secrets shown).")
+        self.diagnostics_btn.clicked.connect(self._open_backend_diagnostics)  # type: ignore[arg-type]
+        diag_layout.addWidget(self.diagnostics_btn, alignment=Qt.AlignmentFlag.AlignLeft)
+        diag_box.setLayout(diag_layout)
+        outer.addWidget(diag_box)
+        outer.addStretch(1)
+        w.setLayout(outer)
         return w
 
     def _build_activity_tab(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout()
+        layout.setSpacing(8)
+        layout.addWidget(
+            _hint_label(
+                "Filter rows by typing part of a ticker (e.g. ASML). Tables update when you are connected and the bot sends data.",
+            ),
+        )
         filt = QHBoxLayout()
-        filt.addWidget(QLabel("Symbol filter"))
+        filt.addWidget(QLabel("Show symbols containing"))
         filt.addWidget(self.activity_symbol_filter, 1)
         layout.addLayout(filt)
-        layout.addWidget(QLabel("Trading212 market state"))
+        layout.addWidget(_section_title("Is the market open? (from Trading212)"))
         layout.addWidget(self.market_table, 1)
-        layout.addWidget(QLabel("Bot state (latest snapshot)"))
+        layout.addWidget(_section_title("What the bot is doing (per symbol)"))
         layout.addWidget(self.bot_table, 2)
-        layout.addWidget(QLabel("Recent signals"))
+        layout.addWidget(_section_title("Recent signals (newest first)"))
         layout.addWidget(self.signals_table, 2)
         w.setLayout(layout)
         return w
@@ -244,7 +398,14 @@ class MainWindow(QWidget):
     def _build_execution_tab(self) -> QWidget:
         w = QWidget()
         layout = QVBoxLayout()
-        layout.addWidget(QLabel("Execution / position manager"))
+        layout.setSpacing(8)
+        layout.addWidget(
+            _hint_label(
+                "Each line is something the app received and may send to the broker. "
+                "With live mode off, items are logged only — check the event log on the right for details.",
+            ),
+        )
+        layout.addWidget(_section_title("Signal queue"))
         layout.addWidget(self.exec_queue, 1)
         w.setLayout(layout)
         return w
@@ -253,9 +414,9 @@ class MainWindow(QWidget):
         w = QWidget()
         layout = QVBoxLayout()
         log_head = QHBoxLayout()
-        log_head.addWidget(QLabel("Event log"))
-        clear_log = QPushButton("Clear")
-        clear_log.setToolTip("Clear the on-screen log (does not affect the server).")
+        log_head.addWidget(_section_title("Activity log"))
+        clear_log = QPushButton("Clear log")
+        clear_log.setToolTip("Clears this panel only — your bot server is not affected.")
         clear_log.clicked.connect(self.event_log.clear)  # type: ignore[arg-type]
         log_head.addStretch(1)
         log_head.addWidget(clear_log)
@@ -279,7 +440,11 @@ class MainWindow(QWidget):
         api = self.t212_api_key.text().strip()
         sec = self.t212_secret_key.text().strip() or None
         if not api:
-            QMessageBox.warning(self, "API key required", "Enter your Trading212 API key to test the connection.")
+            QMessageBox.warning(
+                self,
+                "API key needed",
+                "Enter your Trading212 API key in the fields above, then run the test again.",
+            )
             return
         self.test_t212_btn.setEnabled(False)
         try:
@@ -288,18 +453,18 @@ class MainWindow(QWidget):
                 pending = len(await client.get_pending_orders())
             QMessageBox.information(
                 self,
-                "Trading212 connection OK",
-                "API credentials were accepted.\n\n"
+                "Connection successful",
+                "Trading212 accepted your API keys.\n\n"
                 f"Free funds: {funds:.2f}\n"
                 f"Pending orders: {pending}\n\n"
-                "Default client uses the Trading212 demo API host unless you change it in code.",
+                "If you use a practice account, these numbers are for that account.",
             )
             self._append_event(f"T212 test OK: freeFunds≈{funds:.2f}, pendingOrders={pending}")
         except T212APIError as exc:
-            QMessageBox.critical(self, "Trading212 API error", str(exc))
+            QMessageBox.critical(self, "Could not reach Trading212", str(exc))
             self._append_event(f"T212 test failed: {exc}")
         except Exception as exc:
-            QMessageBox.critical(self, "Trading212 test failed", str(exc))
+            QMessageBox.critical(self, "Test failed", str(exc))
             self._append_event(f"T212 test failed: {exc}")
         finally:
             self.test_t212_btn.setEnabled(True)
@@ -399,9 +564,9 @@ class MainWindow(QWidget):
     def _refresh_t212_status(self) -> None:
         stored = self._store.load()
         if stored and stored.t212_api_key:
-            self.t212_status.setText("Trading212: Configured (encrypted)")
+            self.t212_status.setText("Broker: keys saved on this PC")
         else:
-            self.t212_status.setText("Trading212: Not configured")
+            self.t212_status.setText("Broker: not set up yet")
 
     async def _handle_signal(self, payload: dict) -> None:
         sid = payload.get("id")
@@ -422,7 +587,7 @@ class MainWindow(QWidget):
             self.exec_queue.takeItem(self.exec_queue.count() - 1)
 
         if not self.exec_mode.isChecked():
-            self._append_event("SAFE MODE: signal queued but not executed.")
+            self._append_event("Practice mode: signal recorded — no order sent (live mode is off).")
             return
 
         # Minimal execution prototype: place a market order + protective stop for LONG only.
@@ -552,15 +717,21 @@ class MainWindow(QWidget):
             return
         lic = self.license_key.text().strip()
         if not lic:
-            QMessageBox.information(self, "License required", "Enter your portal license key (UUID) before connecting.")
+            QMessageBox.information(
+                self,
+                "License key needed",
+                "Please paste your license key from the website into the Setup tab, then try Connect again.",
+            )
             return
         try:
             uuid.UUID(lic)
         except ValueError:
             QMessageBox.warning(
                 self,
-                "Invalid license format",
-                "The license key must be a UUID, for example:\n550e8400-e29b-41d4-a716-446655440000",
+                "License key does not look right",
+                "The key should look like this (letters, numbers, and dashes):\n\n"
+                "550e8400-e29b-41d4-a716-446655440000\n\n"
+                "Copy it again from the portal and try Connect.",
             )
             return
 
@@ -590,7 +761,7 @@ class MainWindow(QWidget):
         self._ws_task = None
         self._ws_client = None
         self._set_status("OFFLINE")
-        self._append_event("Disconnected by user.")
+        self._append_event("Disconnected — you can change settings and connect again when ready.")
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
 
@@ -607,6 +778,9 @@ class MainWindow(QWidget):
 
 def main() -> None:
     app = QApplication(sys.argv)
+    app.setApplicationName("Trading212 Bot")
+    app.setOrganizationName("Trading212 Bot")
+    _apply_desktop_styles(app)
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
