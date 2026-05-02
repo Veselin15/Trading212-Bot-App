@@ -19,8 +19,9 @@ def _add_server_app_to_syspath() -> None:
     here = Path(__file__).resolve()
     repo_root = here.parents[3]  # .../Projects/Trading212-Bot-App
     server_app = repo_root / "Server-App"
+    # Append (never prepend): inserting at 0 can shadow unrelated imports during the process lifetime.
     if str(server_app) not in sys.path:
-        sys.path.insert(0, str(server_app))
+        sys.path.append(str(server_app))
 
 
 def _now_utc() -> datetime:

@@ -7,6 +7,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from app.api.ws import ws_manager
+from app.integrations.supabase_rest import supabase_config_smoke_dict
 
 
 router = APIRouter(prefix="/debug", tags=["debug"])
@@ -17,6 +18,12 @@ class TestSignalIn(BaseModel):
     direction: str = Field(default="LONG", pattern="^(LONG|SHORT)$")
     stop_loss_pct: float = Field(default=2.0, gt=0)
     take_profit_pct: float = Field(default=6.0, gt=0)
+
+
+@router.get("/supabase_config_smoke")
+async def supabase_config_smoke() -> dict:
+    """Non-secret lengths for diagnosing WS 4420 (empty Supabase config)."""
+    return supabase_config_smoke_dict()
 
 
 @router.post("/broadcast_test_signal")
