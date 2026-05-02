@@ -1,19 +1,24 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import logging
+import os
+import sys
 import uuid
 from datetime import UTC, datetime
 
 import httpx
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
-from app.integrations.supabase_rest import SupabaseRest
+from app.integrations.supabase_rest import SupabaseRest, supabase_config_smoke_dict
 from app.ws.manager import Connection, WsManager
 
 
 router = APIRouter(prefix="/ws", tags=["ws"])
 
 ws_manager = WsManager()
+_log = logging.getLogger("uvicorn.error")
 
 
 def _client_ip(ws: WebSocket) -> str:
@@ -25,6 +30,7 @@ def _client_ip(ws: WebSocket) -> str:
 @router.websocket("/exec")
 async def ws_exec(ws: WebSocket) -> None:
     await ws.accept()
+    _log.info("WS /ws/exec accepted (pid=%s)", os.getpid())
 
     hello = await ws.receive_json()
     if not isinstance(hello, dict) or hello.get("type") != "HELLO":
@@ -37,9 +43,24 @@ async def ws_exec(ws: WebSocket) -> None:
         await ws.close(code=4401)
         return
 
-    sb = SupabaseRest.from_settings()
+    root = ws.app
+    sb = getattr(root.state, "supabase_rest", None)
     if sb is None:
-        await ws.close(code=1011)
+        sb = SupabaseRest.from_settings()
+    if sb is None:
+        # 4420: missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (not a generic internal error).
+        info = supabase_config_smoke_dict()
+        diag = json.dumps(info, indent=2)
+        _log.error("WS /ws/exec closing 4420 (no Supabase credentials). Diagnostics (no secrets):\n%s", diag)
+        print(f"WS4420 pid={os.getpid()} see uvicorn.error log for JSON diagnostics", file=sys.stderr, flush=True)
+        any_file = any(c.get("exists") for c in info.get("candidates", []) if isinstance(c, dict))
+        reason = (
+            f"file_url_len={info.get('file_url_len')} file_key_len={info.get('file_key_len')} "
+            f"any_dotenv={any_file}"
+        )
+        if len(reason) > 118:
+            reason = reason[:115] + "..."
+        await ws.close(code=4420, reason=reason)
         return
 
     now = datetime.now(tz=UTC)
@@ -135,7 +156,7 @@ async def ws_exec(ws: WebSocket) -> None:
                 continue
             mtype = msg.get("type")
             if mtype == "PONG":
-                await ws_manager.touch_pong(lic.id)
+                await ws_manager.touch_pong(conn.license_id)
                 continue
             if mtype == "ACK":
                 continue
@@ -143,9 +164,9 @@ async def ws_exec(ws: WebSocket) -> None:
                 await ws.send_json({"type": "ECHO", "payload": msg.get("payload")})
                 continue
     except WebSocketDisconnect:
-        await ws_manager.remove(lic.id)
+        await ws_manager.remove(conn.license_id)
     except Exception:
-        await ws_manager.remove(lic.id)
+        await ws_manager.remove(conn.license_id)
         try:
             await ws.close(code=1011)
         except Exception:
