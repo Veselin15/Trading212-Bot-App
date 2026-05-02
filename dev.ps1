@@ -33,6 +33,9 @@ if (-not $pythonCmd) {
 }
 $pythonExe = $pythonCmd.Source
 
+# Avoid Windows port 8000 where unrelated or zombie listeners often collide with this app.
+$BackendDevPort = 8010
+
 function Write-PidFile([string]$name, [int]$procId) {
   Set-Content -Path (Join-Path $runDir "$name.pid") -Value $procId -Encoding ASCII
 }
@@ -55,6 +58,38 @@ function Stop-IfRunning([string]$name) {
   Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $runDir "$name.pid")
 }
 
+function Stop-UvicornListenersOnPort([int]$Port) {
+  <#
+  Windows often leaves multiple LISTENING rows for the same port after repeated
+  ``uvicorn --reload`` runs. Traffic then hits a stale process (404 on /health, WS 4420).
+  Match ``app.main:app`` plus either ``uvicorn`` or ``python ... -m uvicorn``.
+  #>
+  $pids = New-Object "System.Collections.Generic.HashSet[int]"
+  foreach ($line in (netstat -ano)) {
+    if ($line -notmatch "LISTENING") { continue }
+    if ($line -notmatch ":$Port\s") { continue }
+    $parts = ($line -split "\s+") | Where-Object { $_ -ne "" }
+    if ($parts.Count -lt 5) { continue }
+    $last = $parts[$parts.Count - 1]
+    if ($last -notmatch "^\d+$") { continue }
+    [void]$pids.Add([int]$last)
+  }
+  foreach ($procId in $pids) {
+    try {
+      $p = Get-CimInstance Win32_Process -Filter "ProcessId=$procId" -ErrorAction SilentlyContinue
+      if (-not $p) { continue }
+      $cl = [string]$p.CommandLine
+      $isThisBackend = $cl -match "app\.main:app" -and (
+        $cl -match "uvicorn(\.exe)?" -or $cl -match "-m\s+uvicorn"
+      )
+      if ($isThisBackend) {
+        Write-Host "Stopping stale backend listener on port $Port pid=$procId" -ForegroundColor Yellow
+        Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+      }
+    } catch { }
+  }
+}
+
 Write-Host "Starting Trading212 Bot App (dev)..." -ForegroundColor Cyan
 
 # Ensure Postgres is up (Docker Desktop must be running)
@@ -64,14 +99,16 @@ docker compose up -d | Out-Host
 # Stop previous dev-run processes we started
 Stop-IfRunning "backend"
 Stop-IfRunning "desktop"
+Stop-UvicornListenersOnPort 8000
+Stop-UvicornListenersOnPort $BackendDevPort
 
 # Backend (uvicorn reload) in a separate window
-Write-Host "Starting backend (auto-reload)..." -ForegroundColor Cyan
+Write-Host "Starting backend (auto-reload) on port $BackendDevPort..." -ForegroundColor Cyan
 $backendCmd = @(
   "-NoProfile",
   "-ExecutionPolicy", "Bypass",
   "-Command",
-  "Set-Location '$repoRoot'; `$env:PYTHONPATH='backend'; uvicorn app.main:app --reload --host 127.0.0.1 --port 8000"
+  "Set-Location '$repoRoot\backend'; uvicorn app.main:app --reload --reload-delay 1 --host 127.0.0.1 --port $BackendDevPort"
 )
 $backendProc = Start-Process -FilePath "powershell.exe" -ArgumentList $backendCmd -WindowStyle Normal -PassThru -RedirectStandardOutput $backendOut -RedirectStandardError $backendErr
 Write-PidFile "backend" $backendProc.Id
@@ -89,8 +126,8 @@ Write-PidFile "desktop" $desktopProc.Id
 
 Write-Host ""
 Write-Host "Done." -ForegroundColor Green
-Write-Host "Backend:  http://127.0.0.1:8000" -ForegroundColor Green
-Write-Host "WS:       ws://127.0.0.1:8000/ws/exec" -ForegroundColor Green
+Write-Host "Backend:  http://127.0.0.1:$BackendDevPort" -ForegroundColor Green
+Write-Host "WS:       ws://127.0.0.1:$BackendDevPort/ws/exec" -ForegroundColor Green
 Write-Host "Stop:     .\\stop.ps1" -ForegroundColor Yellow
 Write-Host "Logs:     .\\.run\\backend.*.log and .\\.run\\desktop.*.log" -ForegroundColor Yellow
 
