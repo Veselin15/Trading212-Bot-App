@@ -10,6 +10,35 @@ services:
       - "5432:5432"
     volumes:
       - t212_bot_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U t212_bot -d t212_bot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: t212_bot_backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Load Supabase credentials + any overrides from backend/.env.
+    # The DATABASE_URL below overrides the localhost value in that file so the
+    # container connects to the postgres service, not the host machine.
+    env_file:
+      - ./backend/.env
+    environment:
+      DATABASE_URL: postgresql+asyncpg://t212_bot:t212_bot@postgres:5432/t212_bot
+      APP_BASE_URL: http://localhost:8010
+    ports:
+      - "8010:8010"
+    restart: unless-stopped
+    volumes:
+      # Persist bot state (open positions, risk tracking) across container restarts
+      - t212_bot_state:/app/Server-App/t212_miner_bot
 
 volumes:
   t212_bot_pgdata:
+  t212_bot_state:
