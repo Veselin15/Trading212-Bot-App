@@ -30,6 +30,8 @@ def _smoke_health_url(ws_url: str) -> str:
 class WsConfig:
     url: str
     license_key: str
+    reconnect_interval_s: int = 5
+    max_reconnect_attempts: int = 0  # 0 = unlimited
 
 
 class ExecWsClient:
@@ -53,6 +55,7 @@ class ExecWsClient:
         self._stop.set()
 
     async def run_forever(self) -> None:
+        attempt = 0
         while not self._stop.is_set():
             self._on_status("CONNECTING")
             try:
@@ -63,6 +66,7 @@ class ExecWsClient:
                     close_timeout=10,
                 ) as ws:
                     self._on_status("ONLINE")
+                    attempt = 0
                     self._on_event(f"Connected to {self._cfg.url}")
                     await ws.send(json.dumps({"type": "HELLO", "license_key": self._cfg.license_key}))
 
@@ -112,10 +116,20 @@ class ExecWsClient:
                         self._on_event(f"Server close reason: {reason.strip()}")
                 else:
                     self._on_event(f"Disconnected (code={code}): {reason}".strip())
-                self._on_event("Reconnecting in 5s...")
-                await asyncio.sleep(5.0)
+                attempt += 1
+                if self._cfg.max_reconnect_attempts > 0 and attempt >= self._cfg.max_reconnect_attempts:
+                    self._on_event(f"Max reconnect attempts ({self._cfg.max_reconnect_attempts}) reached. Stopped.")
+                    return
+                interval = self._cfg.reconnect_interval_s
+                self._on_event(f"Reconnecting in {interval}s…")
+                await asyncio.sleep(float(interval))
             except Exception:
                 self._on_status("OFFLINE")
-                self._on_event("Disconnected. Reconnecting in 5s...")
-                await asyncio.sleep(5.0)
+                attempt += 1
+                if self._cfg.max_reconnect_attempts > 0 and attempt >= self._cfg.max_reconnect_attempts:
+                    self._on_event(f"Max reconnect attempts ({self._cfg.max_reconnect_attempts}) reached. Stopped.")
+                    return
+                interval = self._cfg.reconnect_interval_s
+                self._on_event(f"Disconnected. Reconnecting in {interval}s…")
+                await asyncio.sleep(float(interval))
 

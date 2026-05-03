@@ -7,14 +7,16 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-from PySide6.QtCore import QPoint, Qt, QUrl
+from PySide6.QtCore import QPoint, Qt, QTimer, QUrl
 from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QCheckBox,
+    QComboBox,
     QDialog,
     QDialogButtonBox,
+    QDoubleSpinBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -42,19 +44,24 @@ from PySide6.QtWidgets import (
 from qasync import QEventLoop, asyncSlot
 
 from .crypto_store import CryptoStore, SecretPayload
+from .license_checker import LicenseResult, check_license
+from .paper_live_toggle import PaperLiveToggle
 from .settings_store import AppSettings, SettingsStore
 from .t212_client import T212APIError, T212Client, T212Keys
 from .ws_client import ExecWsClient, WsConfig, _smoke_health_url
 
-# ── colour tokens matching the AlgoFlow website (sky-500 primary) ─────────────
+# Background license re-validation interval (ms). Server is source of truth for tier.
+LICENSE_RECHECK_INTERVAL_MS = 10 * 60 * 1000
+
+# ── colour tokens — SwiftTrade dark theme (emerald primary) ──────────────────
 _BG       = "#0c0c10"   # body — deepest layer
 _SURFACE  = "#13131a"   # cards / panels
 _SURFACE2 = "#1c1c25"   # elevated cards, groupboxes
 _BORDER   = "#2a2a38"   # subtle borders
 _BORDER2  = "#3a3a4e"   # interactive borders
-_SKY      = "#0ea5e9"   # sky-500 — primary accent (website)
-_SKY_HVR  = "#38bdf8"   # sky-400 — hover
-_SKY_DIM  = "#0c3a52"   # sky tint bg for tags/indicators
+_SKY      = "#10b981"   # emerald-500 — primary accent
+_SKY_HVR  = "#34d399"   # emerald-400 — hover
+_SKY_DIM  = "#064e3b"   # emerald tint bg for tags/indicators
 _TEXT     = "#f1f1f3"   # primary text
 _MUTED    = "#8b8b9e"   # secondary / hint text
 _SUCCESS  = "#22c55e"
@@ -523,6 +530,52 @@ QSpinBox::up-button, QSpinBox::down-button {{
 QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
     background-color: {_BORDER2};
 }}
+
+QDoubleSpinBox {{
+    background-color: {_BG};
+    color: {_TEXT};
+    border: 1px solid {_BORDER2};
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 9pt;
+    selection-background-color: {_SKY_DIM};
+}}
+QDoubleSpinBox:focus {{ border-color: {_SKY}; }}
+QDoubleSpinBox::up-button, QDoubleSpinBox::down-button {{
+    background-color: {_SURFACE2};
+    border: none;
+    width: 18px;
+    border-radius: 3px;
+}}
+QDoubleSpinBox::up-button:hover, QDoubleSpinBox::down-button:hover {{
+    background-color: {_BORDER2};
+}}
+
+QComboBox {{
+    background-color: {_BG};
+    color: {_TEXT};
+    border: 1px solid {_BORDER2};
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-size: 9pt;
+}}
+QComboBox:focus {{ border-color: {_SKY}; }}
+QComboBox::drop-down {{
+    border: none;
+    background-color: {_SURFACE2};
+    border-top-right-radius: 6px;
+    border-bottom-right-radius: 6px;
+    width: 22px;
+}}
+QComboBox QAbstractItemView {{
+    background-color: {_SURFACE2};
+    color: {_TEXT};
+    border: 1px solid {_BORDER2};
+    border-radius: 6px;
+    selection-background-color: {_SKY_DIM};
+    selection-color: #e0f2fe;
+    padding: 4px;
+}}
 QDialogButtonBox QPushButton {{
     background-color: {_SURFACE2};
     color: {_TEXT};
@@ -607,7 +660,7 @@ def _status_text(status: str) -> tuple[str, str]:
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
-        self.setWindowTitle("AlgoFlow — Desktop Executor")
+        self.setWindowTitle("SwiftTrade — Desktop Executor")
         self.setMinimumSize(980, 640)
         self.resize(1120, 720)
 
@@ -616,6 +669,24 @@ class MainWindow(QMainWindow):
         self._settings_store = SettingsStore(self._base_dir)
         self._ws_task: asyncio.Task | None = None
         self._ws_client: ExecWsClient | None = None
+
+        # ── trading / risk settings (populated from settings store) ──
+        self._order_quantity: float = 1.0
+        self._default_stop_loss_pct: float = 2.0
+        self._confirm_before_trade: bool = False
+        self._skip_non_long_signals: bool = True
+        self._max_daily_trades: int = 0
+        self._signal_cooldown_s: int = 0
+        self._notify_on_signal: bool = True
+        self._notify_on_connect: bool = True
+        self._reconnect_interval_s: int = 5
+        self._max_reconnect_attempts: int = 0
+        self._log_level_filter: str = "all"
+
+        # ── runtime trade tracking ───────────────────────────────────
+        self._trades_today: int = 0
+        self._trades_today_date = datetime.now().date()
+        self._last_signal_times: dict[str, datetime] = {}
 
         # ── status dot + label ───────────────────────────────────────
         self.status_dot = QLabel("●")
@@ -632,8 +703,8 @@ class MainWindow(QMainWindow):
 
         # ── inputs ───────────────────────────────────────────────────
         self.license_key = QLineEdit()
-        self.license_key.setPlaceholderText("Paste your license key from the AlgoFlow portal")
-        self.license_key.setToolTip("UUID from the web portal, e.g. 550e8400-e29b-41d4-a716-446655440000")
+        self.license_key.setPlaceholderText("Paste your license key from the SwiftTrade portal")
+        self.license_key.setToolTip("UUID from the SwiftTrade portal, e.g. 550e8400-e29b-41d4-a716-446655440000")
 
         self.ws_url = QLineEdit("ws://127.0.0.1:8010/ws/exec")
         self.ws_url.setToolTip(
@@ -653,13 +724,44 @@ class MainWindow(QMainWindow):
         self.show_t212_secrets.setToolTip("Show/hide API credentials. Turn off if others can see your screen.")
         self.show_t212_secrets.toggled.connect(self._on_show_t212_secrets_toggled)  # type: ignore[arg-type]
 
-        self.exec_mode = QCheckBox("Place real trades  (Live mode)")
-        self.exec_mode.setChecked(False)
-        self.exec_mode.setToolTip(
-            "Off: signals are logged only — no orders sent.\n"
-            "On: LONG signals place real market orders on Trading212."
+        self.trading_mode = PaperLiveToggle()
+        self.trading_mode.setToolTip(
+            "Paper: log signals only — no broker orders.\n"
+            "Live: place real orders (requires active Pro license; re-checked periodically)."
         )
-        self.exec_mode.toggled.connect(self._on_live_mode_toggled)  # type: ignore[arg-type]
+        self.trading_mode.set_pro_unlocked(False)
+        self.trading_mode.live_enable_requested.connect(self._on_live_enable_requested)  # type: ignore[arg-type]
+        self.trading_mode.mode_changed.connect(self._on_trading_mode_changed)  # type: ignore[arg-type]
+
+        self._setup_trading_mode_hint = QLabel(
+            "Top bar: Paper trading — use the toggle to switch (Live requires Pro)."
+        )
+        self._setup_trading_mode_hint.setObjectName("HintLabel")
+        self._setup_trading_mode_hint.setWordWrap(True)
+
+        # ── license tier state & widgets ─────────────────────────────
+        self._license_tier: str = "unvalidated"
+        self._license_check_busy: bool = False
+
+        self.validate_btn = QPushButton("Validate")
+        self.validate_btn.setObjectName("SecondaryBtn")
+        self.validate_btn.setFixedWidth(92)
+        self.validate_btn.setToolTip(
+            "Check your license tier against the SwiftTrade backend.\n"
+            "Pro subscription required to enable live trading."
+        )
+        self.validate_btn.clicked.connect(self.on_validate_clicked)  # type: ignore[arg-type]
+
+        self.tier_status_label = QLabel(
+            "Not validated — click Validate to check your license tier."
+        )
+        self.tier_status_label.setObjectName("HintLabel")
+        self.tier_status_label.setWordWrap(True)
+
+        self.tier_badge_nav = QLabel("● Not validated")
+        self.tier_badge_nav.setStyleSheet(
+            f"color: {_MUTED}; font-size: 8.5pt; background: transparent; border: none; padding: 0 4px;"
+        )
 
         # ── buttons ──────────────────────────────────────────────────
         self.connect_btn = QPushButton("Connect")
@@ -756,7 +858,7 @@ class MainWindow(QMainWindow):
         self._setup_status_bar()
 
         self._set_status("OFFLINE")
-        self._append_event("info", "App started — AlgoFlow Desktop Executor.")
+        self._append_event("info", "App started — SwiftTrade Desktop Executor.")
         self._append_event("info", f"Build: {self._git_version()}")
         self._refresh_t212_status()
 
@@ -766,6 +868,8 @@ class MainWindow(QMainWindow):
         if settings.license_key:
             self.license_key.setText(settings.license_key)
         self._apply_log_settings(settings)
+        self._apply_trading_settings(settings)
+        self.start_minimized = settings.start_minimized
         if settings.splitter_sizes and len(settings.splitter_sizes) == 2:
             self._splitter.setSizes(settings.splitter_sizes)
         else:
@@ -778,6 +882,16 @@ class MainWindow(QMainWindow):
             self._refresh_t212_status()
 
         self.activity_symbol_filter.textChanged.connect(self._on_filter_changed)  # type: ignore[arg-type]
+
+        self._license_recheck_timer = QTimer(self)
+        self._license_recheck_timer.setInterval(LICENSE_RECHECK_INTERVAL_MS)
+        self._license_recheck_timer.timeout.connect(self._on_license_recheck_tick)  # type: ignore[arg-type]
+        self._license_recheck_timer.start()
+
+        if settings.auto_connect_on_start:
+            QTimer.singleShot(600, self.on_connect_clicked)
+
+        self._sync_setup_mode_hint()
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -803,10 +917,10 @@ class MainWindow(QMainWindow):
         bar.setSpacing(0)
 
         # ── left: wordmark ─────────────────────────────────────────
-        alg = QLabel("Algo")
+        alg = QLabel("Swift")
         alg.setObjectName("AppWordmark")
         alg.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        flow = QLabel("Flow")
+        flow = QLabel("Trade")
         flow.setObjectName("AppWordmarkAccent")
         flow.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
         bar.addWidget(alg)
@@ -833,11 +947,15 @@ class MainWindow(QMainWindow):
 
         # broker pill (text-only, next to badge)
         bar.addWidget(self.t212_status)
+        bar.addSpacing(4)
+
+        # tier badge
+        bar.addWidget(self.tier_badge_nav)
 
         bar.addStretch(1)
 
         # ── right cluster ─────────────────────────────────────────
-        bar.addWidget(self.exec_mode)
+        bar.addWidget(self.trading_mode)
         bar.addSpacing(12)
 
         sep2 = QFrame()
@@ -877,7 +995,7 @@ class MainWindow(QMainWindow):
         hmenu = mb.addMenu("&Help")
         for label, slot in [
             ("&Quick start tips", self._show_quick_tips),
-            ("&About AlgoFlow", self._show_about),
+            ("&About SwiftTrade", self._show_about),
         ]:
             a = QAction(label, self)
             a.triggered.connect(slot)  # type: ignore[arg-type]
@@ -892,77 +1010,428 @@ class MainWindow(QMainWindow):
     def _set_sb(self, text: str) -> None:
         self._sb_label.setText(f"  {text}")
 
+    # ── license tier enforcement ──────────────────────────────────────────────
+
+    def _update_tier_ui(self, tier: str) -> None:
+        """Apply UI state for the validated tier: pro / free / unvalidated."""
+        self._license_tier = tier
+        if tier == "pro":
+            self.trading_mode.set_pro_unlocked(True)
+            self.trading_mode.setToolTip(
+                "Paper: log signals only — no broker orders.\n"
+                "Live: place real market orders on Trading212 (tier re-checked periodically on the server)."
+            )
+            self.tier_badge_nav.setText("● Pro")
+            self.tier_badge_nav.setStyleSheet(
+                f"color: {_SUCCESS}; font-size: 8.5pt; font-weight: 700; "
+                "background: transparent; border: none; padding: 0 4px;"
+            )
+            self.tier_status_label.setText("Pro license active — live trading is unlocked.")
+            self.tier_status_label.setStyleSheet(
+                f"color: {_SUCCESS}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
+            )
+        elif tier == "free":
+            self.trading_mode.set_pro_unlocked(False)
+            self.trading_mode.setToolTip(
+                "Pro subscription required for Live trading. Upgrade on the SwiftTrade website.\n"
+                "Paper mode stays available."
+            )
+            self.tier_badge_nav.setText("● Free")
+            self.tier_badge_nav.setStyleSheet(
+                f"color: {_WARN}; font-size: 8.5pt; font-weight: 700; "
+                "background: transparent; border: none; padding: 0 4px;"
+            )
+            self.tier_status_label.setText(
+                "Free Demo License active — live trading disabled. Upgrade on the SwiftTrade website."
+            )
+            self.tier_status_label.setStyleSheet(
+                f"color: {_WARN}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
+            )
+        else:
+            self.trading_mode.set_pro_unlocked(False)
+            self.trading_mode.setToolTip(
+                "Validate your license key against the SwiftTrade server to unlock Live trading."
+            )
+            self.tier_badge_nav.setText("● Not validated")
+            self.tier_badge_nav.setStyleSheet(
+                f"color: {_MUTED}; font-size: 8.5pt; "
+                "background: transparent; border: none; padding: 0 4px;"
+            )
+            self.tier_status_label.setText(
+                "Not validated — click Validate to check your license tier."
+            )
+            self.tier_status_label.setStyleSheet(
+                f"color: {_MUTED}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
+            )
+        self._sync_setup_mode_hint()
+
+    async def _run_license_validation(self, *, silent: bool) -> LicenseResult | None:
+        """
+        Query the backend license endpoint (Supabase-backed). Returns None if a check is already in flight.
+        """
+        if self._license_check_busy:
+            return None
+        self._license_check_busy = True
+        prev_tier = self._license_tier
+        try:
+            lic = self.license_key.text().strip()
+            ws = self.ws_url.text().strip()
+            result = await check_license(lic, ws)
+            self._update_tier_ui(result.tier)
+            if silent:
+                if result.tier != prev_tier:
+                    self._append_event(
+                        "warn",
+                        f"Periodic license check: tier changed from {prev_tier!r} to {result.tier!r}. {result.message}",
+                    )
+                elif not result.valid and prev_tier in ("pro", "free"):
+                    self._append_event(
+                        "error",
+                        f"Periodic license check failed (was {prev_tier!r}) — {result.message}",
+                    )
+            return result
+        finally:
+            self._license_check_busy = False
+
+    @asyncSlot()
+    async def on_validate_clicked(self) -> None:
+        self.validate_btn.setEnabled(False)
+        self.validate_btn.setText("Checking…")
+        self._set_sb("Validating license key…")
+
+        try:
+            result = await self._run_license_validation(silent=False)
+            if result is None:
+                self._append_event("warn", "A license check is already running — please wait.")
+                self._set_sb("")
+                return
+            if result.tier == "pro":
+                self._append_event("ok", result.message)
+                self._set_sb("Pro license validated — live trading unlocked.")
+            elif result.tier == "free":
+                self._append_event("warn", result.message)
+                self._set_sb("Free license — live trading disabled.")
+            else:
+                self._append_event("error", result.message)
+                self._set_sb("License validation failed.")
+        finally:
+            self.validate_btn.setEnabled(True)
+            self.validate_btn.setText("Validate")
+
+    @asyncSlot()
+    async def _on_license_recheck_tick(self) -> None:
+        """Timer-driven re-validation so the UI cannot stay on Pro/Live after a subscription lapses."""
+        lic = self.license_key.text().strip()
+        if not lic:
+            return
+        try:
+            uuid.UUID(lic)
+        except ValueError:
+            return
+        await self._run_license_validation(silent=True)
+
+    def _sync_setup_mode_hint(self) -> None:
+        """Mirror the top-bar Paper/Live state in the Setup tab hint."""
+        if self.trading_mode.is_live():
+            self._setup_trading_mode_hint.setText(
+                "Top bar: Live trading is ON — real orders may be sent when signals arrive."
+            )
+            self._setup_trading_mode_hint.setStyleSheet(
+                f"color: {_DANGER}; font-size: 8.8pt; font-weight: 600; background: transparent; padding: 0; margin: 0;"
+            )
+        else:
+            self._setup_trading_mode_hint.setText(
+                "Top bar: Paper trading — signals are logged only; no broker orders."
+            )
+            self._setup_trading_mode_hint.setStyleSheet(
+                f"color: {_MUTED}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
+            )
+
+    def _on_live_enable_requested(self) -> None:
+        """User clicked Live — confirm before we arm real-money execution."""
+        r = QMessageBox.warning(
+            self,
+            "Enable live trading?",
+            "Live mode will send real-money orders to Trading212 every time the bot fires a LONG signal.\n\n"
+            "Your Pro license is active. Stay on Paper if you only want to watch signals in the log.",
+            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
+            QMessageBox.StandardButton.Cancel,
+        )
+        if r == QMessageBox.StandardButton.Ok:
+            self.trading_mode.set_live(True)
+        # Stay on Paper if cancelled (toggle widget never switched).
+
+    def _on_trading_mode_changed(self, live: bool) -> None:
+        if live:
+            self._set_sb("Live trading ON — real orders will be placed.")
+        else:
+            self._set_sb("Paper trading — signals will be logged only.")
+        self._sync_setup_mode_hint()
+
     # ── settings dialog ───────────────────────────────────────────────────────
 
     def _apply_log_settings(self, s: AppSettings) -> None:
         self._log_show_timestamps = s.log_show_timestamps
         self._log_auto_scroll = s.log_auto_scroll
+        self._log_level_filter = s.log_level_filter
         self.event_log.document().setMaximumBlockCount(s.log_max_lines)
         _f = QFont("Cascadia Mono", s.log_font_size)
         if not _f.exactMatch():
             _f = QFont("Consolas", s.log_font_size)
         self.event_log.setFont(_f)
 
-    def _show_settings(self) -> None:
+    def _apply_trading_settings(self, s: AppSettings) -> None:
+        self._order_quantity = s.order_quantity
+        self._default_stop_loss_pct = s.default_stop_loss_pct
+        self._confirm_before_trade = s.confirm_before_trade
+        self._skip_non_long_signals = s.skip_non_long_signals
+        self._max_daily_trades = s.max_daily_trades
+        self._signal_cooldown_s = s.signal_cooldown_s
+        self._notify_on_signal = s.notify_on_signal
+        self._notify_on_connect = s.notify_on_connect
+        self._reconnect_interval_s = s.reconnect_interval_s
+        self._max_reconnect_attempts = s.max_reconnect_attempts
+
+    def _show_settings(self) -> None:  # noqa: PLR0915  (intentionally long — builds complex dialog)
         s = self._settings_store.load()
 
         dlg = QDialog(self)
         dlg.setWindowTitle("Preferences")
-        dlg.setMinimumWidth(380)
+        dlg.setMinimumWidth(520)
+        dlg.setMinimumHeight(420)
         dlg.setModal(True)
 
         outer = QVBoxLayout(dlg)
-        outer.setContentsMargins(20, 18, 20, 16)
-        outer.setSpacing(16)
+        outer.setContentsMargins(16, 14, 16, 14)
+        outer.setSpacing(10)
 
-        def _section(title: str) -> QLabel:
+        pref_tabs = QTabWidget()
+        pref_tabs.setDocumentMode(False)
+
+        def _pref_section(title: str) -> QLabel:
             lab = QLabel(title.upper())
             lab.setObjectName("PrefSectionLabel")
             return lab
 
-        def _row(label: str, widget: QWidget) -> QHBoxLayout:
+        def _pref_row(label: str, widget: QWidget, tooltip: str = "") -> QHBoxLayout:
             row = QHBoxLayout()
-            row.setSpacing(12)
+            row.setSpacing(14)
             lbl = QLabel(label)
+            if tooltip:
+                lbl.setToolTip(tooltip)
+                widget.setToolTip(tooltip)
             lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
             row.addWidget(lbl)
             row.addWidget(widget)
             return row
 
-        # ── Activity log ────────────────────────────────────────────
-        outer.addWidget(_section("Activity log"))
+        def _pref_sep() -> QFrame:
+            f = QFrame()
+            f.setFrameShape(QFrame.Shape.HLine)
+            f.setStyleSheet(f"background:{_BORDER}; max-height:1px; border:none;")
+            return f
+
+        def _make_tab() -> tuple[QWidget, QVBoxLayout]:
+            w = QWidget()
+            lay = QVBoxLayout(w)
+            lay.setContentsMargins(18, 16, 18, 12)
+            lay.setSpacing(13)
+            return w, lay
+
+        # ── TAB 1: General ───────────────────────────────────────────
+        tab_gen, lay_gen = _make_tab()
+
+        lay_gen.addWidget(_pref_section("Startup"))
+
+        auto_connect_cb = QCheckBox("")
+        auto_connect_cb.setChecked(s.auto_connect_on_start)
+        lay_gen.addLayout(_pref_row(
+            "Auto-connect on startup", auto_connect_cb,
+            "Automatically connect to the bot server when the app starts.",
+        ))
+
+        start_min_cb = QCheckBox("")
+        start_min_cb.setChecked(s.start_minimized)
+        lay_gen.addLayout(_pref_row(
+            "Start minimized", start_min_cb,
+            "Open the window minimized to the taskbar on launch.",
+        ))
+
+        lay_gen.addWidget(_pref_sep())
+        lay_gen.addWidget(_pref_section("Notifications"))
+
+        notify_signal_cb = QCheckBox("")
+        notify_signal_cb.setChecked(s.notify_on_signal)
+        lay_gen.addLayout(_pref_row(
+            "Notify on incoming signal", notify_signal_cb,
+            "Show a status-bar message each time a signal arrives.",
+        ))
+
+        notify_connect_cb = QCheckBox("")
+        notify_connect_cb.setChecked(s.notify_on_connect)
+        lay_gen.addLayout(_pref_row(
+            "Notify on connect / disconnect", notify_connect_cb,
+            "Log a message when the WebSocket connection status changes.",
+        ))
+
+        lay_gen.addStretch(1)
+        pref_tabs.addTab(tab_gen, "  General  ")
+
+        # ── TAB 2: Connection ────────────────────────────────────────
+        tab_conn, lay_conn = _make_tab()
+
+        lay_conn.addWidget(_pref_section("Reconnect behaviour"))
+
+        reconnect_spin = QSpinBox()
+        reconnect_spin.setRange(1, 120)
+        reconnect_spin.setValue(s.reconnect_interval_s)
+        reconnect_spin.setSuffix("  s")
+        reconnect_spin.setFixedWidth(95)
+        lay_conn.addLayout(_pref_row(
+            "Reconnect interval", reconnect_spin,
+            "Seconds to wait before retrying after a connection drop.",
+        ))
+
+        max_retry_spin = QSpinBox()
+        max_retry_spin.setRange(0, 999)
+        max_retry_spin.setValue(s.max_reconnect_attempts)
+        max_retry_spin.setSpecialValueText("Unlimited")
+        max_retry_spin.setFixedWidth(110)
+        lay_conn.addLayout(_pref_row(
+            "Max reconnect attempts", max_retry_spin,
+            "Stop retrying after this many failed attempts. 0 = keep trying forever.",
+        ))
+
+        lay_conn.addStretch(1)
+        pref_tabs.addTab(tab_conn, "  Connection  ")
+
+        # ── TAB 3: Trading ───────────────────────────────────────────
+        tab_trade, lay_trade = _make_tab()
+
+        lay_trade.addWidget(_pref_section("Order sizing"))
+
+        qty_spin = QDoubleSpinBox()
+        qty_spin.setRange(0.01, 100_000.0)
+        qty_spin.setDecimals(2)
+        qty_spin.setSingleStep(0.5)
+        qty_spin.setValue(s.order_quantity)
+        qty_spin.setSuffix("  units")
+        qty_spin.setFixedWidth(130)
+        lay_trade.addLayout(_pref_row(
+            "Default order quantity", qty_spin,
+            "Number of shares / units per market order when the signal does not specify a size.",
+        ))
+
+        stop_spin = QDoubleSpinBox()
+        stop_spin.setRange(0.0, 50.0)
+        stop_spin.setDecimals(2)
+        stop_spin.setSingleStep(0.25)
+        stop_spin.setValue(s.default_stop_loss_pct)
+        stop_spin.setSuffix("  %")
+        stop_spin.setSpecialValueText("Disabled")
+        stop_spin.setFixedWidth(120)
+        lay_trade.addLayout(_pref_row(
+            "Default stop-loss", stop_spin,
+            "Fallback stop-loss percentage when the incoming signal does not provide one. 0 = disabled.",
+        ))
+
+        lay_trade.addWidget(_pref_sep())
+        lay_trade.addWidget(_pref_section("Risk controls"))
+
+        max_daily_spin = QSpinBox()
+        max_daily_spin.setRange(0, 500)
+        max_daily_spin.setValue(s.max_daily_trades)
+        max_daily_spin.setSpecialValueText("Unlimited")
+        max_daily_spin.setFixedWidth(120)
+        lay_trade.addLayout(_pref_row(
+            "Max trades per day", max_daily_spin,
+            "Stop placing orders once this many live trades have been placed today. 0 = no limit.",
+        ))
+
+        cooldown_spin = QSpinBox()
+        cooldown_spin.setRange(0, 3600)
+        cooldown_spin.setSingleStep(5)
+        cooldown_spin.setValue(s.signal_cooldown_s)
+        cooldown_spin.setSuffix("  s")
+        cooldown_spin.setSpecialValueText("No cooldown")
+        cooldown_spin.setFixedWidth(130)
+        lay_trade.addLayout(_pref_row(
+            "Signal cooldown (per symbol)", cooldown_spin,
+            "Minimum seconds between two executed signals for the same ticker. 0 = no cooldown.",
+        ))
+
+        lay_trade.addWidget(_pref_sep())
+        lay_trade.addWidget(_pref_section("Behaviour"))
+
+        confirm_trade_cb = QCheckBox("")
+        confirm_trade_cb.setChecked(s.confirm_before_trade)
+        lay_trade.addLayout(_pref_row(
+            "Confirm before placing order", confirm_trade_cb,
+            "Show a confirmation dialog before each live market order is submitted.",
+        ))
+
+        skip_non_long_cb = QCheckBox("")
+        skip_non_long_cb.setChecked(s.skip_non_long_signals)
+        lay_trade.addLayout(_pref_row(
+            "Skip non-LONG signals", skip_non_long_cb,
+            "Ignore SHORT and FLAT signal directions — only execute LONG entries.",
+        ))
+
+        lay_trade.addStretch(1)
+        pref_tabs.addTab(tab_trade, "  Trading  ")
+
+        # ── TAB 4: Activity Log ──────────────────────────────────────
+        tab_log, lay_log = _make_tab()
+
+        lay_log.addWidget(_pref_section("Display"))
 
         font_spin = QSpinBox()
         font_spin.setRange(8, 18)
         font_spin.setValue(s.log_font_size)
         font_spin.setSuffix("  pt")
-        font_spin.setFixedWidth(80)
+        font_spin.setFixedWidth(85)
         font_spin.setToolTip("Monospace font size for the activity log.")
-        outer.addLayout(_row("Font size", font_spin))
+        lay_log.addLayout(_pref_row("Font size", font_spin))
 
         lines_spin = QSpinBox()
         lines_spin.setRange(50, 5000)
         lines_spin.setSingleStep(50)
         lines_spin.setValue(s.log_max_lines)
         lines_spin.setSuffix("  lines")
-        lines_spin.setFixedWidth(110)
-        lines_spin.setToolTip("How many lines to keep in the log before old ones are discarded.")
-        outer.addLayout(_row("Max entries", lines_spin))
+        lines_spin.setFixedWidth(120)
+        lines_spin.setToolTip("How many lines to keep before older ones are discarded.")
+        lay_log.addLayout(_pref_row("Max entries", lines_spin))
+
+        level_combo = QComboBox()
+        level_combo.addItem("All messages", "all")
+        level_combo.addItem("Warnings & errors only", "warn")
+        level_combo.addItem("Errors only", "error")
+        level_combo.setCurrentIndex({"all": 0, "warn": 1, "error": 2}.get(s.log_level_filter, 0))
+        level_combo.setFixedWidth(190)
+        level_combo.setToolTip("Filter which log messages appear in the activity pane.")
+        lay_log.addLayout(_pref_row("Log level filter", level_combo))
+
+        lay_log.addWidget(_pref_sep())
+        lay_log.addWidget(_pref_section("Behaviour"))
 
         auto_scroll_cb = QCheckBox("")
         auto_scroll_cb.setChecked(s.log_auto_scroll)
-        auto_scroll_cb.setToolTip("Automatically scroll to the latest log entry when new lines arrive.")
-        outer.addLayout(_row("Auto-scroll to latest", auto_scroll_cb))
+        lay_log.addLayout(_pref_row(
+            "Auto-scroll to latest", auto_scroll_cb,
+            "Automatically scroll to the newest log entry when new lines arrive.",
+        ))
 
         timestamps_cb = QCheckBox("")
         timestamps_cb.setChecked(s.log_show_timestamps)
-        timestamps_cb.setToolTip("Show [HH:MM:SS] before each log line.")
-        outer.addLayout(_row("Show timestamps", timestamps_cb))
+        lay_log.addLayout(_pref_row(
+            "Show timestamps", timestamps_cb,
+            "Prefix each log line with [HH:MM:SS].",
+        ))
 
-        sep = QFrame()
-        sep.setFrameShape(QFrame.Shape.HLine)
-        sep.setStyleSheet(f"background:{_BORDER}; max-height:1px; border:none;")
-        outer.addWidget(sep)
+        lay_log.addStretch(1)
+        pref_tabs.addTab(tab_log, "  Activity Log  ")
+
+        outer.addWidget(pref_tabs, 1)
 
         # ── Dialog buttons ───────────────────────────────────────────
         btns = QDialogButtonBox(
@@ -979,14 +1448,28 @@ class MainWindow(QMainWindow):
         new_s = AppSettings(
             ws_url=s.ws_url,
             license_key=s.license_key,
+            reconnect_interval_s=reconnect_spin.value(),
+            max_reconnect_attempts=max_retry_spin.value(),
+            order_quantity=qty_spin.value(),
+            max_daily_trades=max_daily_spin.value(),
+            signal_cooldown_s=cooldown_spin.value(),
+            default_stop_loss_pct=stop_spin.value(),
+            confirm_before_trade=confirm_trade_cb.isChecked(),
+            skip_non_long_signals=skip_non_long_cb.isChecked(),
             log_font_size=font_spin.value(),
             log_max_lines=lines_spin.value(),
             log_auto_scroll=auto_scroll_cb.isChecked(),
             log_show_timestamps=timestamps_cb.isChecked(),
+            log_level_filter=level_combo.currentData(),
+            notify_on_signal=notify_signal_cb.isChecked(),
+            notify_on_connect=notify_connect_cb.isChecked(),
+            auto_connect_on_start=auto_connect_cb.isChecked(),
+            start_minimized=start_min_cb.isChecked(),
             splitter_sizes=self._splitter.sizes(),
         )
         self._settings_store.save(new_s)
         self._apply_log_settings(new_s)
+        self._apply_trading_settings(new_s)
         self._append_event("info", "Preferences saved.")
 
     # ── setup tab ────────────────────────────────────────────────────────────
@@ -998,20 +1481,25 @@ class MainWindow(QMainWindow):
         layout.setSpacing(16)
 
         # ── Subscription group ───────────────────────────────────────
-        grp_sub = QGroupBox("Subscription && server")
+        grp_sub = QGroupBox("License && server")
         g = QVBoxLayout(grp_sub)
         g.setSpacing(10)
 
         g.addWidget(_field_label("License key"))
-        g.addWidget(self.license_key)
-        g.addWidget(_hint("Copy and paste the full key from your AlgoFlow account on the website."))
+        lic_row = QHBoxLayout()
+        lic_row.setSpacing(8)
+        lic_row.addWidget(self.license_key, 1)
+        lic_row.addWidget(self.validate_btn)
+        g.addLayout(lic_row)
+        g.addWidget(self.tier_status_label)
+        g.addWidget(_hint("Copy your key from the SwiftTrade portal, then click Validate to check your tier."))
 
         g.addSpacing(6)
         g.addWidget(_field_label("Bot server address"))
         g.addWidget(self.ws_url)
         g.addWidget(
             _hint(
-                "Leave as default (ws://127.0.0.1:8010/ws/exec) if the server runs on this computer."
+                "Leave as default (ws://127.0.0.1:8010/ws/exec) if the SwiftTrade server runs on this computer."
             )
         )
         layout.addWidget(grp_sub)
@@ -1022,7 +1510,7 @@ class MainWindow(QMainWindow):
         k.setSpacing(10)
 
         k.addWidget(
-            _hint("Only needed to place real trades or check market hours. Keys never leave this PC.")
+            _hint("Only needed to place real trades or check market hours. Keys are encrypted and never leave this PC.")
         )
         k.addWidget(_field_label("API key"))
         k.addWidget(self.t212_api_key)
@@ -1042,11 +1530,12 @@ class MainWindow(QMainWindow):
         grp_live = QGroupBox("Trade execution")
         lv = QVBoxLayout(grp_live)
         lv.setSpacing(10)
-        lv.addWidget(self.exec_mode)
+        lv.addWidget(self._setup_trading_mode_hint)
         lv.addWidget(
             _hint(
-                "Off (default): signals are recorded in the log and queue — no orders are sent.\n"
-                "On: LONG signals place real market orders on your Trading212 account."
+                "Paper (default): signals are recorded in the log and queue — no orders are sent.\n"
+                "Live: LONG signals place real market orders on your Trading212 account.\n"
+                "The Paper / Live control is in the top bar; your tier is re-checked periodically against the server."
             )
         )
         layout.addWidget(grp_live)
@@ -1057,7 +1546,7 @@ class MainWindow(QMainWindow):
         dg.setSpacing(8)
         dg.addWidget(
             _hint(
-                "If the app cannot reach the backend, use this to open a health check page in your browser "
+                "If the app cannot reach the SwiftTrade backend, use this to open a health check page in your browser "
                 "(no secrets are shown)."
             )
         )
@@ -1145,7 +1634,7 @@ class MainWindow(QMainWindow):
         layout.setSpacing(10)
         layout.addWidget(
             _hint(
-                "Every signal the bot sends appears here. With live mode off, "
+                "Every signal the SwiftTrade bot sends appears here. With live mode off, "
                 "nothing is traded — check the activity log on the right for detail."
             )
         )
@@ -1183,9 +1672,9 @@ class MainWindow(QMainWindow):
     def _show_about(self) -> None:
         QMessageBox.about(
             self,
-            "About AlgoFlow Desktop",
-            f"AlgoFlow — Desktop Executor\n\n"
-            "Bridges your AlgoFlow bot server to Trading212. Signals from TradingView "
+            "About SwiftTrade Desktop",
+            f"SwiftTrade — Desktop Executor\n\n"
+            "Bridges your SwiftTrade bot server to Trading212. Signals from TradingView "
             "(or any webhook source) flow through the server to this app, which can "
             "optionally place real orders on your behalf.\n\n"
             f"Build: {self._git_version()}",
@@ -1195,10 +1684,10 @@ class MainWindow(QMainWindow):
         QMessageBox.information(
             self,
             "Quick start",
-            "1.  Setup tab — paste your license key, leave the server address as default.\n\n"
+            "1.  Setup tab — paste your license key from the SwiftTrade portal and click Validate.\n\n"
             "2.  Trading212 keys — enter your API key, click 'Test connection', then Save.\n\n"
             "3.  Click Connect (top bar) — status changes to green when linked.\n\n"
-            "4.  Live mode — leave Off while you learn; turn On only for real orders.\n\n"
+            "4.  Paper / Live — use the top-bar toggle (Live needs Pro). Tier is re-checked periodically on the server.\n\n"
             "Tip: right-click any table row to copy it.",
         )
 
@@ -1237,6 +1726,12 @@ class MainWindow(QMainWindow):
     # ── coloured log append ───────────────────────────────────────────────────
 
     def _append_event(self, level: str, message: str) -> None:
+        level_filter = getattr(self, "_log_level_filter", "all")
+        if level_filter == "error" and level not in ("error",):
+            return
+        if level_filter == "warn" and level not in ("warn", "error"):
+            return
+
         colour_map = {
             "info":    _TEXT,
             "ok":      _SUCCESS,
@@ -1265,27 +1760,6 @@ class MainWindow(QMainWindow):
         if getattr(self, "_log_auto_scroll", True):
             self.event_log.ensureCursorVisible()
 
-    # ── live mode toggle ──────────────────────────────────────────────────────
-
-    def _on_live_mode_toggled(self, checked: bool) -> None:
-        if not checked:
-            self._set_sb("Live mode off — signals will be logged only.")
-            return
-        r = QMessageBox.warning(
-            self,
-            "Enable live trading?",
-            "Live mode will send real-money orders to Trading212 every time the bot fires a LONG signal.\n\n"
-            "Leave it off if you just want to watch signals in the log.",
-            QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
-            QMessageBox.StandardButton.Cancel,
-        )
-        if r != QMessageBox.StandardButton.Ok:
-            self.exec_mode.blockSignals(True)
-            self.exec_mode.setChecked(False)
-            self.exec_mode.blockSignals(False)
-        else:
-            self._set_sb("⚠  Live mode ON — real orders will be placed.")
-
     def _on_show_t212_secrets_toggled(self, checked: bool) -> None:
         mode = QLineEdit.EchoMode.Normal if checked else QLineEdit.EchoMode.Password
         self.t212_api_key.setEchoMode(mode)
@@ -1309,7 +1783,7 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "License key required",
-                "Paste your license key in the Setup tab, then click Connect.",
+                "Paste your license key from the SwiftTrade portal in the Setup tab, then click Connect.",
             )
             return
         try:
@@ -1318,13 +1792,40 @@ class MainWindow(QMainWindow):
             QMessageBox.warning(
                 self,
                 "License key format",
-                "The key should look like:\n\n550e8400-e29b-41d4-a716-446655440000\n\nCopy it again from the portal.",
+                "The key should look like:\n\n550e8400-e29b-41d4-a716-446655440000\n\nCopy it again from the SwiftTrade portal.",
             )
             return
 
         url = self.ws_url.text().strip()
-        cfg = WsConfig(url=url, license_key=lic)
-        self._settings_store.save(AppSettings(ws_url=url, license_key=lic))
+        saved = self._settings_store.load()
+        cfg = WsConfig(
+            url=url,
+            license_key=lic,
+            reconnect_interval_s=self._reconnect_interval_s,
+            max_reconnect_attempts=self._max_reconnect_attempts,
+        )
+        self._settings_store.save(AppSettings(
+            ws_url=url,
+            license_key=lic,
+            reconnect_interval_s=saved.reconnect_interval_s,
+            max_reconnect_attempts=saved.max_reconnect_attempts,
+            order_quantity=saved.order_quantity,
+            max_daily_trades=saved.max_daily_trades,
+            signal_cooldown_s=saved.signal_cooldown_s,
+            default_stop_loss_pct=saved.default_stop_loss_pct,
+            confirm_before_trade=saved.confirm_before_trade,
+            skip_non_long_signals=saved.skip_non_long_signals,
+            log_font_size=saved.log_font_size,
+            log_max_lines=saved.log_max_lines,
+            log_auto_scroll=saved.log_auto_scroll,
+            log_show_timestamps=saved.log_show_timestamps,
+            log_level_filter=saved.log_level_filter,
+            notify_on_signal=saved.notify_on_signal,
+            notify_on_connect=saved.notify_on_connect,
+            auto_connect_on_start=saved.auto_connect_on_start,
+            start_minimized=saved.start_minimized,
+            splitter_sizes=self._splitter.sizes(),
+        ))
         self._ws_client = ExecWsClient(
             cfg=cfg,
             on_status=self._on_ws_status,
@@ -1526,11 +2027,64 @@ class MainWindow(QMainWindow):
         if self.exec_queue.count() > 200:
             self.exec_queue.takeItem(self.exec_queue.count() - 1)
 
-        self._append_event("info", f"Signal received: {line}")
+        if self._notify_on_signal:
+            self._append_event("info", f"Signal received: {line}")
 
-        if not self.exec_mode.isChecked():
-            self._append_event("info", "Practice mode — signal logged, no order sent.")
+        if not self.trading_mode.is_live():
+            self._append_event("info", "Paper trading — signal logged, no order sent.")
             return
+
+        if self._license_tier != "pro":
+            self._append_event(
+                "error",
+                "Live execution blocked — server reports this license is not Pro. "
+                "Validate again or switch to Paper.",
+            )
+            self.trading_mode.set_live(False)
+            return
+
+        direction_upper = str(payload.get("direction") or "LONG").strip().upper()
+        sym_str = str(payload.get("symbol") or "").strip()
+
+        # Skip non-LONG signals if configured
+        if self._skip_non_long_signals and direction_upper != "LONG":
+            self._append_event("warn", f"Skipped (direction={direction_upper}) — only LONG signals are executed.")
+            return
+
+        # Daily trade limit check
+        today = datetime.now().date()
+        if today != self._trades_today_date:
+            self._trades_today = 0
+            self._trades_today_date = today
+        if self._max_daily_trades > 0 and self._trades_today >= self._max_daily_trades:
+            self._append_event("warn", f"Daily trade limit reached ({self._max_daily_trades}). Signal skipped.")
+            return
+
+        # Signal cooldown per symbol
+        if self._signal_cooldown_s > 0 and sym_str:
+            last_time = self._last_signal_times.get(sym_str)
+            now = datetime.now()
+            if last_time is not None:
+                elapsed = (now - last_time).total_seconds()
+                if elapsed < self._signal_cooldown_s:
+                    remaining = int(self._signal_cooldown_s - elapsed)
+                    self._append_event("warn", f"Cooldown active for {sym_str} ({remaining}s remaining). Signal skipped.")
+                    return
+            self._last_signal_times[sym_str] = now
+
+        # Confirm before trade
+        if self._confirm_before_trade:
+            r = QMessageBox.question(
+                self,
+                "Confirm trade",
+                f"Place a {direction_upper} market order for {sym_str}?\n\n"
+                f"Quantity: {self._order_quantity:.2f} units",
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
+                QMessageBox.StandardButton.No,
+            )
+            if r != QMessageBox.StandardButton.Yes:
+                self._append_event("info", "Trade confirmation declined. Signal skipped.")
+                return
 
         try:
             stored = self._store.load()
@@ -1541,23 +2095,20 @@ class MainWindow(QMainWindow):
             async with T212Client(
                 keys=T212Keys(api_key=stored.t212_api_key, secret_key=stored.t212_secret_key)
             ) as client:
-                symbol = str(payload.get("symbol") or "").strip()
-                direction = str(payload.get("direction") or "LONG").strip().upper()
                 rp = payload.get("risk_params") or {}
                 stop_loss_pct = float(rp.get("stop_loss_pct") or 0.0)
+                if stop_loss_pct == 0.0:
+                    stop_loss_pct = self._default_stop_loss_pct
                 is_debug = bool(payload.get("debug"))
+                qty = self._order_quantity
 
-                if direction != "LONG":
-                    self._append_event("warn", f"Skipped (direction={direction}) — SHORT not implemented.")
-                    return
-
-                price = await client.get_price_from_positions(symbol)
+                price = await client.get_price_from_positions(sym_str)
                 if price is None:
                     price = 0.0
 
-                qty = 1.0
-                resp = await client.place_market_order(symbol, qty)
+                resp = await client.place_market_order(sym_str, qty)
                 self._append_event("ok", f"Market order placed: {resp}")
+                self._trades_today += 1
 
                 order_id = resp.get("id") if isinstance(resp, dict) else None
                 filled = False
@@ -1583,13 +2134,13 @@ class MainWindow(QMainWindow):
                 if not filled:
                     self._append_event("warn", "Order not filled (premarket/illiquid). Stop skipped.")
                 else:
-                    price2 = await client.get_price_from_positions(symbol)
+                    price2 = await client.get_price_from_positions(sym_str)
                     if price2 is not None:
                         price = float(price2)
                     if price > 0 and stop_loss_pct > 0:
                         stop_price = price * (1.0 - stop_loss_pct / 100.0)
                         if filled_qty >= qty:
-                            stop_resp = await client.place_stop_order(symbol, qty=-qty, stop_price=stop_price)
+                            stop_resp = await client.place_stop_order(sym_str, qty=-qty, stop_price=stop_price)
                             self._append_event("ok", f"Protective STOP placed: {stop_resp}")
                         else:
                             self._append_event("warn", "Protective STOP skipped (filledQty still 0).")
@@ -1605,7 +2156,7 @@ class MainWindow(QMainWindow):
                             self._append_event("error", f"Debug: cancel failed: {exc}")
                         return
                     self._append_event("info", "Debug: closing position…")
-                    close_resp = await client.close_position(symbol)
+                    close_resp = await client.close_position(sym_str)
                     self._append_event("info", f"Debug: close submitted: {close_resp}")
 
         except Exception as exc:
@@ -1646,15 +2197,18 @@ class MainWindow(QMainWindow):
 # ── entry point ───────────────────────────────────────────────────────────────
 def main() -> None:
     app = QApplication(sys.argv)
-    app.setApplicationName("AlgoFlow")
-    app.setOrganizationName("AlgoFlow")
+    app.setApplicationName("SwiftTrade")
+    app.setOrganizationName("SwiftTrade")
     _apply_desktop_styles(app)
 
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
 
     w = MainWindow()
-    w.show()
+    if getattr(w, "start_minimized", False):
+        w.showMinimized()
+    else:
+        w.show()
 
     with loop:
         loop.run_forever()
