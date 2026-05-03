@@ -8,6 +8,7 @@ import os
 from fastapi import FastAPI
 
 from app.api.debug import router as debug_router
+from app.api.license import router as license_router
 from app.api.ws import heartbeat_loop, router as ws_router
 from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
 
@@ -39,6 +40,7 @@ def create_app() -> FastAPI:
         return supabase_config_smoke_dict()
 
     app.include_router(debug_router)
+    app.include_router(license_router)
     app.include_router(ws_router)
 
     @app.on_event("startup")
