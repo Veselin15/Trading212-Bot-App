@@ -2242,7 +2242,8 @@ class ExecutionManager:
                 and math.isfinite(atr_15m)
                 and atr_15m > 0
             ):
-                trail_stop = float(st.highest_high_since_entry) - (float(self.params.atr_trail_mult) * float(atr_15m))
+                _trail_mult = self.params.atr_trail_mult_by_symbol.get(symbol, self.params.atr_trail_mult)
+                trail_stop = float(st.highest_high_since_entry) - (float(_trail_mult) * float(atr_15m))
                 current_stop = float(st.stop_loss)
                 if trail_stop > current_stop:
                     try:
@@ -2558,14 +2559,15 @@ class ExecutionManager:
                 atr_15m = float(atr_15m)
                 if atr_15m > 0:
                     old_stop = float(st.stop_loss)
+                    _trail_mult = self.params.atr_trail_mult_by_symbol.get(symbol, self.params.atr_trail_mult)
                     if st.side == "long":
                         trail_stop = float(st.highest_high_since_entry) - (
-                            self.params.atr_trail_mult * atr_15m
+                            _trail_mult * atr_15m
                         )
                         st.stop_loss = max(st.stop_loss, trail_stop)
                     else:
                         trail_stop = float(st.lowest_low_since_entry) + (
-                            self.params.atr_trail_mult * atr_15m
+                            _trail_mult * atr_15m
                         )
                         st.stop_loss = min(st.stop_loss, trail_stop)
                     if float(st.stop_loss) != old_stop:

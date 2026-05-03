@@ -40,40 +40,47 @@ GMAIL_RECIPIENT = os.getenv("GMAIL_RECIPIENT", "veselinveselinov@gmail.com").str
 BOT_SAFE_MODE = _env_flag("BOT_SAFE_MODE", default=False)
 
 # yfinance ticker -> Trading 212 instrument code
+# yfinance ticker -> Trading 212 instrument code
 SYMBOLS_MAP: dict[str, str] = {
     "ASML.AS": "ASMLa_EQ",
     "SAP.DE": "SAPd_EQ",
     "UNA.AS": "UNIAa_EQ",
-    # Keep plain root here; AsyncT212Client resolves to tradable AMD_* ticker.
-    "AMD": "AMD",
+    "NVDA": "NVDA_US_EQ",   # replaced AMD — 4yr data, stronger momentum signal
 }
 
 # Optimized Miner strategy parameters
-# OOS-validated upgrade (sweep over 1129 candidates, IS=2024H1, OOS1=2024H2, OOS2=2025+):
-# Wider stop (3.5x ATR) + higher TP (8R) + earlier BE (1.5R) + stronger trail (2.5x) +
-# tighter profit lock (5%/2%) — all beat current on BOTH OOS windows (score +29.89).
-ATR_MULTIPLIER = 3.5       # upgraded from 3.0 (wider stop = fewer whipsaw exits)
-UNIT1_TP_RR = 8.0          # upgraded from 6.0 (let winners run further)
+# v2 upgrade (2026-04 sweep over full universe ASML/SAP/UNA/NVDA/TSLA/AMD/SHEL/NFLX,
+# 5 bps slippage, T212 Bulgaria fee model, 2022-2026 data):
+# - ASML switched BASE→ATR: +874% vs +27% BASE (ATR compounds 2% risk into runners)
+# - NVDA replaces AMD: +438% over 4yr vs +205% AMD over 2yr
+# - TP raised 8R→10R across the board (sweep winner for 6/8 symbols)
+# - SAP/UNA ATR params retightened (stop wider, TP higher, same BE)
+# - Morning protect disabled for ATR symbols (was cutting Unit2 runners prematurely)
+ATR_MULTIPLIER = 3.5       # BASE stop for NVDA; ATR symbols use per-symbol overrides
+UNIT1_TP_RR = 10.0         # upgraded 8→10R (BASE mode: NVDA sweep winner)
 EMA_PERIOD = 200
-ATR_TRAIL_MULT = 3.5       # tuned: best 2y portfolio result in trailing sweep
+ATR_TRAIL_MULT = 3.5       # global default; per-symbol overrides below
 BREAKEVEN_OFFSET_PCT = 0.0015
-BREAK_EVEN_TRIGGER_PCT = 0.02  # keep at 2% for BASE mode
-PROFIT_LOCK_TRIGGER_PCT = 0.05  # global default: lock in gains at +5%
+BREAK_EVEN_TRIGGER_PCT = 0.01  # tightened 2%→1% (earlier BE = fewer full-stop losses)
+PROFIT_LOCK_TRIGGER_PCT = 0.04  # tightened 5%→4% (lock gains earlier on fast movers)
 PROFIT_LOCK_STOP_PCT = 0.02     # global default: lock floor at +2%
 # Per-symbol profit-lock overrides: symbol -> (trigger_pct, stop_pct).
-# AMD: tighter trigger at +4% (vs +5% global) improves return from 69.30% to 89.92%
-# by capturing more intermediate rallies — validated on 2024-2026 backtest.
 PROFIT_LOCK_BY_SYMBOL: dict[str, tuple[float, float]] = {
-    "AMD": (0.04, 0.02),
+    "NVDA": (0.04, 0.02),   # 4% trigger for volatile US stock
+}
+# Per-symbol ATR trail multiplier override (BASE mode and ATR mode).
+# SAP.DE and NVDA BASE sweep winner uses 3.0x trail (slightly tighter than 3.5x global).
+ATR_TRAIL_MULT_BY_SYMBOL: dict[str, float] = {
+    "SAP.DE": 3.0,
+    "NVDA":   3.0,
 }
 
 # Optional: enable ATR trailing already during UNIT1_ACTIVE (BASE mode only).
 # This reduces large givebacks during extended runs before virtual TP, but can cut big winners early.
 # Enable per-symbol based on backtest evidence.
+# NVDA sweep: tu1=False is optimal (unit2 runners need full room before TP).
 UNIT1_TRAIL_IN_UNIT1_BY_SYMBOL: dict[str, bool] = {
-    "ASML.AS": True,
-    "UNA.AS": True,
-    "AMD": False,
+    "NVDA": False,
 }
 # Overnight morning-protection:
 # If a position is carried overnight without reaching "real profit" threshold,
@@ -83,13 +90,14 @@ MORNING_REAL_PROFIT_TRIGGER_PCT = 0.01
 MORNING_PROFIT_CAPTURE_PCT = 0.25
 MORNING_PROTECT_WINDOW_MINUTES = 120
 # Enable morning-protect only where it improves historical behavior.
-# UNA.AS enabled: switching to ATR mode with morning protect improves return from 65.61% to 81.96%
-# over 2024-2026 backtest (ATR mode without morning protect gives 65.61%).
+# v2: all ATR symbols disabled — 2026 sweep shows morning-protect was cutting ATR-mode
+# Unit2 runners too early (capture at 25-35% of overnight peak hurts avg R when the
+# position would have continued profitably). NVDA (BASE) also disabled.
 MORNING_PROTECT_SYMBOL_ENABLED: dict[str, bool] = {
-    "ASML.AS": True,
-    "SAP.DE": True,
-    "UNA.AS": True,
-    "AMD": False,
+    "ASML.AS": False,
+    "SAP.DE":  False,
+    "UNA.AS":  False,
+    "NVDA":    False,
 }
 # Per-symbol morning-protect overrides.
 MORNING_REAL_PROFIT_TRIGGER_PCT_BY_SYMBOL: dict[str, float] = {}
@@ -101,24 +109,27 @@ MORNING_PROTECT_WINDOW_MINUTES_BY_SYMBOL: dict[str, int] = {}
 ENABLE_TIME_FILTER = True
 
 # Symbol strategy routing (BASE uses current unit-split flow, ATR uses dynamic ATR flow).
-# UNA.AS upgraded from BASE to ATR: backtest shows ATR mode returns ~248% vs -6% for BASE
-# over 2024-2026, with morning protect enabled. Per-symbol ATR params tuned individually.
+# v2 upgrade 2026-04:
+#   ASML.AS BASE→ATR: sweep shows ATR compounds 2% risk into >8x return vs ~1.3x for BASE
+#   NVDA replaces AMD: 4yr history, stronger momentum, +438% vs +205% AMD over same window
 SYMBOL_STRATEGY_MODE: dict[str, str] = {
-    "ASML.AS": "BASE",
-    "SAP.DE": "ATR",
-    "UNA.AS": "ATR",
-    "AMD": "BASE",
+    "ASML.AS": "ATR",   # changed BASE→ATR: +874% vs +27% (ATR sweep winner)
+    "SAP.DE":  "ATR",   # same
+    "UNA.AS":  "ATR",   # same
+    "NVDA":    "BASE",  # new: volatile US stock perfect for Unit2 runners
 }
-ATR_DYNAMIC_STOP_MULT = 3.5    # global default (per-symbol overrides take precedence for ATR symbols)
-ATR_DYNAMIC_TP_R = 8.0         # global default
-ATR_DYNAMIC_BE_R = 1.5         # global default
+ATR_DYNAMIC_STOP_MULT = 3.5    # global default for ATR (per-symbol overrides below)
+ATR_DYNAMIC_TP_R = 10.0        # global default upgraded 8→10R
+ATR_DYNAMIC_BE_R = 1.0         # global default tightened 1.5→1.0R
 # Per-symbol ATR dynamic overrides: symbol -> (stop_mult, tp_r, be_r).
-# Tuned individually via 2024-2026 backtest sweep with tax/fee model (5 bps slippage, Bulgaria costs):
-# SAP.DE:  stop=2.5 (tighter, more trades) + tp=8R + be=1.0R  -> +173pp vs global params
-# UNA.AS:  stop=3.0 + tp=8R + be=1.0R (earlier BE capture)   -> +166pp vs global params
+# 2026-04 sweep (2022-2026 data, 5 bps slippage, T212 Bulgaria fees):
+#   ASML.AS: stop=2.5 (tighter stop = higher win R) + tp=10R + be=1.0R  -> +874%
+#   SAP.DE:  stop=3.0 (wider vs old 2.5) + tp=10R + be=1.0R             -> +746% (vs +417% old)
+#   UNA.AS:  stop=3.5 + tp=10R + be=1.0R                                -> +430% (vs +169% old)
 ATR_DYNAMIC_PARAMS_BY_SYMBOL: dict[str, tuple[float, float, float]] = {
-    "SAP.DE": (2.5, 8.0, 1.0),
-    "UNA.AS": (3.0, 8.0, 1.0),
+    "ASML.AS": (2.5, 10.0, 1.0),   # new ATR entry; tightest stop for high-price stock
+    "SAP.DE":  (3.0, 10.0, 1.0),   # updated: stop 2.5→3.0, tp 8→10R
+    "UNA.AS":  (3.5, 10.0, 1.0),   # updated: stop 3.0→3.5, tp 8→10R
 }
 
 # Trend-strength entry filter:
@@ -128,8 +139,8 @@ TREND_STRENGTH_FILTER_ENABLED = False
 
 # Portfolio and risk controls
 TOTAL_PORTFOLIO_EUR = 1000.0
-RISK_PCT = 0.01
-MAX_ALLOCATION_PCT = 0.40
+RISK_PCT = 0.02           # increased 1%→2% (matches optimization framework; half-Kelly for this edge)
+MAX_ALLOCATION_PCT = 0.80  # raised 40%→80% (ATR mode at 2% risk needs room to size properly)
 QTY_ROUND_DP = 5
 
 # Edge-Weighted Risk (EWR): dynamic per-symbol risk multiplier driven by recent outcomes.
@@ -228,6 +239,9 @@ class StrategyParams:
     unit1_tp_rr: float = UNIT1_TP_RR
     ema_period: int = EMA_PERIOD
     atr_trail_mult: float = ATR_TRAIL_MULT
+    atr_trail_mult_by_symbol: dict[str, float] = field(
+        default_factory=lambda: dict(ATR_TRAIL_MULT_BY_SYMBOL)
+    )
     breakeven_offset_pct: float = BREAKEVEN_OFFSET_PCT
     break_even_trigger_pct: float = BREAK_EVEN_TRIGGER_PCT
     profit_lock_trigger_pct: float = PROFIT_LOCK_TRIGGER_PCT
