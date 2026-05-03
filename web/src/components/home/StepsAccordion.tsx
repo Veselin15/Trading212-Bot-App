@@ -76,7 +76,7 @@ export function StepsAccordion() {
               id={`step-${i}-tab`}
               onClick={() => setOpen(i)}
               className={`h-1.5 rounded-full transition-all duration-300 ${
-                isOpen ? "w-8 bg-emerald-400 shadow-sm shadow-emerald-400/40" : "w-1.5 bg-slate-700 hover:bg-slate-600"
+                isOpen ? "w-8 bg-violet-400 shadow-sm shadow-violet-400/40" : "w-1.5 bg-slate-700 hover:bg-slate-600"
               }`}
             />
           );
@@ -101,7 +101,7 @@ export function StepsAccordion() {
               role="listitem"
               className={`relative overflow-hidden rounded-2xl border transition-all duration-300 ease-out ${
                 isOpen
-                  ? "border-emerald-500/35 bg-gradient-to-br from-emerald-500/[0.12] via-white/[0.06] to-background/85 shadow-lg shadow-emerald-500/5 ring-1 ring-emerald-400/20"
+                  ? "border-violet-500/35 bg-gradient-to-br from-violet-500/[0.12] via-white/[0.06] to-background/85 shadow-lg shadow-violet-500/5 ring-1 ring-violet-400/20"
                   : "border-white/10 bg-white/[0.03] hover:border-slate-600/80 hover:bg-white/[0.06]"
               }`}
             >
@@ -117,14 +117,14 @@ export function StepsAccordion() {
                   <span
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl transition-colors duration-300 ${
                       isOpen
-                        ? "bg-emerald-500/25 text-emerald-100 ring-1 ring-emerald-400/35"
+                        ? "bg-violet-500/25 text-violet-100 ring-1 ring-violet-400/35"
                         : "bg-slate-900/80 text-slate-400 ring-1 ring-slate-700/80 group-hover:text-slate-200 group-hover:ring-slate-600/90"
                     }`}
                   >
                     <Icon className="h-5 w-5" aria-hidden />
                   </span>
                   <span className="flex min-w-0 flex-col gap-0.5">
-                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-emerald-400/90">
+                    <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-violet-400/90">
                       Step {i + 1}
                     </span>
                     <span className="text-sm font-medium text-slate-50 sm:text-base">{step.title}</span>
@@ -132,7 +132,7 @@ export function StepsAccordion() {
                 </span>
                 <span
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-slate-400 transition-transform duration-300 ease-out ${
-                    isOpen ? "rotate-90 text-emerald-300" : ""
+                    isOpen ? "rotate-90 text-violet-300" : ""
                   }`}
                   aria-hidden
                 >

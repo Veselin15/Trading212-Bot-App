@@ -13,7 +13,7 @@ export default async function LoginPage() {
 
   return (
     <main className="relative flex flex-1 items-center justify-center py-16">
-      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(65%_60%_at_50%_0%,rgba(16,185,129,0.12),transparent_65%)]" />
+      <div className="pointer-events-none absolute inset-0 -z-10 bg-[radial-gradient(65%_60%_at_50%_0%,rgba(139,92,246,0.12),transparent_65%)]" />
 
       <Container>
         <div className="mx-auto w-full max-w-md">
@@ -30,10 +30,10 @@ export default async function LoginPage() {
             </div>
 
             <div className="mt-8 flex items-center justify-center gap-6 border-t border-white/10 pt-6 text-sm">
-              <Link className="text-slate-400 transition-colors hover:text-emerald-400" href="/">
+              <Link className="text-slate-400 transition-colors hover:text-violet-400" href="/">
                 Home
               </Link>
-              <Link className="text-slate-400 transition-colors hover:text-emerald-400" href="/pricing">
+              <Link className="text-slate-400 transition-colors hover:text-violet-400" href="/pricing">
                 Pricing
               </Link>
             </div>

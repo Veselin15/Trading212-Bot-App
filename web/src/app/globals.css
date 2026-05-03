@@ -1,14 +1,15 @@
 @import "tailwindcss";
 
 :root {
-  /* Pitch black + neon profit green */
-  --background: #000000;
+  /* Midnight + violet/indigo intelligence + rose accent */
+  --background: #09090b;
   --foreground: #ffffff;
   --muted: #94a3b8;
-  --card: #0a0a0a;
+  --card: #18181b;
   --border: rgba(255, 255, 255, 0.1);
-  --accent: #10b981;
-  --accent-neon: #00e676;
+  --accent: #8b5cf6;
+  --accent-end: #6366f1;
+  --accent-rose: #f43f5e;
 
   /* Build-safe font vars (no network fetch) */
   --font-geist-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
@@ -41,10 +42,10 @@ html {
 }
 
 ::selection {
-  background: color-mix(in srgb, var(--accent-neon) 38%, transparent);
+  background: color-mix(in srgb, var(--accent) 42%, transparent);
 }
 
-/* A subtle site-wide background sheen — emerald scanner glow */
+/* Subtle violet / indigo field — mathematical, disruptive */
 main {
   position: relative;
 }
@@ -55,9 +56,9 @@ main::before {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(1100px 520px at 50% -140px, color-mix(in srgb, var(--accent) 18%, transparent), transparent 65%),
-    radial-gradient(900px 480px at 15% 12%, color-mix(in srgb, var(--accent-neon) 10%, transparent), transparent 62%),
-    radial-gradient(900px 480px at 85% 18%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 62%);
-  opacity: 0.95;
+    radial-gradient(1100px 520px at 50% -140px, color-mix(in srgb, var(--accent) 16%, transparent), transparent 65%),
+    radial-gradient(900px 480px at 12% 14%, color-mix(in srgb, var(--accent-end) 12%, transparent), transparent 62%),
+    radial-gradient(820px 440px at 88% 20%, color-mix(in srgb, var(--accent-rose) 6%, transparent), transparent 58%);
+  opacity: 0.92;
   z-index: -1;
 }

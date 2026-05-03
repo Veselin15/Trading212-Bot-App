@@ -36,14 +36,14 @@ export function SiteHeaderClient({
       <Container>
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="group flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/15 transition-colors group-hover:bg-emerald-500/25">
-              <Zap className="h-3.5 w-3.5 text-emerald-400" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-violet-500/30 bg-violet-500/15 transition-colors group-hover:bg-violet-500/25">
+              <Zap className="h-3.5 w-3.5 text-violet-400" />
             </div>
             <span
               className="tracking-tight text-white"
               style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.01em" }}
             >
-              Trading212 <span className="text-emerald-400">Bot</span>
+              Trading212 <span className="text-violet-400">Bot</span>
             </span>
           </Link>
 
@@ -80,7 +80,7 @@ export function SiteHeaderClient({
                     Log in
                   </span>
                 </Link>
-                <ButtonLink href="/login" className="h-10 bg-emerald-500 px-4 text-slate-950 hover:bg-[#00E676]">
+                <ButtonLink href="/login" className="h-10 bg-violet-500 px-4 text-slate-950 hover:bg-indigo-500">
                   Get started
                 </ButtonLink>
               </>
@@ -135,7 +135,7 @@ export function SiteHeaderClient({
                 ))}
                 {!isAuthed ? (
                   <div className="mt-2 border-t border-slate-800 pt-2">
-                    <ButtonLink href="/login" className="w-full bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+                    <ButtonLink href="/login" className="w-full bg-violet-500 text-slate-950 hover:bg-indigo-500">
                       Get started
                     </ButtonLink>
                   </div>

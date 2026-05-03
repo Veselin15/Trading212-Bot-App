@@ -11,9 +11,9 @@ export function Toaster() {
       toastOptions={{
         classNames: {
           toast:
-            "border border-white/10 bg-[#0A0A0A] text-slate-50 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.8)]",
+            "border border-white/10 bg-zinc-900 text-slate-50 shadow-[0_10px_30px_-18px_rgba(0,0,0,0.8)]",
           description: "text-slate-300",
-          actionButton: "bg-emerald-500 text-slate-950 hover:bg-[#00E676]",
+          actionButton: "bg-violet-500 text-slate-950 hover:bg-indigo-500",
           cancelButton: "bg-white/5 text-slate-50 hover:bg-white/10",
         },
       }}

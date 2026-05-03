@@ -62,14 +62,14 @@ export default function ProductPage() {
     <main>
       <Container className="py-20">
         <RevealOnScroll className="mx-auto mb-16 max-w-4xl text-center">
-          <Badge className="mb-4 border-emerald-500/30 text-emerald-400">Product / what you&apos;re buying</Badge>
+          <Badge className="mb-4 border-violet-500/30 text-violet-400">Product / what you&apos;re buying</Badge>
           <h1 className="mb-6 text-5xl">Portal + Desktop Executor</h1>
           <p className="mb-8 text-lg text-slate-300">
             Web portal manages your account and subscription. Desktop app executes trades locally on your PC. API keys
             never touch our servers.
           </p>
           <div className="flex flex-wrap justify-center gap-4">
-            <ButtonLink href="/pricing" className="bg-emerald-600 hover:bg-emerald-400">
+            <ButtonLink href="/pricing" className="bg-violet-600 hover:bg-indigo-400">
               See pricing
             </ButtonLink>
             <ButtonLink href="/faq" variant="secondary">
@@ -84,8 +84,8 @@ export default function ProductPage() {
             {features.map((feature) => (
               <GlowHoverCard key={feature.title} className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/10">
-                    <feature.icon className="h-6 w-6 text-emerald-400" />
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-lg border border-violet-500/30 bg-violet-500/10">
+                    <feature.icon className="h-6 w-6 text-violet-400" />
                   </div>
                   <div>
                     <h3 className="mb-2 text-lg">{feature.title}</h3>
@@ -103,7 +103,7 @@ export default function ProductPage() {
             <div className="mb-8 grid gap-6 md:grid-cols-3">
               {setupSteps.map((item) => (
                 <GlowHoverCard key={item.step} className="p-6">
-                  <div className="mb-3 text-3xl text-emerald-400">0{item.step}</div>
+                  <div className="mb-3 text-3xl text-violet-400">0{item.step}</div>
                   <h3 className="mb-2 text-lg">{item.title}</h3>
                   <p className="text-sm text-slate-400">{item.description}</p>
                 </GlowHoverCard>

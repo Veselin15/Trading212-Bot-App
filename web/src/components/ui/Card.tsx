@@ -18,8 +18,8 @@ export function Card({
         "rounded-3xl border shadow-sm",
         variant === "glass" &&
           "border-white/10 bg-white/5 backdrop-blur supports-[backdrop-filter]:bg-white/5",
-        variant === "solid" && "border-white/10 bg-[#0A0A0A]",
-        variant === "accent" && "border-emerald-500/35 bg-emerald-500/10",
+        variant === "solid" && "border-white/10 bg-zinc-900",
+        variant === "accent" && "border-violet-500/35 bg-violet-500/10",
         className,
       )}
     />

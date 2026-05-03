@@ -41,11 +41,11 @@ export function PricingTiers() {
 
       <motion.div variants={reduce ? fadeUpItemInstant : fadeUpItem}>
         <GlowHoverCard variant="accent" className="relative overflow-hidden p-7">
-          <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-emerald-500/20 blur-3xl" />
+          <div className="absolute -right-24 -top-24 h-56 w-56 rounded-full bg-violet-500/20 blur-3xl" />
           <div className="relative">
             <div className="flex items-center justify-between gap-3">
-              <div className="text-sm font-medium text-emerald-200">Pro Automation</div>
-              <div className="rounded-full border border-emerald-500/30 bg-[#0A0A0A] px-2 py-1 text-xs text-slate-200">
+              <div className="text-sm font-medium text-violet-200">Pro Automation</div>
+              <div className="rounded-full border border-violet-500/30 bg-zinc-900 px-2 py-1 text-xs text-slate-200">
                 Most popular
               </div>
             </div>

@@ -15,7 +15,7 @@ const ITEMS = [...STATS, ...STATS];
 
 export function StatsTicker() {
   return (
-    <div className="relative select-none overflow-hidden border-y border-white/10 bg-[#0A0A0A] py-3">
+    <div className="relative select-none overflow-hidden border-y border-white/10 bg-zinc-900 py-3">
       <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-background to-transparent" />
       <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-background to-transparent" />
 
@@ -28,7 +28,7 @@ export function StatsTicker() {
         {ITEMS.map((item, i) => (
           <div key={i} className="flex shrink-0 items-center gap-2">
             <span className="whitespace-nowrap text-xs uppercase tracking-wider text-slate-500">{item.label}</span>
-            <span className={`font-mono text-sm ${item.positive ? "text-emerald-400" : "text-red-400"}`}>
+            <span className={`font-mono text-sm ${item.positive ? "text-violet-400" : "text-red-400"}`}>
               {item.value}
             </span>
             <span className="text-xs text-slate-700">·</span>

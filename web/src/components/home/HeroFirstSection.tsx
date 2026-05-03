@@ -27,7 +27,7 @@ export function HeroFirstSection() {
         viewport={{ once: true, amount: 0.25 }}
         transition={{ duration: 0.38, ease: easeOutSnappy }}
       >
-        <div className="inline-flex cursor-default items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 shadow-sm backdrop-blur transition-all duration-300 hover:border-emerald-500/30 hover:bg-white/[0.08]">
+        <div className="inline-flex cursor-default items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 shadow-sm backdrop-blur transition-all duration-300 hover:border-violet-500/30 hover:bg-white/[0.08]">
           <span className="font-medium text-slate-50">Trading212 Bot</span>
           <span className="text-slate-400">long-only · invest</span>
         </div>
@@ -43,11 +43,11 @@ export function HeroFirstSection() {
 
         <HeroSpotlightCard>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-emerald-500/25 text-emerald-200 ring-1 ring-emerald-400/30 transition-transform duration-300 group-hover/spot:scale-105 motion-reduce:transform-none">
+            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-violet-500/25 text-violet-200 ring-1 ring-violet-400/30 transition-transform duration-300 group-hover/spot:scale-105 motion-reduce:transform-none">
               <Users className="h-5 w-5" aria-hidden />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-200/90 sm:text-sm">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-200/90 sm:text-sm">
                 For everyday investors
               </p>
               <p className="mt-2 text-balance text-lg font-semibold leading-snug text-slate-50 sm:text-xl sm:leading-snug">

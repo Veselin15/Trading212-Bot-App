@@ -78,10 +78,10 @@ function HomeHeroCtas({ mode }: { mode: HomeCtaMode }) {
   if (mode.kind === "visitor") {
     return (
       <div className="flex flex-wrap gap-3">
-        <ButtonLink href="/login" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+        <ButtonLink href="/login" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
           Create account <ArrowRight className="h-4 w-4" />
         </ButtonLink>
-        <ButtonLink href="/pricing" variant="secondary" className="border-white/10 hover:border-emerald-500/40">
+        <ButtonLink href="/pricing" variant="secondary" className="border-white/10 hover:border-violet-500/40">
           View pricing
         </ButtonLink>
       </div>
@@ -91,10 +91,10 @@ function HomeHeroCtas({ mode }: { mode: HomeCtaMode }) {
   if (mode.hasPro) {
     return (
       <div className="flex flex-wrap gap-3">
-        <ButtonLink href="/dashboard" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+        <ButtonLink href="/dashboard" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
           Open dashboard <ArrowRight className="h-4 w-4" />
         </ButtonLink>
-        <ButtonLink href="/download" variant="secondary" className="border-white/10 hover:border-emerald-500/40">
+        <ButtonLink href="/download" variant="secondary" className="border-white/10 hover:border-violet-500/40">
           Download desktop app
         </ButtonLink>
       </div>
@@ -105,16 +105,16 @@ function HomeHeroCtas({ mode }: { mode: HomeCtaMode }) {
     <div className="flex flex-wrap gap-3">
       {mode.checkoutEnabled ? (
         <form action="/api/stripe/checkout" method="post">
-          <Button type="submit" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+          <Button type="submit" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
             Upgrade to Pro <ArrowRight className="h-4 w-4" />
           </Button>
         </form>
       ) : (
-        <ButtonLink href="/dashboard" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+        <ButtonLink href="/dashboard" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
           Go to dashboard <ArrowRight className="h-4 w-4" />
         </ButtonLink>
       )}
-      <ButtonLink href="/pricing" variant="secondary" className="border-white/10 hover:border-emerald-500/40">
+      <ButtonLink href="/pricing" variant="secondary" className="border-white/10 hover:border-violet-500/40">
         Compare plans
       </ButtonLink>
     </div>
@@ -124,25 +124,25 @@ function HomeHeroCtas({ mode }: { mode: HomeCtaMode }) {
 function HomeHeroBadge({ mode }: { mode: HomeCtaMode }) {
   if (mode.kind === "visitor") {
     return (
-      <Badge className="border-emerald-500/40 bg-emerald-500/5 text-emerald-400">Integration ready</Badge>
+      <Badge className="border-violet-500/40 bg-violet-500/5 text-violet-400">Integration ready</Badge>
     );
   }
   if (mode.hasPro) {
     return (
-      <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300">Pro active</Badge>
+      <Badge className="border-violet-500/40 bg-violet-500/10 text-violet-300">Pro active</Badge>
     );
   }
-  return <Badge className="border-emerald-500/40 bg-emerald-500/10 text-emerald-300">Signed in</Badge>;
+  return <Badge className="border-violet-500/40 bg-violet-500/10 text-violet-300">Signed in</Badge>;
 }
 
 function HomePricingCtas({ mode }: { mode: HomeCtaMode }) {
   if (mode.kind === "visitor") {
     return (
       <div className="flex flex-wrap justify-center gap-4">
-        <ButtonLink href="/pricing" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+        <ButtonLink href="/pricing" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
           Compare plans <ArrowRight className="h-4 w-4" />
         </ButtonLink>
-        <ButtonLink href="/login" variant="secondary" className="border-white/10 hover:border-emerald-500/40">
+        <ButtonLink href="/login" variant="secondary" className="border-white/10 hover:border-violet-500/40">
           Create free account
         </ButtonLink>
       </div>
@@ -152,10 +152,10 @@ function HomePricingCtas({ mode }: { mode: HomeCtaMode }) {
   if (mode.hasPro) {
     return (
       <div className="flex flex-wrap justify-center gap-4">
-        <ButtonLink href="/dashboard" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+        <ButtonLink href="/dashboard" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
           Dashboard <ArrowRight className="h-4 w-4" />
         </ButtonLink>
-        <ButtonLink href="/download" variant="secondary" className="border-white/10 hover:border-emerald-500/40">
+        <ButtonLink href="/download" variant="secondary" className="border-white/10 hover:border-violet-500/40">
           Download app
         </ButtonLink>
       </div>
@@ -166,16 +166,16 @@ function HomePricingCtas({ mode }: { mode: HomeCtaMode }) {
     <div className="flex flex-wrap justify-center gap-4">
       {mode.checkoutEnabled ? (
         <form action="/api/stripe/checkout" method="post">
-          <Button type="submit" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+          <Button type="submit" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
             Upgrade to Pro <ArrowRight className="h-4 w-4" />
           </Button>
         </form>
       ) : (
-        <ButtonLink href="/dashboard" className="gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+        <ButtonLink href="/dashboard" className="gap-2 bg-violet-500 text-slate-950 hover:bg-indigo-500">
           Go to dashboard <ArrowRight className="h-4 w-4" />
         </ButtonLink>
       )}
-      <ButtonLink href="/pricing" variant="secondary" className="border-white/10 hover:border-emerald-500/40">
+      <ButtonLink href="/pricing" variant="secondary" className="border-white/10 hover:border-violet-500/40">
         View pricing
       </ButtonLink>
     </div>
@@ -189,7 +189,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
         className="pointer-events-none absolute inset-x-0 top-0 h-[700px]"
         style={{
           background:
-            "radial-gradient(ellipse 80% 60% at 60% -10%, rgba(0,230,118,0.12) 0%, transparent 70%)",
+            "radial-gradient(ellipse 80% 60% at 60% -10%, rgba(139,92,246,0.14) 0%, transparent 68%), radial-gradient(ellipse 55% 45% at 82% 8%, rgba(244,63,94,0.07) 0%, transparent 55%)",
         }}
       />
 
@@ -205,7 +205,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
               <HomeHeroBadge mode={ctaMode} />
 
               <h1 className="text-[2.7rem] leading-[1.12] tracking-tight lg:text-[3.4rem]">
-                Automated investing on <span className="text-emerald-400">Trading212</span> — without a pro setup
+                Automated investing on <span className="text-violet-400">Trading212</span> — without a pro setup
               </h1>
 
               <p className="max-w-md text-slate-400" style={{ fontSize: "1.05rem" }}>
@@ -239,8 +239,8 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
         <section className="border-b border-slate-800/40 py-20">
           <Container>
             <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] p-8 backdrop-blur sm:p-10">
-              <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
-              <div className="pointer-events-none absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -left-24 -top-24 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -right-24 -bottom-24 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
 
               <div className="mb-8 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
                 <div>
@@ -257,10 +257,10 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                 {HOW_IT_WORKS.map((step) => (
                   <div
                     key={step.n}
-                    className="rounded-2xl border border-white/10 bg-[#0A0A0A] p-6 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-emerald-500/25 hover:shadow-[0_0_28px_-12px_rgba(16,185,129,0.2)] motion-reduce:hover:transform-none"
+                    className="rounded-2xl border border-white/10 bg-zinc-900 p-6 transition-[border-color,box-shadow,transform] duration-200 hover:-translate-y-0.5 hover:border-violet-500/25 hover:shadow-[0_0_28px_-12px_rgba(139,92,246,0.2)] motion-reduce:hover:transform-none"
                   >
-                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-3 py-1">
-                      <span className="font-mono text-xs text-emerald-300">{step.n}</span>
+                    <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-violet-500/25 bg-violet-500/10 px-3 py-1">
+                      <span className="font-mono text-xs text-violet-300">{step.n}</span>
                       <span className="text-xs text-slate-300">Step</span>
                     </div>
                     <h3 className="text-base font-medium text-slate-50">{step.title}</h3>
@@ -282,7 +282,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                   key={s.label}
                   className="rounded-2xl border border-white/10 bg-white/[0.03] p-6 text-center"
                 >
-                  <p className="mb-1 font-mono text-emerald-400" style={{ fontSize: "1.9rem", fontWeight: 600 }}>
+                  <p className="mb-1 font-mono text-violet-400" style={{ fontSize: "1.9rem", fontWeight: 600 }}>
                     {s.value}
                   </p>
                   <p className="text-slate-500" style={{ fontSize: "0.78rem" }}>
@@ -302,7 +302,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
         <section className="py-24">
           <Container>
             <div className="mb-14 max-w-xl">
-              <Badge className="mb-4 border-emerald-500/30 text-emerald-400">Platform capabilities</Badge>
+              <Badge className="mb-4 border-violet-500/30 text-violet-400">Platform capabilities</Badge>
               <h2 className="text-4xl tracking-tight">Built for security-conscious traders</h2>
             </div>
 
@@ -327,8 +327,8 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                       transition={{ duration: 0.45, ease: "easeOut" }}
                       className="flex h-full flex-col gap-4"
                     >
-                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-emerald-500/20 bg-emerald-500/10">
-                        <f.icon className="h-5 w-5 text-emerald-400" />
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-violet-500/20 bg-violet-500/10">
+                        <f.icon className="h-5 w-5 text-violet-400" />
                       </div>
                       <div>
                         <h3 className="mb-2 leading-snug text-slate-50">{f.title}</h3>
@@ -349,11 +349,11 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
         <section className="pb-24 py-8">
           <Container>
             <div className="relative grid items-center gap-10 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-slate-900/60 to-background/75 p-10 md:grid-cols-2 md:p-14">
-              <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
+              <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
               <div>
                 <div className="mb-4 flex items-center gap-2">
-                  <Lock className="h-4 w-4 text-emerald-400" />
-                  <span className="text-xs uppercase tracking-wider text-emerald-400">Security architecture</span>
+                  <Lock className="h-4 w-4 text-violet-400" />
+                  <span className="text-xs uppercase tracking-wider text-violet-400">Security architecture</span>
                 </div>
                 <h2 className="mb-4 text-3xl tracking-tight">Your keys stay on your machine. Always.</h2>
                 <p className="mb-6 text-slate-400" style={{ fontSize: "0.92rem" }}>
@@ -361,7 +361,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                   local Windows executor that holds your broker API keys. The portal <em>never</em> sees your
                   credentials.
                 </p>
-                <ButtonLink href="/product" variant="secondary" className="gap-2 border-slate-700 hover:border-emerald-500">
+                <ButtonLink href="/product" variant="secondary" className="gap-2 border-slate-700 hover:border-violet-500">
                   Read the product overview <ArrowRight className="h-4 w-4" />
                 </ButtonLink>
               </div>
@@ -379,12 +379,12 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                     icon: Lock,
                     label: "Desktop App",
                     sub: "API Keys · Order Executor · Local",
-                    border: "border-emerald-500/50",
-                    bg: "bg-emerald-950/30",
+                    border: "border-indigo-500/50",
+                    bg: "bg-violet-950/30",
                   },
                 ].map((row) => (
                   <div key={row.label} className={`flex items-center gap-4 rounded-xl border ${row.border} ${row.bg} p-4`}>
-                    <row.icon className="h-5 w-5 flex-shrink-0 text-emerald-400" />
+                    <row.icon className="h-5 w-5 flex-shrink-0 text-violet-400" />
                     <div>
                       <p className="text-slate-200" style={{ fontSize: "0.85rem" }}>
                         {row.label}
@@ -411,25 +411,25 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
       <RevealOnScroll>
         <section className="pb-28 py-8">
           <Container>
-            <GlowHoverCard className="p-8 md:p-12 bg-[#0A0A0A]">
+            <GlowHoverCard className="p-8 md:p-12 bg-zinc-900">
               <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
                 <div>
-                  <Badge className="mb-3 border-emerald-500/30 text-emerald-400">Historical model output</Badge>
+                  <Badge className="mb-3 border-violet-500/30 text-violet-400">Historical model output</Badge>
                   <h2 className="text-3xl tracking-tight">Strategy results</h2>
                   <p className="mt-1 text-slate-500" style={{ fontSize: "0.8rem" }}>
                     Monthly view · equity indexed to 100 at start
                   </p>
                 </div>
-                <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5">
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
-                  <span className="text-emerald-400" style={{ fontSize: "0.78rem" }}>
+                <div className="flex items-center gap-2 rounded-full border border-violet-500/20 bg-violet-500/10 px-3 py-1.5">
+                  <TrendingUp className="h-3.5 w-3.5 text-violet-400" />
+                  <span className="text-violet-400" style={{ fontSize: "0.78rem" }}>
                     Results (example)
                   </span>
                 </div>
               </div>
 
               <motion.div
-                className="rounded-2xl border border-white/10 bg-[#0A0A0A] p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]"
+                className="rounded-2xl border border-white/10 bg-zinc-900 p-6 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]"
                 initial={{ opacity: 0, y: 10 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.25 }}
@@ -451,12 +451,12 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
       <RevealOnScroll>
         <section className="pb-32 py-8">
           <Container>
-            <div className="relative rounded-3xl bg-gradient-to-br from-emerald-500 via-slate-700 to-emerald-700 p-[1.5px]">
-              <div className="relative overflow-hidden rounded-3xl bg-[#0A0A0A] p-10 text-center md:p-16">
-                <div className="pointer-events-none absolute -left-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
-                <div className="pointer-events-none absolute -right-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-emerald-500/10 blur-3xl" />
+            <div className="relative rounded-3xl bg-gradient-to-br from-violet-500 via-rose-500/35 to-indigo-700 p-[1.5px]">
+              <div className="relative overflow-hidden rounded-3xl bg-zinc-900 p-10 text-center md:p-16">
+                <div className="pointer-events-none absolute -left-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-violet-500/10 blur-3xl" />
+                <div className="pointer-events-none absolute -right-20 top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-violet-500/10 blur-3xl" />
 
-                <Badge className="mb-6 border-emerald-500/30 text-emerald-400">Simple, transparent pricing</Badge>
+                <Badge className="mb-6 border-violet-500/30 text-violet-400">Simple, transparent pricing</Badge>
                 <h2 className="mb-4 text-4xl tracking-tight md:text-5xl">Start free. Go live when ready.</h2>
                 <p className="mx-auto mb-8 max-w-lg text-slate-400" style={{ fontSize: "1rem" }}>
                   Explore the portal on the free plan. Upgrade to Pro for the live signal feed, a desktop license, and

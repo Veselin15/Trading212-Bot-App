@@ -18,7 +18,7 @@ export function Button({
       className={cx(
         "inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-medium transition-colors disabled:opacity-60",
         variant === "primary" &&
-          "bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/25 hover:bg-[#00E676] focus:outline-none focus:ring-2 focus:ring-emerald-400/55",
+          "bg-violet-500 text-slate-950 shadow-sm shadow-violet-500/25 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-violet-400/55",
         variant === "secondary" &&
           "border border-white/10 bg-white/5 text-slate-50 backdrop-blur hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/10",
         variant === "ghost" && "text-slate-300 hover:bg-white/5",
@@ -40,7 +40,7 @@ export function ButtonLink({
       className={cx(
         "inline-flex h-11 items-center justify-center rounded-xl px-5 text-sm font-medium transition-colors",
         variant === "primary" &&
-          "bg-emerald-500 text-slate-950 shadow-sm shadow-emerald-500/25 hover:bg-[#00E676] focus:outline-none focus:ring-2 focus:ring-emerald-400/55",
+          "bg-violet-500 text-slate-950 shadow-sm shadow-violet-500/25 hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-violet-400/55",
         variant === "secondary" &&
           "border border-white/10 bg-white/5 text-slate-50 backdrop-blur hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/10",
         variant === "ghost" && "text-slate-300 hover:bg-white/5",
