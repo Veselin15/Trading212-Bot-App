@@ -120,13 +120,9 @@ async def ws_exec(ws: WebSocket) -> None:
                     await ws.close(code=4403)
                     return
 
-            # 3) Enforce one-license-per-IP (best-effort).
-            locked_ip = str(lic.get("last_ip_address") or "").strip()
-            if locked_ip and ip and locked_ip != ip:
-                await ws.close(code=4409)
-                return
-
-            # Persist IP lock + last seen (service role bypasses RLS).
+            # Record IP + last-seen for audit (not enforced — users have dynamic IPs;
+            # single-session enforcement is handled by WsManager.upsert which evicts
+            # any prior connection for the same license_id with close code 4000).
             await sb.patch(
                 client,
                 f"licenses?id=eq.{lic['id']}",

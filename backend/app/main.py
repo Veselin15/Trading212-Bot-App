@@ -7,6 +7,9 @@ import os
 
 from fastapi import FastAPI
 
+# Bump when you ship a new release.  Desktop app reads this from /version.
+APP_VERSION = "1.0.0"
+
 from app.api.debug import router as debug_router
 from app.api.license import router as license_router
 from app.api.ws import heartbeat_loop, router as ws_router
@@ -28,6 +31,11 @@ def create_app() -> FastAPI:
             "docs": "/docs",
             "ws_exec": "/ws/exec",
         }
+
+    @app.get("/version")
+    async def version() -> dict[str, str]:
+        """Returns the backend version.  Desktop app displays this after connecting."""
+        return {"version": APP_VERSION}
 
     @app.get("/health")
     async def health() -> dict[str, str | int]:
