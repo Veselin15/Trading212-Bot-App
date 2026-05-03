@@ -67,7 +67,7 @@ function useFinePointer() {
 }
 
 function MicroSpark({ tone, variant }: { tone: "green" | "red"; variant: string }) {
-  const stroke = tone === "green" ? "rgba(139,92,246,0.92)" : "rgba(251,113,133,0.88)";
+  const stroke = tone === "green" ? "rgba(16,185,129,0.92)" : "rgba(251,113,133,0.88)";
   const d = SPARK_PATHS[variant] ?? SPARK_PATHS.default;
   return (
     <svg width="40" height="10" viewBox="0 0 42 10" aria-hidden className="shrink-0 opacity-95">
@@ -136,7 +136,7 @@ export function HeroInteractiveGraphic() {
     glowY.set(45);
   }, [nx, ny, orbX, orbY, glowX, glowY]);
 
-  const orbBackground = useMotionTemplate`radial-gradient(460px 340px at ${orbX}% ${orbY}%, rgba(139,92,246,0.4), rgba(99,102,241,0.16) 36%, transparent 70%)`;
+  const orbBackground = useMotionTemplate`radial-gradient(460px 340px at ${orbX}% ${orbY}%, rgba(16,185,129,0.4), rgba(0,230,118,0.16) 36%, transparent 70%)`;
 
   /** Soft moving highlight on the glass surface — reads “alive” without clutter */
   const cardSheen = useMotionTemplate`radial-gradient(280px 220px at ${glowX}% ${glowY}%, rgba(255,255,255,0.14), transparent 62%)`;
@@ -159,7 +159,7 @@ export function HeroInteractiveGraphic() {
 
       {/* Secondary softer halo for depth */}
       <div
-        className="pointer-events-none absolute inset-[10%] -z-10 rounded-[1.75rem] bg-gradient-to-b from-violet-500/[0.07] to-transparent blur-2xl"
+        className="pointer-events-none absolute inset-[10%] -z-10 rounded-[1.75rem] bg-gradient-to-b from-emerald-500/[0.07] to-transparent blur-2xl"
         aria-hidden
       />
 
@@ -178,7 +178,7 @@ export function HeroInteractiveGraphic() {
           aria-hidden
         />
         <div
-          className="pointer-events-none absolute inset-px rounded-[calc(1.5rem-2px)] bg-gradient-to-br from-white/[0.07] via-transparent to-indigo-700/[0.05] opacity-90"
+          className="pointer-events-none absolute inset-px rounded-[calc(1.5rem-2px)] bg-gradient-to-br from-white/[0.07] via-transparent to-emerald-700/[0.05] opacity-90"
           aria-hidden
         />
 
@@ -190,7 +190,7 @@ export function HeroInteractiveGraphic() {
               key={p.id}
               className={`absolute flex h-[26px] items-center justify-center rounded-full border shadow-lg backdrop-blur-md ${
                 p.tone === "green"
-                  ? "border-violet-400/30 bg-violet-500/[0.12] shadow-violet-500/15"
+                  ? "border-emerald-400/30 bg-emerald-500/[0.12] shadow-emerald-500/15"
                   : "border-rose-400/25 bg-rose-500/[0.11] shadow-rose-500/12"
               }`}
               style={{
@@ -245,8 +245,8 @@ export function HeroInteractiveGraphic() {
           <div className="relative z-[2] flex items-center justify-between gap-3 border-b border-white/[0.06] pb-4">
             <div className="flex items-center gap-2.5">
               <span className="relative flex h-2 w-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-violet-400/35 opacity-70 motion-reduce:animate-none" />
-                <span className="relative inline-flex h-2 w-2 rounded-full bg-violet-400 shadow-[0_0_12px_2px_rgba(139,92,246,0.55)] ring-2 ring-indigo-400/35" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400/35 opacity-70 motion-reduce:animate-none" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-[#00E676] shadow-[0_0_12px_2px_rgba(0,230,118,0.55)] ring-2 ring-emerald-400/30" />
               </span>
               <span className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-300">
                 Live engine
@@ -260,18 +260,18 @@ export function HeroInteractiveGraphic() {
           </div>
 
           {/* Chart well */}
-          <div className="relative z-[1] mt-5 flex min-h-[140px] flex-1 flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-zinc-900 to-[#09090b] p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
+          <div className="relative z-[1] mt-5 flex min-h-[140px] flex-1 flex-col rounded-2xl border border-white/10 bg-gradient-to-b from-[#0A0A0A] to-black p-4 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]">
             <svg viewBox="0 0 280 120" className="h-[118px] w-full shrink-0" preserveAspectRatio="none" aria-hidden>
               <defs>
                 <linearGradient id={`${svgUid}-fill`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
-                  <stop offset="42%" stopColor="#f43f5e" stopOpacity="0.12" />
-                  <stop offset="100%" stopColor="#09090b" stopOpacity="0" />
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.42" />
+                  <stop offset="45%" stopColor="#00e676" stopOpacity="0.14" />
+                  <stop offset="100%" stopColor="#000000" stopOpacity="0" />
                 </linearGradient>
                 <linearGradient id={`${svgUid}-stroke`} x1="0" y1="0" x2="1" y2="0">
-                  <stop offset="0%" stopColor="#6366f1" />
-                  <stop offset="50%" stopColor="#8b5cf6" />
-                  <stop offset="100%" stopColor="#a78bfa" />
+                  <stop offset="0%" stopColor="#059669" />
+                  <stop offset="55%" stopColor="#10b981" />
+                  <stop offset="100%" stopColor="#00e676" />
                 </linearGradient>
                 <filter id={`${svgUid}-glow`} x="-40%" y="-40%" width="180%" height="180%">
                   <feGaussianBlur stdDeviation="2.2" result="b" />
@@ -338,7 +338,7 @@ export function HeroInteractiveGraphic() {
           <div className="relative z-[2] mt-5 flex items-end justify-between gap-4 pt-1">
             <div className="space-y-2.5">
               <motion.div
-                className="h-1 w-[5.5rem] rounded-full bg-gradient-to-r from-violet-400/35 to-white/10"
+                className="h-1 w-[5.5rem] rounded-full bg-gradient-to-r from-emerald-400/35 to-white/10"
                 initial={false}
                 animate={reduceMotion ? { opacity: 0.85 } : { opacity: [0.55, 1, 0.55] }}
                 transition={
@@ -351,7 +351,7 @@ export function HeroInteractiveGraphic() {
               {[20, 34, 24, 42, 28].map((h, i) => (
                 <motion.div
                   key={i}
-                  className="w-[7px] rounded-[3px] bg-gradient-to-t from-slate-800 via-violet-600/45 to-indigo-600/55 shadow-[0_0_12px_-4px_rgba(139,92,246,0.35)]"
+                  className="w-[7px] rounded-[3px] bg-gradient-to-t from-slate-800 via-emerald-600/45 to-emerald-600/55 shadow-[0_0_12px_-4px_rgba(16,185,129,0.35)]"
                   style={{ height: h }}
                   initial={false}
                   animate={reduceMotion ? { opacity: 0.9 } : { opacity: [0.72, 1, 0.72] }}

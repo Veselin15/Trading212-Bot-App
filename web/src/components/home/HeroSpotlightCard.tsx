@@ -22,16 +22,16 @@ export function HeroSpotlightCard({ children }: { children: ReactNode }) {
         if (e.pointerType === "mouse") move(e.clientX, e.clientY);
       }}
       onPointerLeave={() => setGlow({ x: 50, y: 35 })}
-      className="group/spot relative mt-6 overflow-hidden rounded-2xl border-2 border-violet-400/35 bg-gradient-to-br from-violet-500/20 via-rose-500/8 to-[#09090b] p-5 shadow-lg shadow-violet-500/10 transition-[border-color,box-shadow] duration-300 hover:border-violet-400/50 hover:shadow-violet-500/20 sm:p-6"
+      className="group/spot relative mt-6 overflow-hidden rounded-2xl border-2 border-emerald-400/35 bg-gradient-to-br from-emerald-500/20 via-[#0A0A0A] to-black p-5 shadow-lg shadow-emerald-500/10 transition-[border-color,box-shadow] duration-300 hover:border-emerald-400/50 hover:shadow-emerald-500/20 sm:p-6"
     >
       <div
         className="pointer-events-none absolute inset-0 opacity-70 transition-opacity duration-500 motion-reduce:opacity-30"
         style={{
-          background: `radial-gradient(520px circle at ${glow.x}% ${glow.y}%, rgba(139,92,246,0.2), rgba(244,63,94,0.06) 42%, transparent 58%)`,
+          background: `radial-gradient(520px circle at ${glow.x}% ${glow.y}%, rgba(16,185,129,0.22), transparent 55%)`,
         }}
         aria-hidden
       />
-      <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-violet-400/20 blur-3xl transition-transform duration-700 ease-out group-hover/spot:scale-110" />
+      <div className="pointer-events-none absolute -right-12 -top-12 h-32 w-32 rounded-full bg-emerald-400/20 blur-3xl transition-transform duration-700 ease-out group-hover/spot:scale-110" />
       <div className="relative">{children}</div>
     </div>
   );

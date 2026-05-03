@@ -26,7 +26,7 @@ export default async function DownloadPage() {
               Your subscription is active. Download the latest desktop executor below.
             </p>
 
-            <div className="mt-6 rounded-2xl border border-white/10 bg-zinc-900 p-4 text-sm text-slate-200">
+            <div className="mt-6 rounded-2xl border border-white/10 bg-[#0A0A0A] p-4 text-sm text-slate-200">
               <div className="flex items-center justify-between gap-3">
                 <div className="text-slate-400">Version</div>
                 <div>{version || "latest"}</div>
@@ -41,7 +41,7 @@ export default async function DownloadPage() {
               {downloadUrl ? (
                 <a
                   href={downloadUrl}
-                  className="inline-flex h-11 items-center justify-center rounded-xl bg-violet-500 px-5 text-sm font-medium text-slate-950 shadow-sm shadow-violet-500/20 transition-colors hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-violet-400/60"
+                  className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-medium text-slate-950 shadow-sm shadow-emerald-500/20 transition-colors hover:bg-[#00E676] focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
                 >
                   Download installer
                 </a>

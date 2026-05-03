@@ -22,7 +22,7 @@ export function ProductFeatureGrid() {
         <motion.div key={title} variants={reduce ? fadeUpItemInstant : fadeUpItem}>
           <GlowHoverCard className="p-5">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-500/15 text-violet-300">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
                 <Icon className="h-5 w-5" aria-hidden />
               </div>
               <div className="text-sm font-medium text-slate-50">{title}</div>

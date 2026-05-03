@@ -62,43 +62,43 @@ export function HeroFlowDiagram() {
 
           {/* Pill borders — symmetric, brightness peaks at center */}
           <linearGradient id="hfd-feedStroke" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(139,92,246,0.22)" />
-            <stop offset="28%" stopColor="rgba(99,102,241,0.78)" />
-            <stop offset="50%" stopColor="rgba(196,181,253,0.98)" />
-            <stop offset="72%" stopColor="rgba(99,102,241,0.78)" />
-            <stop offset="100%" stopColor="rgba(139,92,246,0.22)" />
+            <stop offset="0%" stopColor="rgba(16,185,129,0.22)" />
+            <stop offset="28%" stopColor="rgba(0,230,118,0.78)" />
+            <stop offset="50%" stopColor="rgba(34,211,238,0.98)" />
+            <stop offset="72%" stopColor="rgba(0,230,118,0.78)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0.22)" />
           </linearGradient>
           <linearGradient id="hfd-execStroke" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(99,102,241,0.22)" />
-            <stop offset="28%" stopColor="rgba(139,92,246,0.78)" />
-            <stop offset="50%" stopColor="rgba(99,102,241,1)" />
-            <stop offset="72%" stopColor="rgba(139,92,246,0.78)" />
-            <stop offset="100%" stopColor="rgba(99,102,241,0.22)" />
+            <stop offset="0%" stopColor="rgba(0,230,118,0.22)" />
+            <stop offset="28%" stopColor="rgba(16,185,129,0.78)" />
+            <stop offset="50%" stopColor="rgba(0,230,118,1)" />
+            <stop offset="72%" stopColor="rgba(16,185,129,0.78)" />
+            <stop offset="100%" stopColor="rgba(0,230,118,0.22)" />
           </linearGradient>
 
           {/* Outer glow halos */}
           <radialGradient id="hfd-feedGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(139,92,246,0.26)" />
-            <stop offset="52%" stopColor="rgba(99,102,241,0.11)" />
-            <stop offset="100%" stopColor="rgba(139,92,246,0)" />
+            <stop offset="0%" stopColor="rgba(16,185,129,0.26)" />
+            <stop offset="52%" stopColor="rgba(0,230,118,0.11)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0)" />
           </radialGradient>
           <radialGradient id="hfd-execGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="rgba(99,102,241,0.24)" />
-            <stop offset="52%" stopColor="rgba(139,92,246,0.09)" />
-            <stop offset="100%" stopColor="rgba(99,102,241,0)" />
+            <stop offset="0%" stopColor="rgba(0,230,118,0.24)" />
+            <stop offset="52%" stopColor="rgba(16,185,129,0.09)" />
+            <stop offset="100%" stopColor="rgba(0,230,118,0)" />
           </radialGradient>
 
           {/* Animated flow pulses on lines */}
           <linearGradient id="hfd-skyPulse" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(139,92,246,0)" />
-            <stop offset="38%" stopColor="rgba(99,102,241,0.9)" />
-            <stop offset="60%" stopColor="rgba(244,63,94,0.42)" />
-            <stop offset="100%" stopColor="rgba(139,92,246,0)" />
+            <stop offset="0%" stopColor="rgba(16,185,129,0)" />
+            <stop offset="38%" stopColor="rgba(0,230,118,0.9)" />
+            <stop offset="60%" stopColor="rgba(34,211,238,0.88)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0)" />
           </linearGradient>
-          <linearGradient id="hfd-violetPulse" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="rgba(139,92,246,0)" />
-            <stop offset="50%" stopColor="rgba(99,102,241,0.92)" />
-            <stop offset="100%" stopColor="rgba(139,92,246,0)" />
+          <linearGradient id="hfd-emeraldPulse" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="rgba(16,185,129,0)" />
+            <stop offset="50%" stopColor="rgba(0,230,118,0.92)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0)" />
           </linearGradient>
 
           {/* Drop shadow for pills */}
@@ -131,8 +131,8 @@ export function HeroFlowDiagram() {
 
         {/* ── Ambient background hazes ── */}
         <ellipse cx={CX}       cy={190} rx={290} ry={170} fill="rgba(2,6,23,0.22)" />
-        <ellipse cx={CX - 90} cy={120} rx={230} ry={145} fill="rgba(139,92,246,0.06)" />
-        <ellipse cx={CX + 70} cy={268} rx={240} ry={158} fill="rgba(99,102,241,0.05)" />
+        <ellipse cx={CX - 90} cy={120} rx={230} ry={145} fill="rgba(16,185,129,0.06)" />
+        <ellipse cx={CX + 70} cy={268} rx={240} ry={158} fill="rgba(0,230,118,0.05)" />
 
         {/* ── Source badges ── */}
         {SOURCES.map((src, i) => (
@@ -261,7 +261,7 @@ export function HeroFlowDiagram() {
           <motion.path
             d={EXEC_TO_T212_PATH}
             fill="none"
-            stroke="url(#hfd-violetPulse)"
+            stroke="url(#hfd-emeraldPulse)"
             strokeWidth={2.6}
             strokeLinecap="round"
             filter="url(#hfd-lineGlow)"
@@ -282,8 +282,8 @@ export function HeroFlowDiagram() {
             width={84}
             height={21}
             rx={10.5}
-            fill="rgba(139,92,246,0.11)"
-            stroke="rgba(139,92,246,0.42)"
+            fill="rgba(16,185,129,0.11)"
+            stroke="rgba(16,185,129,0.42)"
             strokeWidth={1}
           />
           <text
@@ -375,8 +375,8 @@ export function HeroFlowDiagram() {
             width={76}
             height={21}
             rx={10.5}
-            fill="rgba(99,102,241,0.1)"
-            stroke="rgba(99,102,241,0.42)"
+            fill="rgba(0,230,118,0.1)"
+            stroke="rgba(0,230,118,0.42)"
             strokeWidth={1}
           />
           <text

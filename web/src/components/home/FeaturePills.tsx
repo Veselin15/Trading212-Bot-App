@@ -36,13 +36,13 @@ export function FeaturePills() {
               onClick={() => setActive(on ? null : i)}
               className={`rounded-full border px-3 py-1.5 text-left text-xs font-medium transition-all duration-200 sm:text-sm ${
                 on
-                  ? "scale-[1.02] border-violet-400/50 bg-violet-500/20 text-violet-50 shadow-md shadow-violet-500/10 ring-1 ring-violet-400/30"
-                  : "border-violet-400/25 bg-zinc-900 text-violet-100 hover:border-violet-400/40 hover:bg-violet-500/10 hover:text-violet-50 active:scale-[0.98]"
+                  ? "scale-[1.02] border-emerald-400/50 bg-emerald-500/20 text-emerald-50 shadow-md shadow-emerald-500/10 ring-1 ring-emerald-400/30"
+                  : "border-emerald-400/25 bg-[#0A0A0A] text-emerald-100 hover:border-emerald-400/40 hover:bg-emerald-500/10 hover:text-emerald-50 active:scale-[0.98]"
               }`}
             >
               <span className="block">{item.label}</span>
               <span
-                className={`mt-1 block max-w-[min(100vw-4rem,20rem)] text-[11px] font-normal leading-snug text-violet-200/90 transition-[max-height,opacity,margin] duration-200 sm:max-w-xs ${
+                className={`mt-1 block max-w-[min(100vw-4rem,20rem)] text-[11px] font-normal leading-snug text-emerald-200/90 transition-[max-height,opacity,margin] duration-200 sm:max-w-xs ${
                   on ? "mt-1 max-h-40 opacity-100" : "mt-0 max-h-0 overflow-hidden opacity-0"
                 }`}
               >

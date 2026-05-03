@@ -17,7 +17,7 @@ export function Alert({
       role="alert"
       className={cx(
         "rounded-2xl border px-4 py-3 text-sm",
-        variant === "info" && "border-violet-500/25 bg-violet-500/10 text-violet-100",
+        variant === "info" && "border-emerald-500/25 bg-emerald-500/10 text-emerald-100",
         variant === "warning" && "border-amber-500/25 bg-amber-500/10 text-amber-100",
         className,
       )}

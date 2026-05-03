@@ -132,7 +132,7 @@ export function HeroScannerGrid() {
                 transition={scanWaveTransition}
                 style={{
                   background:
-                    "linear-gradient(90deg, transparent 0%, rgba(139,92,246,0.07) 35%, rgba(139,92,246,0.22) 50%, rgba(99,102,241,0.14) 65%, transparent 100%)",
+                    "linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.07) 35%, rgba(16,185,129,0.22) 50%, rgba(0,230,118,0.14) 65%, transparent 100%)",
                   mixBlendMode: "screen",
                 }}
               />
@@ -148,19 +148,19 @@ export function HeroScannerGrid() {
 
                 const signalStyles =
                   sig?.hue === "neon"
-                    ? "border-indigo-400/55 bg-indigo-500/[0.14] shadow-[0_0_14px_-2px_rgba(99,102,241,0.55)]"
+                    ? "border-[#00E676]/50 bg-[#00E676]/[0.12] shadow-[0_0_14px_-2px_rgba(0,230,118,0.55)]"
                     : sig?.hue === "core"
-                      ? "border-violet-500/50 bg-violet-500/[0.14] shadow-[0_0_14px_-2px_rgba(139,92,246,0.5)]"
+                      ? "border-emerald-500/50 bg-emerald-500/[0.14] shadow-[0_0_14px_-2px_rgba(16,185,129,0.5)]"
                       : "";
 
                 const scanStyles = scanHit
-                  ? "border-violet-400/35 shadow-[0_0_10px_-3px_rgba(139,92,246,0.38)]"
+                  ? "border-emerald-400/35 shadow-[0_0_10px_-3px_rgba(16,185,129,0.38)]"
                   : "";
 
                 return (
                   <div
                     key={k}
-                    className={`rounded-[2px] border border-white/[0.06] bg-zinc-900 transition-[border-color,box-shadow,background-color] duration-700 ease-out ${signalStyles} ${scanStyles}`}
+                    className={`rounded-[2px] border border-white/[0.06] bg-[#0A0A0A] transition-[border-color,box-shadow,background-color] duration-700 ease-out ${signalStyles} ${scanStyles}`}
                   />
                 );
               })}

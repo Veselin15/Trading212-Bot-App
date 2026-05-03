@@ -44,7 +44,7 @@ export type ProTierCta = {
 function ProCtaButton({ proTier }: { proTier: ProTierCta }) {
   if (!proTier.loggedIn) {
     return (
-      <ButtonLink href="/login" className="w-full bg-violet-600 hover:bg-indigo-400">
+      <ButtonLink href="/login" className="w-full bg-emerald-600 hover:bg-emerald-400">
         Upgrade to Pro
       </ButtonLink>
     );
@@ -59,7 +59,7 @@ function ProCtaButton({ proTier }: { proTier: ProTierCta }) {
   if (proTier.checkoutEnabled) {
     return (
       <form action="/api/stripe/checkout" method="post" className="w-full">
-        <Button type="submit" className="w-full bg-violet-600 hover:bg-indigo-400">
+        <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-400">
           Upgrade to Pro
         </Button>
       </form>
@@ -161,7 +161,7 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
             <RevealOnScroll key={tier.name}>
               <GlowHoverCard className="relative flex h-full flex-col p-8" disableLift={false}>
                 {tier.kind === "pro" && tier.popular ? (
-                  <Badge className="absolute right-4 top-4 bg-violet-600 text-slate-50">Most popular</Badge>
+                  <Badge className="absolute right-4 top-4 bg-emerald-600 text-slate-50">Most popular</Badge>
                 ) : null}
 
                 <div className="mb-6">
@@ -176,14 +176,14 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
                       <span className="text-lg text-slate-400">/mo</span>
                     </div>
                   ) : (
-                    <div className="text-4xl text-violet-400">Custom</div>
+                    <div className="text-4xl text-emerald-400">Custom</div>
                   )}
                 </div>
 
                 <ul className="mb-8 flex-1 space-y-3">
                   {tier.features.map((feature) => (
                     <li key={feature} className="flex items-start gap-2">
-                      <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-violet-400" />
+                      <Check className="mt-0.5 h-5 w-5 flex-shrink-0 text-emerald-400" />
                       <span className="text-sm text-slate-300">{feature}</span>
                     </li>
                   ))}
@@ -196,7 +196,7 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
                     href={tier.href}
                     className={`inline-flex h-11 w-full items-center justify-center rounded-xl px-5 text-sm font-medium transition-colors ${
                       tier.accent
-                        ? "bg-violet-600 text-slate-950 shadow-sm shadow-violet-500/20 hover:bg-indigo-400 focus:outline-none focus:ring-2 focus:ring-violet-400/60"
+                        ? "bg-emerald-600 text-slate-950 shadow-sm shadow-emerald-500/20 hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
                         : "border border-white/10 bg-white/5 text-slate-50 backdrop-blur hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-white/10"
                     }`}
                   >
@@ -206,7 +206,7 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
                   <ButtonLink
                     href={tier.href}
                     variant={tier.accent ? "primary" : "secondary"}
-                    className={tier.accent ? "w-full bg-violet-600 hover:bg-indigo-400" : "w-full"}
+                    className={tier.accent ? "w-full bg-emerald-600 hover:bg-emerald-400" : "w-full"}
                   >
                     {tier.cta}
                   </ButtonLink>
