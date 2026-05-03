@@ -36,8 +36,12 @@ def _derive_fernet_key(*, machine_guid: str, salt: bytes) -> bytes:
 
 @dataclass(frozen=True)
 class SecretPayload:
-    t212_api_key: str
-    t212_secret_key: str | None = None
+    """Two Trading212 key pairs; only one profile is active in the UI at a time (see settings)."""
+
+    practice_api_key: str = ""
+    practice_secret_key: str | None = None
+    live_api_key: str = ""
+    live_secret_key: str | None = None
 
 
 class CryptoStore:
@@ -60,11 +64,39 @@ class CryptoStore:
         key = _derive_fernet_key(machine_guid=machine_guid, salt=salt)
         return Fernet(key)
 
+    @staticmethod
+    def _payload_from_decrypted(obj: dict) -> SecretPayload:
+        if isinstance(obj.get("practice"), dict):
+            pr = obj["practice"]
+            lv = obj.get("live") if isinstance(obj.get("live"), dict) else {}
+            return SecretPayload(
+                practice_api_key=str(pr.get("api_key") or ""),
+                practice_secret_key=pr.get("secret_key"),
+                live_api_key=str(lv.get("api_key") or ""),
+                live_secret_key=lv.get("secret_key"),
+            )
+        # Legacy single-key file (treated as Practice).
+        return SecretPayload(
+            practice_api_key=str(obj.get("t212_api_key") or ""),
+            practice_secret_key=obj.get("t212_secret_key"),
+            live_api_key="",
+            live_secret_key=None,
+        )
+
     def save(self, payload: SecretPayload) -> None:
         f = self._fernet()
-        raw = json.dumps({"t212_api_key": payload.t212_api_key, "t212_secret_key": payload.t212_secret_key}).encode(
-            "utf-8"
-        )
+        raw = json.dumps(
+            {
+                "practice": {
+                    "api_key": payload.practice_api_key,
+                    "secret_key": payload.practice_secret_key,
+                },
+                "live": {
+                    "api_key": payload.live_api_key,
+                    "secret_key": payload.live_secret_key,
+                },
+            }
+        ).encode("utf-8")
         token = f.encrypt(raw)
         self._cipher_path.write_bytes(token)
 
@@ -75,7 +107,9 @@ class CryptoStore:
         token = self._cipher_path.read_bytes()
         raw = f.decrypt(token)
         obj = json.loads(raw.decode("utf-8"))
-        return SecretPayload(t212_api_key=str(obj.get("t212_api_key") or ""), t212_secret_key=obj.get("t212_secret_key"))
+        if not isinstance(obj, dict):
+            return None
+        return self._payload_from_decrypted(obj)
 
     def clear(self) -> None:
         self._cipher_path.unlink(missing_ok=True)
