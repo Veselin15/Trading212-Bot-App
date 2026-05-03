@@ -6,23 +6,30 @@ function cx(...classes: Array<string | false | null | undefined>) {
 
 type BrandVariant = "header" | "footer" | "auth";
 
-const variantClass: Record<BrandVariant, { wrap: string; mark: string; text: string }> = {
+const headerAuthClass: Record<
+  "header" | "auth",
+  { wrap: string; mark: string; wordmark: string }
+> = {
   header: {
     wrap: "flex flex-row items-center gap-2.5",
     mark: "h-8 w-8 shrink-0",
-    text: "h-[22px] w-auto max-h-[22px] max-w-[min(48vw,220px)] object-contain object-left sm:max-w-[240px]",
-  },
-  footer: {
-    wrap: "flex flex-row items-center gap-2",
-    mark: "h-7 w-7 shrink-0 opacity-95",
-    text: "h-[18px] w-auto max-h-[18px] max-w-[200px] object-contain object-left opacity-90",
+    wordmark: "text-[17px] tracking-tight sm:text-lg",
   },
   auth: {
     wrap: "flex flex-col items-center gap-3",
     mark: "h-12 w-12 shrink-0",
-    text: "h-7 w-auto max-h-7 max-w-[min(85vw,280px)] object-contain",
+    wordmark: "text-xl tracking-tight sm:text-2xl",
   },
 };
+
+function Wordmark({ className }: { className?: string }) {
+  return (
+    <span className={cx("inline-flex items-baseline select-none leading-none text-white", className)}>
+      <span className="font-semibold">Swift</span>
+      <span className="font-normal">Trade</span>
+    </span>
+  );
+}
 
 export function BrandLogo({
   variant = "header",
@@ -33,20 +40,45 @@ export function BrandLogo({
   href?: string;
   className?: string;
 }) {
-  const v = variantClass[variant];
+  if (variant === "footer") {
+    return (
+      <Link
+        href={href}
+        className={cx(
+          "group inline-flex max-w-[min(100%,240px)] transition-opacity hover:opacity-95",
+          className,
+        )}
+      >
+        <img
+          src="/logo_text.png"
+          alt="SwiftTrade"
+          width={240}
+          height={96}
+          className="h-auto w-full max-h-[5.5rem] object-contain object-left opacity-95"
+          decoding="async"
+        />
+      </Link>
+    );
+  }
+
+  const v = headerAuthClass[variant];
 
   return (
     <Link
       href={href}
       className={cx("group inline-flex transition-opacity hover:opacity-95", v.wrap, className)}
+      aria-label="SwiftTrade"
     >
-      <img src="/logo.png" alt="" width={variant === "auth" ? 48 : variant === "footer" ? 28 : 32} height={variant === "auth" ? 48 : variant === "footer" ? 28 : 32} className={v.mark} decoding="async" fetchPriority={variant === "header" ? "high" : "auto"} />
       <img
-        src="/logo_text.png"
-        alt="SwiftTrade"
-        className={v.text}
+        src="/logo.png"
+        alt=""
+        width={variant === "auth" ? 48 : 32}
+        height={variant === "auth" ? 48 : 32}
+        className={v.mark}
         decoding="async"
+        fetchPriority={variant === "header" ? "high" : "auto"}
       />
+      <Wordmark className={v.wordmark} />
     </Link>
   );
 }
