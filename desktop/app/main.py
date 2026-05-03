@@ -13,6 +13,8 @@ from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
     QCheckBox,
+    QDialog,
+    QDialogButtonBox,
     QFrame,
     QHBoxLayout,
     QHeaderView,
@@ -27,6 +29,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QScrollArea,
     QSizePolicy,
+    QSpinBox,
     QSplitter,
     QStyleFactory,
     QTableWidget,
@@ -67,22 +70,82 @@ QMainWindow, QWidget {{
     background-color: {_BG};
 }}
 
-/* ── top-bar status card ─────────────────────────────────────────── */
-QFrame#StatusCard {{
+/* ── navbar ───────────────────────────────────────────────────────── */
+QFrame#Navbar {{
     background-color: {_SURFACE};
+    border-bottom: 1px solid {_BORDER};
+    min-height: 44px;
+    max-height: 52px;
+}}
+
+QLabel#AppWordmark {{
+    color: {_TEXT};
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: transparent;
+    padding: 0 4px;
+}}
+
+QLabel#AppWordmarkAccent {{
+    color: {_SKY};
+    font-size: 11pt;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    background: transparent;
+    padding: 0;
+}}
+
+QFrame#NavSep {{
+    background-color: {_BORDER};
+    min-width: 1px;
+    max-width: 1px;
+    min-height: 20px;
+    max-height: 28px;
+    border: none;
+    margin: 0 4px;
+}}
+
+/* ── status indicator inside navbar ─────────────────────────────── */
+QFrame#StatusBadge {{
+    background-color: {_BG};
     border: 1px solid {_BORDER};
-    border-radius: 6px;
-    min-width: 160px;
+    border-radius: 12px;
+    padding: 0 2px;
 }}
 
 /* ── broker pill ─────────────────────────────────────────────────── */
 QLabel#BrokerPill {{
-    color: {_TEXT};
-    background-color: {_SURFACE};
+    color: {_MUTED};
+    background-color: transparent;
+    border: none;
+    padding: 0 4px;
+    font-size: 8.5pt;
+}}
+
+/* ── nav settings button ─────────────────────────────────────────── */
+QPushButton#NavSettingsBtn {{
+    background-color: transparent;
+    color: {_MUTED};
     border: 1px solid {_BORDER};
     border-radius: 6px;
-    padding: 3px 10px;
-    font-size: 8.5pt;
+    padding: 4px 8px;
+    font-size: 11pt;
+    min-width: 28px;
+    max-width: 32px;
+    min-height: 22px;
+    max-height: 28px;
+}}
+QPushButton#NavSettingsBtn:hover {{
+    color: {_TEXT};
+    border-color: {_BORDER2};
+    background-color: {_SURFACE2};
+}}
+
+/* ── top-bar status card — kept for backward compat ─────────────── */
+QFrame#StatusCard {{
+    background-color: transparent;
+    border: none;
 }}
 
 /* ── labelled field labels (above each input) ───────────────────── */
@@ -401,27 +464,88 @@ QScrollBar::add-line:horizontal, QScrollBar::sub-line:horizontal {{ width: 0; }}
 QScrollArea {{ border: none; background: transparent; }}
 QScrollArea > QWidget > QWidget {{ background: transparent; }}
 
-/* ── menu bar ────────────────────────────────────────────────────── */
+/* ── menu bar (hidden — replaced by custom navbar) ───────────────── */
 QMenuBar {{
     background-color: {_BG};
     color: {_MUTED};
     padding: 0 4px;
     spacing: 0;
-    border-bottom: 1px solid {_BORDER};
     font-size: 8.5pt;
+    min-height: 0;
+    max-height: 0;
+    border: none;
 }}
-QMenuBar::item {{ padding: 2px 8px; border-radius: 4px; margin: 1px 0; }}
-QMenuBar::item:selected {{ background-color: {_SURFACE2}; color: {_TEXT}; }}
+QMenuBar::item {{ max-height: 0; padding: 0; }}
 QMenu {{
     background-color: {_SURFACE2};
     color: {_TEXT};
     border: 1px solid {_BORDER2};
     border-radius: 8px;
-    padding: 4px;
+    padding: 6px 4px;
     font-size: 9.5pt;
 }}
-QMenu::item {{ padding: 8px 16px; border-radius: 4px; }}
+QMenu::item {{ padding: 8px 18px; border-radius: 4px; }}
 QMenu::item:selected {{ background-color: {_SKY_DIM}; color: #e0f2fe; }}
+QMenu::separator {{
+    height: 1px;
+    background: {_BORDER};
+    margin: 4px 10px;
+}}
+
+/* ── settings dialog ─────────────────────────────────────────────── */
+QDialog {{
+    background-color: {_SURFACE};
+    border: 1px solid {_BORDER2};
+    border-radius: 10px;
+}}
+QDialog QLabel#PrefSectionLabel {{
+    color: {_SKY};
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    background: transparent;
+}}
+QSpinBox {{
+    background-color: {_BG};
+    color: {_TEXT};
+    border: 1px solid {_BORDER2};
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 9pt;
+    selection-background-color: {_SKY_DIM};
+}}
+QSpinBox:focus {{ border-color: {_SKY}; }}
+QSpinBox::up-button, QSpinBox::down-button {{
+    background-color: {_SURFACE2};
+    border: none;
+    width: 18px;
+    border-radius: 3px;
+}}
+QSpinBox::up-button:hover, QSpinBox::down-button:hover {{
+    background-color: {_BORDER2};
+}}
+QDialogButtonBox QPushButton {{
+    background-color: {_SURFACE2};
+    color: {_TEXT};
+    border: 1px solid {_BORDER2};
+    border-radius: 6px;
+    padding: 6px 18px;
+    font-size: 9pt;
+    font-weight: 600;
+    min-height: 22px;
+}}
+QDialogButtonBox QPushButton:default {{
+    background-color: {_SKY};
+    color: #fff;
+    border: none;
+}}
+QDialogButtonBox QPushButton:hover {{
+    background-color: {_SURFACE};
+    border-color: {_SKY};
+    color: {_SKY_HVR};
+}}
+QDialogButtonBox QPushButton:default:hover {{ background-color: {_SKY_HVR}; color: #fff; }}
 
 /* ── status bar at the bottom ─────────────────────────────────────── */
 QStatusBar {{
@@ -542,11 +666,11 @@ class MainWindow(QMainWindow):
         # ── buttons ──────────────────────────────────────────────────
         self.connect_btn = QPushButton("Connect")
         self.connect_btn.setObjectName("PrimaryBtn")
-        self.connect_btn.setFixedWidth(96)
+        self.connect_btn.setFixedWidth(88)
 
         self.disconnect_btn = QPushButton("Disconnect")
         self.disconnect_btn.setObjectName("DangerBtn")
-        self.disconnect_btn.setFixedWidth(96)
+        self.disconnect_btn.setFixedWidth(88)
         self.disconnect_btn.setEnabled(False)
 
         self.test_t212_btn = QPushButton("Test connection")
@@ -608,25 +732,29 @@ class MainWindow(QMainWindow):
         self.tabs.setTabToolTip(2, "Signal queue and execution status")
         self.tabs.setDocumentMode(True)
 
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(self.tabs)
-        splitter.addWidget(self._build_log_panel())
-        splitter.setStretchFactor(0, 5)
-        splitter.setStretchFactor(1, 4)
-        splitter.setSizes([580, 440])
+        self._splitter = QSplitter(Qt.Horizontal)
+        self._splitter.addWidget(self.tabs)
+        self._splitter.addWidget(self._build_log_panel())
+        self._splitter.setStretchFactor(0, 5)
+        self._splitter.setStretchFactor(1, 4)
 
         root = QVBoxLayout()
-        root.setContentsMargins(10, 4, 10, 6)
-        root.setSpacing(4)
-        root.addLayout(self._build_top_bar())
-        root.addWidget(_divider())
-        root.addWidget(splitter, 1)
+        root.setContentsMargins(0, 0, 0, 0)
+        root.setSpacing(0)
+        root.addWidget(self._build_navbar())
+
+        content_wrap = QWidget()
+        cw_layout = QVBoxLayout(content_wrap)
+        cw_layout.setContentsMargins(10, 8, 10, 6)
+        cw_layout.setSpacing(0)
+        cw_layout.addWidget(self._splitter, 1)
+        root.addWidget(content_wrap, 1)
 
         central = QWidget()
         central.setLayout(root)
         self.setCentralWidget(central)
 
-        self._build_menu_bar()
+        self._build_menu_bar()   # hidden — keyboard shortcuts still register
         self._setup_status_bar()
 
         self._set_status("OFFLINE")
@@ -639,6 +767,11 @@ class MainWindow(QMainWindow):
             self.ws_url.setText(settings.ws_url)
         if settings.license_key:
             self.license_key.setText(settings.license_key)
+        self._apply_log_settings(settings)
+        if settings.splitter_sizes and len(settings.splitter_sizes) == 2:
+            self._splitter.setSizes(settings.splitter_sizes)
+        else:
+            self._splitter.setSizes([580, 440])
 
         existing = self._store.load()
         if existing:
@@ -660,39 +793,86 @@ class MainWindow(QMainWindow):
         except Exception:
             return "unknown"
 
-    # ── top bar ──────────────────────────────────────────────────────────────
+    # ── navbar ────────────────────────────────────────────────────────────────
 
-    def _build_top_bar(self) -> QHBoxLayout:
-        bar = QHBoxLayout()
-        bar.setSpacing(8)
-        bar.setContentsMargins(0, 0, 0, 0)
+    def _build_navbar(self) -> QFrame:
+        nav = QFrame()
+        nav.setObjectName("Navbar")
+        nav.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
 
-        # Status card
-        status_card = QFrame()
-        status_card.setObjectName("StatusCard")
-        sc = QHBoxLayout(status_card)
-        sc.setContentsMargins(8, 3, 10, 3)
-        sc.setSpacing(6)
-        sc.addWidget(self.status_dot)
-        sc.addWidget(self.status_label)
-        bar.addWidget(status_card)
+        bar = QHBoxLayout(nav)
+        bar.setContentsMargins(14, 0, 10, 0)
+        bar.setSpacing(0)
 
-        # Broker pill
+        # ── left: wordmark ─────────────────────────────────────────
+        alg = QLabel("Algo")
+        alg.setObjectName("AppWordmark")
+        alg.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        flow = QLabel("Flow")
+        flow.setObjectName("AppWordmarkAccent")
+        flow.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+        bar.addWidget(alg)
+        bar.addWidget(flow)
+        bar.addSpacing(16)
+
+        # vertical separator
+        sep1 = QFrame()
+        sep1.setObjectName("NavSep")
+        sep1.setFrameShape(QFrame.Shape.VLine)
+        bar.addWidget(sep1)
+        bar.addSpacing(12)
+
+        # ── status badge ────────────────────────────────────────────
+        status_badge = QFrame()
+        status_badge.setObjectName("StatusBadge")
+        sb_inner = QHBoxLayout(status_badge)
+        sb_inner.setContentsMargins(8, 4, 10, 4)
+        sb_inner.setSpacing(6)
+        sb_inner.addWidget(self.status_dot)
+        sb_inner.addWidget(self.status_label)
+        bar.addWidget(status_badge)
+        bar.addSpacing(10)
+
+        # broker pill (text-only, next to badge)
         bar.addWidget(self.t212_status)
 
         bar.addStretch(1)
 
-        # Live mode on the right, closer to the action buttons
+        # ── right cluster ─────────────────────────────────────────
         bar.addWidget(self.exec_mode)
-        bar.addSpacing(8)
-        bar.addWidget(self.connect_btn)
-        bar.addWidget(self.disconnect_btn)
-        return bar
+        bar.addSpacing(12)
 
-    # ── menu bar ─────────────────────────────────────────────────────────────
+        sep2 = QFrame()
+        sep2.setObjectName("NavSep")
+        sep2.setFrameShape(QFrame.Shape.VLine)
+        bar.addWidget(sep2)
+        bar.addSpacing(8)
+
+        bar.addWidget(self.connect_btn)
+        bar.addSpacing(6)
+        bar.addWidget(self.disconnect_btn)
+        bar.addSpacing(8)
+
+        sep3 = QFrame()
+        sep3.setObjectName("NavSep")
+        sep3.setFrameShape(QFrame.Shape.VLine)
+        bar.addWidget(sep3)
+        bar.addSpacing(6)
+
+        settings_btn = QPushButton("⚙")
+        settings_btn.setObjectName("NavSettingsBtn")
+        settings_btn.setToolTip("Preferences")
+        settings_btn.clicked.connect(self._show_settings)  # type: ignore[arg-type]
+        bar.addWidget(settings_btn)
+        bar.addSpacing(4)
+
+        return nav
+
+    # ── menu bar (hidden, only for keyboard shortcuts) ────────────────────────
 
     def _build_menu_bar(self) -> None:
         bar = self.menuBar()
+        bar.setVisible(False)   # navbar replaces it; shortcuts still work
         hmenu = bar.addMenu("&Help")
         for label, slot in [
             ("&Quick start tips", self._show_quick_tips),
@@ -710,6 +890,103 @@ class MainWindow(QMainWindow):
 
     def _set_sb(self, text: str) -> None:
         self._sb_label.setText(f"  {text}")
+
+    # ── settings dialog ───────────────────────────────────────────────────────
+
+    def _apply_log_settings(self, s: AppSettings) -> None:
+        self._log_show_timestamps = s.log_show_timestamps
+        self._log_auto_scroll = s.log_auto_scroll
+        self.event_log.document().setMaximumBlockCount(s.log_max_lines)
+        _f = QFont("Cascadia Mono", s.log_font_size)
+        if not _f.exactMatch():
+            _f = QFont("Consolas", s.log_font_size)
+        self.event_log.setFont(_f)
+
+    def _show_settings(self) -> None:
+        s = self._settings_store.load()
+
+        dlg = QDialog(self)
+        dlg.setWindowTitle("Preferences")
+        dlg.setMinimumWidth(380)
+        dlg.setModal(True)
+
+        outer = QVBoxLayout(dlg)
+        outer.setContentsMargins(20, 18, 20, 16)
+        outer.setSpacing(16)
+
+        def _section(title: str) -> QLabel:
+            lab = QLabel(title.upper())
+            lab.setObjectName("PrefSectionLabel")
+            return lab
+
+        def _row(label: str, widget: QWidget) -> QHBoxLayout:
+            row = QHBoxLayout()
+            row.setSpacing(12)
+            lbl = QLabel(label)
+            lbl.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+            row.addWidget(lbl)
+            row.addWidget(widget)
+            return row
+
+        # ── Activity log ────────────────────────────────────────────
+        outer.addWidget(_section("Activity log"))
+
+        font_spin = QSpinBox()
+        font_spin.setRange(8, 18)
+        font_spin.setValue(s.log_font_size)
+        font_spin.setSuffix("  pt")
+        font_spin.setFixedWidth(80)
+        font_spin.setToolTip("Monospace font size for the activity log.")
+        outer.addLayout(_row("Font size", font_spin))
+
+        lines_spin = QSpinBox()
+        lines_spin.setRange(50, 5000)
+        lines_spin.setSingleStep(50)
+        lines_spin.setValue(s.log_max_lines)
+        lines_spin.setSuffix("  lines")
+        lines_spin.setFixedWidth(110)
+        lines_spin.setToolTip("How many lines to keep in the log before old ones are discarded.")
+        outer.addLayout(_row("Max entries", lines_spin))
+
+        auto_scroll_cb = QCheckBox("")
+        auto_scroll_cb.setChecked(s.log_auto_scroll)
+        auto_scroll_cb.setToolTip("Automatically scroll to the latest log entry when new lines arrive.")
+        outer.addLayout(_row("Auto-scroll to latest", auto_scroll_cb))
+
+        timestamps_cb = QCheckBox("")
+        timestamps_cb.setChecked(s.log_show_timestamps)
+        timestamps_cb.setToolTip("Show [HH:MM:SS] before each log line.")
+        outer.addLayout(_row("Show timestamps", timestamps_cb))
+
+        sep = QFrame()
+        sep.setFrameShape(QFrame.Shape.HLine)
+        sep.setStyleSheet(f"background:{_BORDER}; max-height:1px; border:none;")
+        outer.addWidget(sep)
+
+        # ── Dialog buttons ───────────────────────────────────────────
+        btns = QDialogButtonBox(
+            QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel
+        )
+        btns.button(QDialogButtonBox.StandardButton.Save).setDefault(True)
+        btns.accepted.connect(dlg.accept)   # type: ignore[arg-type]
+        btns.rejected.connect(dlg.reject)   # type: ignore[arg-type]
+        outer.addWidget(btns)
+
+        if dlg.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        new_s = AppSettings(
+            ws_url=s.ws_url,
+            license_key=s.license_key,
+            log_font_size=font_spin.value(),
+            log_max_lines=lines_spin.value(),
+            log_auto_scroll=auto_scroll_cb.isChecked(),
+            log_show_timestamps=timestamps_cb.isChecked(),
+            splitter_sizes=self._splitter.sizes(),
+        )
+        self._settings_store.save(new_s)
+        self._apply_log_settings(new_s)
+        self._append_event("info", "Preferences saved.")
 
     # ── setup tab ────────────────────────────────────────────────────────────
 
@@ -929,8 +1206,10 @@ class MainWindow(QMainWindow):
     def _set_status(self, status: str) -> None:
         text, color = _status_text(status)
         self.status_label.setText(text)
-        self.status_label.setStyleSheet(f"font-weight: 600; font-size: 9pt; color: {color};")
-        self.status_dot.setStyleSheet(f"color: {color}; font-size: 15px;")
+        self.status_label.setStyleSheet(
+            f"font-weight: 600; font-size: 9pt; color: {color}; background: transparent;"
+        )
+        self.status_dot.setStyleSheet(f"color: {color}; font-size: 11px; background: transparent;")
 
     def _on_ws_status(self, status: str) -> None:
         self._set_status(status)
@@ -944,14 +1223,19 @@ class MainWindow(QMainWindow):
     def _refresh_t212_status(self) -> None:
         stored = self._store.load()
         if stored and stored.t212_api_key:
-            self.t212_status.setText("Broker: API keys saved ✓")
+            self.t212_status.setText("Trading212 ✓")
+            self.t212_status.setStyleSheet(
+                f"color: {_SUCCESS}; font-size: 8.5pt; background: transparent; border: none; padding: 0 4px;"
+            )
         else:
-            self.t212_status.setText("Broker: not configured")
+            self.t212_status.setText("Broker not configured")
+            self.t212_status.setStyleSheet(
+                f"color: {_MUTED}; font-size: 8.5pt; background: transparent; border: none; padding: 0 4px;"
+            )
 
     # ── coloured log append ───────────────────────────────────────────────────
 
     def _append_event(self, level: str, message: str) -> None:
-        ts = datetime.now().strftime("%H:%M:%S")
         colour_map = {
             "info":    _TEXT,
             "ok":      _SUCCESS,
@@ -963,20 +1247,22 @@ class MainWindow(QMainWindow):
         cursor = self.event_log.textCursor()
         cursor.movePosition(QTextCursor.MoveOperation.End)
 
-        # Timestamp in muted colour
-        fmt_ts = QTextCharFormat()
-        fmt_ts.setForeground(QColor(_MUTED))
-        cursor.setCharFormat(fmt_ts)
-        cursor.insertText(f"[{ts}] ")
+        show_ts = getattr(self, "_log_show_timestamps", True)
+        if show_ts:
+            ts = datetime.now().strftime("%H:%M:%S")
+            fmt_ts = QTextCharFormat()
+            fmt_ts.setForeground(QColor(_MUTED))
+            cursor.setCharFormat(fmt_ts)
+            cursor.insertText(f"[{ts}] ")
 
-        # Message in level colour
         fmt_msg = QTextCharFormat()
         fmt_msg.setForeground(QColor(colour))
         cursor.setCharFormat(fmt_msg)
         cursor.insertText(message + "\n")
 
         self.event_log.setTextCursor(cursor)
-        self.event_log.ensureCursorVisible()
+        if getattr(self, "_log_auto_scroll", True):
+            self.event_log.ensureCursorVisible()
 
     # ── live mode toggle ──────────────────────────────────────────────────────
 
