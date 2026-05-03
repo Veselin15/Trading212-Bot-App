@@ -62,7 +62,7 @@ _DESKTOP_QSS = f"""
 /* ── globals ──────────────────────────────────────────────────────── */
 QMainWindow, QWidget {{
     font-family: "Segoe UI", "Inter", system-ui, sans-serif;
-    font-size: 10pt;
+    font-size: 9.5pt;
     color: {_TEXT};
     background-color: {_BG};
 }}
@@ -71,8 +71,8 @@ QMainWindow, QWidget {{
 QFrame#StatusCard {{
     background-color: {_SURFACE};
     border: 1px solid {_BORDER};
-    border-radius: 8px;
-    min-width: 180px;
+    border-radius: 6px;
+    min-width: 160px;
 }}
 
 /* ── broker pill ─────────────────────────────────────────────────── */
@@ -80,9 +80,9 @@ QLabel#BrokerPill {{
     color: {_TEXT};
     background-color: {_SURFACE};
     border: 1px solid {_BORDER};
-    border-radius: 8px;
-    padding: 6px 14px;
-    font-size: 9.5pt;
+    border-radius: 6px;
+    padding: 3px 10px;
+    font-size: 8.5pt;
 }}
 
 /* ── labelled field labels (above each input) ───────────────────── */
@@ -107,10 +107,11 @@ QLabel#HintLabel {{
 /* ── section headings inside tabs ────────────────────────────────── */
 QLabel#SectionTitle {{
     color: {_TEXT};
-    font-size: 10pt;
+    font-size: 9pt;
     font-weight: 600;
     background: transparent;
-    padding-top: 4px;
+    padding: 0;
+    margin: 0;
 }}
 
 /* ── groupboxes ───────────────────────────────────────────────────── */
@@ -164,8 +165,8 @@ QTextEdit {{
     background-color: {_BG};
     color: {_TEXT};
     border: 1px solid {_BORDER};
-    border-radius: 10px;
-    padding: 10px 14px;
+    border-radius: 8px;
+    padding: 6px 10px;
     selection-background-color: {_SKY_DIM};
     selection-color: #ffffff;
 }}
@@ -173,27 +174,29 @@ QTextEdit {{
 /* ── tabs ─────────────────────────────────────────────────────────── */
 QTabWidget::pane {{
     border: 1px solid {_BORDER};
-    border-radius: 0 10px 10px 10px;
+    border-radius: 0 8px 8px 8px;
     background-color: {_SURFACE};
     top: -1px;
+    margin-top: 0;
 }}
 QTabBar::tab {{
     background-color: {_BG};
     color: {_MUTED};
     border: 1px solid {_BORDER};
     border-bottom: none;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    padding: 10px 20px;
-    margin-right: 4px;
-    min-width: 5em;
-    font-size: 9.5pt;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    padding: 4px 14px;
+    margin-right: 2px;
+    min-width: 4.5em;
+    font-size: 8.5pt;
 }}
 QTabBar::tab:selected {{
     background-color: {_SURFACE};
     color: {_TEXT};
     border-bottom: 2px solid {_SKY};
     font-weight: 600;
+    padding-bottom: 2px;
 }}
 QTabBar::tab:hover:!selected {{
     color: {_TEXT};
@@ -205,11 +208,12 @@ QPushButton#PrimaryBtn {{
     background-color: {_SKY};
     color: #ffffff;
     border: none;
-    border-radius: 8px;
-    padding: 9px 20px;
-    min-height: 28px;
+    border-radius: 6px;
+    padding: 5px 14px;
+    min-height: 22px;
+    max-height: 28px;
     font-weight: 700;
-    font-size: 9.5pt;
+    font-size: 8.5pt;
     letter-spacing: 0.01em;
 }}
 QPushButton#PrimaryBtn:hover {{ background-color: {_SKY_HVR}; }}
@@ -223,11 +227,12 @@ QPushButton#SecondaryBtn {{
     background-color: {_SURFACE2};
     color: {_TEXT};
     border: 1px solid {_BORDER2};
-    border-radius: 8px;
-    padding: 8px 18px;
-    min-height: 28px;
+    border-radius: 6px;
+    padding: 5px 14px;
+    min-height: 22px;
+    max-height: 28px;
     font-weight: 600;
-    font-size: 9.5pt;
+    font-size: 8.5pt;
 }}
 QPushButton#SecondaryBtn:hover {{
     background-color: #252530;
@@ -241,10 +246,11 @@ QPushButton#GhostBtn {{
     background-color: transparent;
     color: {_MUTED};
     border: 1px solid {_BORDER};
-    border-radius: 8px;
-    padding: 7px 14px;
-    min-height: 26px;
-    font-size: 9pt;
+    border-radius: 6px;
+    padding: 4px 10px;
+    min-height: 20px;
+    max-height: 26px;
+    font-size: 8.5pt;
 }}
 QPushButton#GhostBtn:hover {{
     color: {_TEXT};
@@ -256,11 +262,12 @@ QPushButton#DangerBtn {{
     background-color: {_SURFACE};
     color: #fca5a5;
     border: 1px solid {_BORDER2};
-    border-radius: 8px;
-    padding: 9px 18px;
-    min-height: 28px;
+    border-radius: 6px;
+    padding: 5px 14px;
+    min-height: 22px;
+    max-height: 28px;
     font-weight: 600;
-    font-size: 9.5pt;
+    font-size: 8.5pt;
 }}
 QPushButton#DangerBtn:hover {{
     background-color: #2d0f0f;
@@ -273,13 +280,13 @@ QPushButton#DangerBtn:disabled {{ color: {_MUTED}; border-color: {_BORDER}; back
 /* ── checkbox ────────────────────────────────────────────────────── */
 QCheckBox {{
     color: {_TEXT};
-    spacing: 8px;
-    font-size: 9.5pt;
+    spacing: 6px;
+    font-size: 8.5pt;
 }}
 QCheckBox::indicator {{
-    width: 18px;
-    height: 18px;
-    border-radius: 5px;
+    width: 15px;
+    height: 15px;
+    border-radius: 4px;
     border: 1px solid {_BORDER2};
     background-color: {_SURFACE};
 }}
@@ -308,7 +315,7 @@ QTableWidget::item:selected {{
 QHeaderView::section {{
     background-color: {_SURFACE2};
     color: {_MUTED};
-    padding: 8px 10px;
+    padding: 5px 8px;
     border: none;
     border-bottom: 1px solid {_BORDER};
     border-right: 1px solid {_BORDER};
@@ -398,11 +405,12 @@ QScrollArea > QWidget > QWidget {{ background: transparent; }}
 QMenuBar {{
     background-color: {_BG};
     color: {_MUTED};
-    padding: 2px 6px;
+    padding: 0 4px;
+    spacing: 0;
     border-bottom: 1px solid {_BORDER};
-    font-size: 9pt;
+    font-size: 8.5pt;
 }}
-QMenuBar::item {{ padding: 6px 12px; border-radius: 6px; }}
+QMenuBar::item {{ padding: 2px 8px; border-radius: 4px; margin: 1px 0; }}
 QMenuBar::item:selected {{ background-color: {_SURFACE2}; color: {_TEXT}; }}
 QMenu {{
     background-color: {_SURFACE2};
@@ -420,7 +428,10 @@ QStatusBar {{
     background-color: {_BG};
     color: {_MUTED};
     border-top: 1px solid {_BORDER};
-    font-size: 8.5pt;
+    font-size: 8pt;
+    padding: 0 4px;
+    min-height: 18px;
+    max-height: 22px;
 }}
 """
 
@@ -487,11 +498,11 @@ class MainWindow(QMainWindow):
         # ── status dot + label ───────────────────────────────────────
         self.status_dot = QLabel("●")
         self.status_dot.setAlignment(Qt.AlignCenter)
-        self.status_dot.setFixedWidth(20)
+        self.status_dot.setFixedWidth(16)
 
         self.status_label = QLabel("Not connected")
-        self.status_label.setMinimumWidth(120)
-        self.status_label.setStyleSheet(f"font-weight: 600; font-size: 9.5pt; color: {_DANGER};")
+        self.status_label.setMinimumWidth(100)
+        self.status_label.setStyleSheet(f"font-weight: 600; font-size: 9pt; color: {_DANGER};")
 
         # ── broker indicator ─────────────────────────────────────────
         self.t212_status = QLabel("Broker: not configured")
@@ -531,11 +542,11 @@ class MainWindow(QMainWindow):
         # ── buttons ──────────────────────────────────────────────────
         self.connect_btn = QPushButton("Connect")
         self.connect_btn.setObjectName("PrimaryBtn")
-        self.connect_btn.setFixedWidth(110)
+        self.connect_btn.setFixedWidth(96)
 
         self.disconnect_btn = QPushButton("Disconnect")
         self.disconnect_btn.setObjectName("DangerBtn")
-        self.disconnect_btn.setFixedWidth(110)
+        self.disconnect_btn.setFixedWidth(96)
         self.disconnect_btn.setEnabled(False)
 
         self.test_t212_btn = QPushButton("Test connection")
@@ -595,6 +606,7 @@ class MainWindow(QMainWindow):
         self.tabs.setTabToolTip(1, "Live market hours, bot state, and recent signals")
         self.tabs.addTab(self._build_trades_tab(), "  Trades  ")
         self.tabs.setTabToolTip(2, "Signal queue and execution status")
+        self.tabs.setDocumentMode(True)
 
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.tabs)
@@ -604,8 +616,8 @@ class MainWindow(QMainWindow):
         splitter.setSizes([580, 440])
 
         root = QVBoxLayout()
-        root.setContentsMargins(14, 10, 14, 12)
-        root.setSpacing(10)
+        root.setContentsMargins(10, 4, 10, 6)
+        root.setSpacing(4)
         root.addLayout(self._build_top_bar())
         root.addWidget(_divider())
         root.addWidget(splitter, 1)
@@ -652,14 +664,15 @@ class MainWindow(QMainWindow):
 
     def _build_top_bar(self) -> QHBoxLayout:
         bar = QHBoxLayout()
-        bar.setSpacing(10)
+        bar.setSpacing(8)
+        bar.setContentsMargins(0, 0, 0, 0)
 
         # Status card
         status_card = QFrame()
         status_card.setObjectName("StatusCard")
         sc = QHBoxLayout(status_card)
-        sc.setContentsMargins(12, 7, 14, 7)
-        sc.setSpacing(8)
+        sc.setContentsMargins(8, 3, 10, 3)
+        sc.setSpacing(6)
         sc.addWidget(self.status_dot)
         sc.addWidget(self.status_label)
         bar.addWidget(status_card)
@@ -671,7 +684,7 @@ class MainWindow(QMainWindow):
 
         # Live mode on the right, closer to the action buttons
         bar.addWidget(self.exec_mode)
-        bar.addSpacing(12)
+        bar.addSpacing(8)
         bar.addWidget(self.connect_btn)
         bar.addWidget(self.disconnect_btn)
         return bar
@@ -868,9 +881,11 @@ class MainWindow(QMainWindow):
         w = QWidget()
         layout = QVBoxLayout(w)
         layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(8)
+        layout.setSpacing(4)
 
         head = QHBoxLayout()
+        head.setContentsMargins(0, 0, 0, 0)
+        head.setSpacing(6)
         head.addWidget(_section_title("Activity log"))
         head.addStretch(1)
 
@@ -914,8 +929,8 @@ class MainWindow(QMainWindow):
     def _set_status(self, status: str) -> None:
         text, color = _status_text(status)
         self.status_label.setText(text)
-        self.status_label.setStyleSheet(f"font-weight: 600; font-size: 9.5pt; color: {color};")
-        self.status_dot.setStyleSheet(f"color: {color}; font-size: 18px;")
+        self.status_label.setStyleSheet(f"font-weight: 600; font-size: 9pt; color: {color};")
+        self.status_dot.setStyleSheet(f"color: {color}; font-size: 15px;")
 
     def _on_ws_status(self, status: str) -> None:
         self._set_status(status)
