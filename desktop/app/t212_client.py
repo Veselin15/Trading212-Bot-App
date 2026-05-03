@@ -11,6 +11,10 @@ from typing import Any
 
 import aiohttp
 
+# Trading212 hosts — keys from Practice / Invest work only on the matching host.
+T212_API_DEMO_BASE = "https://demo.trading212.com"
+T212_API_LIVE_BASE = "https://live.trading212.com"
+
 
 class T212APIError(RuntimeError):
     pass
@@ -51,7 +55,7 @@ class AsyncTokenBucket:
 
 
 class T212Client:
-    def __init__(self, *, keys: T212Keys, base_url: str = "https://demo.trading212.com", timeout_seconds: int = 20) -> None:
+    def __init__(self, *, keys: T212Keys, base_url: str = T212_API_DEMO_BASE, timeout_seconds: int = 20) -> None:
         if not keys.api_key:
             raise EnvironmentError("Missing Trading212 API key.")
         self._keys = keys
