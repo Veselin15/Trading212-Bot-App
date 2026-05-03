@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
     QCheckBox,
     QFrame,
     QHBoxLayout,
+    QHeaderView,
     QGroupBox,
     QLabel,
     QListWidget,
@@ -346,6 +347,16 @@ QSplitter::handle:horizontal {{
     border-radius: 2px;
 }}
 QSplitter::handle:horizontal:hover {{
+    background-color: {_SKY};
+}}
+
+QSplitter::handle:vertical {{
+    background-color: {_BORDER};
+    height: 4px;
+    margin: 2px 6px;
+    border-radius: 2px;
+}}
+QSplitter::handle:vertical:hover {{
     background-color: {_SKY};
 }}
 
@@ -792,16 +803,46 @@ class MainWindow(QMainWindow):
         layout.addLayout(filt_row)
 
         layout.addWidget(_divider())
-        layout.addWidget(_section_title("Market hours  (from Trading212)"))
-        layout.addWidget(self.market_table, 1)
 
-        layout.addWidget(_divider())
-        layout.addWidget(_section_title("Bot state  (per symbol, latest snapshot)"))
-        layout.addWidget(self.bot_table, 2)
+        # Vertical splitter so users can resize how much space each table gets.
+        v_split = QSplitter(Qt.Orientation.Vertical)
 
-        layout.addWidget(_divider())
-        layout.addWidget(_section_title("Recent signals  (newest first)"))
-        layout.addWidget(self.signals_table, 2)
+        p_market = QWidget()
+        lm = QVBoxLayout(p_market)
+        lm.setContentsMargins(0, 0, 0, 0)
+        lm.setSpacing(6)
+        lm.addWidget(_section_title("Market hours  (from Trading212)"))
+        lm.addWidget(self.market_table, 1)
+        v_split.addWidget(p_market)
+
+        p_bot = QWidget()
+        lb = QVBoxLayout(p_bot)
+        lb.setContentsMargins(0, 0, 0, 0)
+        lb.setSpacing(4)
+        lb.addWidget(_section_title("Bot state  (per symbol, latest snapshot)"))
+        lb.addWidget(
+            _hint(
+                "When the exchange is closed and the server has no cached price bars yet, "
+                "you will see ready=False and reason like market_closed_no_cache — that is expected. "
+                "After a session with data, cached bars allow richer fields even off-hours.",
+            ),
+        )
+        lb.addWidget(self.bot_table, 1)
+        v_split.addWidget(p_bot)
+
+        p_sig = QWidget()
+        ls = QVBoxLayout(p_sig)
+        ls.setContentsMargins(0, 0, 0, 0)
+        ls.setSpacing(6)
+        ls.addWidget(_section_title("Recent signals  (newest first)"))
+        ls.addWidget(self.signals_table, 1)
+        v_split.addWidget(p_sig)
+
+        v_split.setStretchFactor(0, 1)
+        v_split.setStretchFactor(1, 2)
+        v_split.setStretchFactor(2, 2)
+        v_split.setSizes([140, 220, 200])
+        layout.addWidget(v_split, 1)
         return w
 
     # ── trades tab ───────────────────────────────────────────────────────────
@@ -1070,9 +1111,19 @@ class MainWindow(QMainWindow):
         table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
         table.setAlternatingRowColors(True)
         table.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
-        table.horizontalHeader().setStretchLastSection(True)
         table.verticalHeader().setVisible(False)
         table.setShowGrid(True)
+        table.setWordWrap(False)
+
+        hdr = table.horizontalHeader()
+        hdr.setMinimumSectionSize(56)
+        hdr.setHighlightSections(False)
+        n = table.columnCount()
+        for i in range(max(0, n - 1)):
+            hdr.setSectionResizeMode(i, QHeaderView.ResizeMode.Interactive)
+        if n >= 1:
+            # Last column grows with the table; drag the separator before it to widen others.
+            hdr.setSectionResizeMode(n - 1, QHeaderView.ResizeMode.Stretch)
 
     def _table_context_menu(self, pos: QPoint) -> None:
         table = self.sender()
@@ -1126,21 +1177,33 @@ class MainWindow(QMainWindow):
         self.bot_table.setRowCount(len(rows))
         for r, row in enumerate(rows):
             for c, val in enumerate(row):
-                self.bot_table.setItem(r, c, QTableWidgetItem(val))
+                text = str(val)
+                it = QTableWidgetItem(text)
+                if len(text) > 48:
+                    it.setToolTip(text)
+                self.bot_table.setItem(r, c, it)
 
     def _refresh_signals_table(self) -> None:
         rows = [t for t in self._signal_rows if self._matches_filter(t[3])]
         self.signals_table.setRowCount(len(rows))
         for r, row in enumerate(rows):
             for c, val in enumerate(row):
-                self.signals_table.setItem(r, c, QTableWidgetItem(val))
+                text = str(val)
+                it = QTableWidgetItem(text)
+                if len(text) > 48 or c == 4:  # Summary often long
+                    it.setToolTip(text)
+                self.signals_table.setItem(r, c, it)
 
     def _refresh_market_table(self) -> None:
         rows = [t for t in self._market_rows if self._matches_filter(t[0])]
         self.market_table.setRowCount(len(rows))
         for r, row in enumerate(rows):
             for c, val in enumerate(row):
-                self.market_table.setItem(r, c, QTableWidgetItem(val))
+                text = str(val)
+                it = QTableWidgetItem(text)
+                if len(text) > 40:
+                    it.setToolTip(text)
+                self.market_table.setItem(r, c, it)
 
     # ── signal handler ────────────────────────────────────────────────────────
 
