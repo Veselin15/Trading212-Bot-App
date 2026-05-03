@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import { getServerUser } from "@/lib/supabase/server";
+import { BrandLogo } from "@/components/BrandLogo";
 import { Container } from "@/components/ui/Container";
 import { Card } from "@/components/ui/Card";
 
@@ -18,7 +19,10 @@ export default async function LoginPage() {
       <Container>
         <div className="mx-auto w-full max-w-md">
           <Card className="p-8">
-            <div className="text-center">
+            <div className="flex justify-center">
+              <BrandLogo variant="auth" />
+            </div>
+            <div className="mt-8 text-center">
               <h1 className="text-3xl font-semibold tracking-tight text-slate-50">Welcome back</h1>
               <p className="mt-2 text-sm text-slate-300">
                 Sign in to manage your subscription, license key, and downloads.

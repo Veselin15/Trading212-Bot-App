@@ -8,7 +8,7 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, Qt, QTimer, QUrl
-from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QTextCharFormat, QTextCursor
+from PySide6.QtGui import QAction, QColor, QDesktopServices, QFont, QIcon, QPixmap, QTextCharFormat, QTextCursor
 from PySide6.QtWidgets import (
     QAbstractItemView,
     QApplication,
@@ -101,6 +101,10 @@ QLabel#AppWordmarkAccent {{
     letter-spacing: -0.01em;
     background: transparent;
     padding: 0;
+}}
+
+QLabel#BrandLogoMark, QLabel#BrandLogoText {{
+    background: transparent;
 }}
 
 QFrame#NavSep {{
@@ -656,11 +660,30 @@ def _status_text(status: str) -> tuple[str, str]:
     return ("Not connected", _DANGER)
 
 
+def _repo_root() -> Path:
+    """Repository root (parent of ``desktop/``)."""
+    return Path(__file__).resolve().parents[2]
+
+
+def _load_brand_pixmaps() -> tuple[QPixmap | None, QPixmap | None]:
+    icon_path = _repo_root() / "logo.png"
+    text_path = _repo_root() / "logo_text.png"
+    icon_pm = QPixmap(str(icon_path)) if icon_path.is_file() else QPixmap()
+    text_pm = QPixmap(str(text_path)) if text_path.is_file() else QPixmap()
+    return (
+        icon_pm if not icon_pm.isNull() else None,
+        text_pm if not text_pm.isNull() else None,
+    )
+
+
 # ── main window ───────────────────────────────────────────────────────────────
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("SwiftTrade — Desktop Executor")
+        _icon_file = _repo_root() / "logo.png"
+        if _icon_file.is_file():
+            self.setWindowIcon(QIcon(str(_icon_file)))
         self.setMinimumSize(980, 640)
         self.resize(1120, 720)
 
@@ -916,16 +939,36 @@ class MainWindow(QMainWindow):
         bar.setContentsMargins(14, 0, 10, 0)
         bar.setSpacing(0)
 
-        # ── left: wordmark ─────────────────────────────────────────
-        alg = QLabel("Swift")
-        alg.setObjectName("AppWordmark")
-        alg.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        flow = QLabel("Trade")
-        flow.setObjectName("AppWordmarkAccent")
-        flow.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
-        bar.addWidget(alg)
-        bar.addWidget(flow)
-        bar.addSpacing(16)
+        # ── left: brand (logo mark + wordmark image) ───────────────
+        icon_pm, text_pm = _load_brand_pixmaps()
+        if icon_pm is not None:
+            logo_mark = QLabel()
+            logo_mark.setObjectName("BrandLogoMark")
+            scaled_i = icon_pm.scaledToHeight(30, Qt.TransformationMode.SmoothTransformation)
+            logo_mark.setPixmap(scaled_i)
+            logo_mark.setFixedSize(scaled_i.width(), scaled_i.height())
+            logo_mark.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+            bar.addWidget(logo_mark)
+            bar.addSpacing(8)
+        if text_pm is not None:
+            logo_txt = QLabel()
+            logo_txt.setObjectName("BrandLogoText")
+            scaled_t = text_pm.scaledToHeight(22, Qt.TransformationMode.SmoothTransformation)
+            logo_txt.setPixmap(scaled_t)
+            logo_txt.setFixedSize(scaled_t.width(), scaled_t.height())
+            logo_txt.setAlignment(Qt.AlignmentFlag.AlignVCenter)
+            bar.addWidget(logo_txt)
+            bar.addSpacing(16)
+        if icon_pm is None and text_pm is None:
+            alg = QLabel("Swift")
+            alg.setObjectName("AppWordmark")
+            alg.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+            flow = QLabel("Trade")
+            flow.setObjectName("AppWordmarkAccent")
+            flow.setSizePolicy(QSizePolicy.Policy.Fixed, QSizePolicy.Policy.Preferred)
+            bar.addWidget(alg)
+            bar.addWidget(flow)
+            bar.addSpacing(16)
 
         # vertical separator
         sep1 = QFrame()

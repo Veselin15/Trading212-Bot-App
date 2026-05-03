@@ -4,8 +4,9 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Menu, X, Zap } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
+import { BrandLogo } from "@/components/BrandLogo";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 
@@ -35,17 +36,7 @@ export function SiteHeaderClient({
     <header className="sticky top-0 z-50 border-b border-white/10 bg-background/80 backdrop-blur-md">
       <Container>
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="group flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/15 transition-colors group-hover:bg-emerald-500/25">
-              <Zap className="h-3.5 w-3.5 text-emerald-400" />
-            </div>
-            <span
-              className="tracking-tight text-white"
-              style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.01em" }}
-            >
-              Trading212 <span className="text-emerald-400">Bot</span>
-            </span>
-          </Link>
+          <BrandLogo variant="header" />
 
           <nav className="hidden items-center gap-1 md:flex">
             {navLinks.map((link) => {
