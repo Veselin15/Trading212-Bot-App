@@ -6,6 +6,7 @@ import math
 import re
 import time
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from typing import Any
 
 import aiohttp
@@ -61,11 +62,16 @@ class T212Client:
         self._order_limiter = AsyncTokenBucket(capacity=50, refill_rate_per_sec=50.0 / 60.0)
         self._data_limiter = AsyncTokenBucket(capacity=1, refill_rate_per_sec=1.0)
         self._orders_list_limiter = AsyncTokenBucket(capacity=1, refill_rate_per_sec=1.0 / 5.2)
+        # GET /api/v0/equity/metadata/exchanges — rate limit 1 req / 30s (Trading212 docs)
+        self._exchanges_limiter = AsyncTokenBucket(capacity=1, refill_rate_per_sec=1.0 / 30.0)
 
         self._resolved_ticker_cache: dict[str, str] = {}
         self._instrument_ticker_index: dict[str, str] | None = None
         self._instrument_row_by_ticker_upper: dict[str, dict[str, Any]] | None = None
         self._ticker_lock = asyncio.Lock()
+        # workingScheduleId (on instrument) -> sorted (utc datetime, event type) from /metadata/exchanges
+        self._schedule_events_by_id: dict[int, list[tuple[datetime, str]]] | None = None
+        self._exchanges_lock = asyncio.Lock()
 
     async def __aenter__(self) -> "T212Client":
         self._session = aiohttp.ClientSession(timeout=self._timeout)
@@ -173,6 +179,105 @@ class T212Client:
             return None
         return self._instrument_row_by_ticker_upper.get(self._ticker_key(mapped))
 
+    @staticmethod
+    def _parse_iso_datetime_utc(value: str) -> datetime | None:
+        raw = str(value).strip()
+        if not raw:
+            return None
+        if raw.endswith("Z"):
+            raw = raw[:-1] + "+00:00"
+        try:
+            dt = datetime.fromisoformat(raw)
+        except ValueError:
+            return None
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt.astimezone(timezone.utc)
+
+    async def _load_schedule_events_by_id(self) -> dict[int, list[tuple[datetime, str]]]:
+        if self._schedule_events_by_id is not None:
+            return self._schedule_events_by_id
+
+        async with self._exchanges_lock:
+            if self._schedule_events_by_id is not None:
+                return self._schedule_events_by_id
+            await self._exchanges_limiter.acquire()
+            payload = await self._request("GET", "/api/v0/equity/metadata/exchanges", order_call=False)
+            if not isinstance(payload, list):
+                raise T212APIError(
+                    "Unexpected format from /api/v0/equity/metadata/exchanges (expected JSON array).",
+                )
+
+            out: dict[int, list[tuple[datetime, str]]] = {}
+            for exch in payload:
+                if not isinstance(exch, dict):
+                    continue
+                for ws in exch.get("workingSchedules") or []:
+                    if not isinstance(ws, dict):
+                        continue
+                    sid_raw = ws.get("id")
+                    if sid_raw is None:
+                        continue
+                    try:
+                        sid = int(sid_raw)
+                    except (TypeError, ValueError):
+                        continue
+                    events: list[tuple[datetime, str]] = []
+                    for te in ws.get("timeEvents") or []:
+                        if not isinstance(te, dict):
+                            continue
+                        dt = self._parse_iso_datetime_utc(str(te.get("date") or ""))
+                        typ = str(te.get("type") or "").strip().upper()
+                        if dt is None or not typ:
+                            continue
+                        events.append((dt, typ))
+                    events.sort(key=lambda x: x[0])
+                    out[sid] = events
+
+            self._schedule_events_by_id = out
+            return out
+
+    @staticmethod
+    def _session_state_from_schedule_events(
+        events: list[tuple[datetime, str]],
+        *,
+        now: datetime | None = None,
+    ) -> str:
+        """Latest time-event type whose timestamp is <= now (UTC)."""
+        if not events:
+            return "NO_EVENTS"
+        now = now or datetime.now(timezone.utc)
+        last_type: str | None = None
+        for dt, typ in events:
+            if dt <= now:
+                last_type = typ
+            else:
+                break
+        if last_type is not None:
+            return last_type
+        return "BEFORE_FIRST_EVENT"
+
+    async def _market_state_from_working_schedule(self, row: dict[str, Any]) -> str | None:
+        """
+        Trading212 v0 instruments expose workingScheduleId, not a live marketState field.
+        Schedules live under GET /api/v0/equity/metadata/exchanges (see official API docs).
+        """
+        ws_id = row.get("workingScheduleId")
+        if ws_id is None:
+            return None
+        try:
+            sid_int = int(ws_id)
+        except (TypeError, ValueError):
+            return None
+        try:
+            by_id = await self._load_schedule_events_by_id()
+        except T212APIError:
+            return None
+        events = by_id.get(sid_int)
+        if not events:
+            return None
+        return self._session_state_from_schedule_events(events)
+
     async def get_market_state(self, ticker: str) -> str:
         row = await self.get_instrument_row(ticker)
         if not row:
@@ -231,6 +336,11 @@ class T212Client:
             if upper in known_state_tokens:
                 return upper
 
+        # Trading212 v0: derive session from exchange workingSchedules + timeEvents.
+        scheduled = await self._market_state_from_working_schedule(row)
+        if scheduled is not None:
+            return scheduled
+
         # Common boolean fallbacks
         for bool_key in ("isMarketOpen", "marketOpen", "is_open", "open"):
             if isinstance(row.get(bool_key), bool):
@@ -258,6 +368,7 @@ class T212Client:
             "name",
             "isin",
             "currency",
+            "workingScheduleId",
             "marketState",
             "marketStatus",
             "tradingStatus",
