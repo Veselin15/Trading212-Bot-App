@@ -48,7 +48,7 @@ export default function FaqPage() {
           <div className="space-y-6">
             {faqs.map((faq) => (
               <RevealOnScroll key={faq.question}>
-                <Card className="border-slate-800/70 bg-white/5 p-6">
+                <Card className="border-white/10 bg-white/5 p-6">
                   <h3 className="mb-3 text-lg">{faq.question}</h3>
                   <p className="text-slate-400">{faq.answer}</p>
                 </Card>

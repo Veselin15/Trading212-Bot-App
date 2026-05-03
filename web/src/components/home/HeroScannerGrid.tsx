@@ -27,7 +27,7 @@ function randomInt(max: number) {
   return Math.floor(Math.random() * max);
 }
 
-type SignalEntry = { hue: "sky" | "emerald"; expiresAt: number };
+type SignalEntry = { hue: "core" | "neon"; expiresAt: number };
 
 function signalsEqual(a: Record<string, SignalEntry>, b: Record<string, SignalEntry>) {
   const ak = Object.keys(a).sort().join("|");
@@ -72,7 +72,7 @@ export function HeroScannerGrid() {
           const k = cellKey(c, r);
           if (next[k]) continue;
           next[k] = {
-            hue: Math.random() > 0.45 ? "emerald" : "sky",
+            hue: Math.random() > 0.45 ? "neon" : "core",
             expiresAt: now + SIGNAL_HOLD_MS_MIN + randomInt(SIGNAL_HOLD_MS_MAX - SIGNAL_HOLD_MS_MIN + 1),
           };
         }
@@ -132,7 +132,7 @@ export function HeroScannerGrid() {
                 transition={scanWaveTransition}
                 style={{
                   background:
-                    "linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.06) 35%, rgba(56,189,248,0.22) 50%, rgba(16,185,129,0.12) 65%, transparent 100%)",
+                    "linear-gradient(90deg, transparent 0%, rgba(16,185,129,0.07) 35%, rgba(16,185,129,0.22) 50%, rgba(0,230,118,0.14) 65%, transparent 100%)",
                   mixBlendMode: "screen",
                 }}
               />
@@ -147,20 +147,20 @@ export function HeroScannerGrid() {
                 const scanHit = !reduceMotion && c === scanCol;
 
                 const signalStyles =
-                  sig?.hue === "emerald"
-                    ? "border-emerald-400/55 bg-emerald-500/[0.14] shadow-[0_0_14px_-2px_rgba(52,211,153,0.55)]"
-                    : sig?.hue === "sky"
-                      ? "border-sky-400/55 bg-sky-500/[0.12] shadow-[0_0_14px_-2px_rgba(56,189,248,0.5)]"
+                  sig?.hue === "neon"
+                    ? "border-[#00E676]/50 bg-[#00E676]/[0.12] shadow-[0_0_14px_-2px_rgba(0,230,118,0.55)]"
+                    : sig?.hue === "core"
+                      ? "border-emerald-500/50 bg-emerald-500/[0.14] shadow-[0_0_14px_-2px_rgba(16,185,129,0.5)]"
                       : "";
 
                 const scanStyles = scanHit
-                  ? "border-sky-400/35 shadow-[0_0_10px_-3px_rgba(56,189,248,0.35)]"
+                  ? "border-emerald-400/35 shadow-[0_0_10px_-3px_rgba(16,185,129,0.38)]"
                   : "";
 
                 return (
                   <div
                     key={k}
-                    className={`rounded-[2px] border border-white/[0.06] bg-slate-950/60 transition-[border-color,box-shadow,background-color] duration-700 ease-out ${signalStyles} ${scanStyles}`}
+                    className={`rounded-[2px] border border-white/[0.06] bg-[#0A0A0A] transition-[border-color,box-shadow,background-color] duration-700 ease-out ${signalStyles} ${scanStyles}`}
                   />
                 );
               })}

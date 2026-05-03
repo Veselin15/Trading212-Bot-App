@@ -40,7 +40,7 @@ const items: FlowItem[] = [
 
 export function SetupFlow() {
   return (
-    <div className="rounded-3xl border border-slate-800/70 bg-slate-950/40 p-5 shadow-sm backdrop-blur sm:p-6">
+    <div className="rounded-3xl border border-white/10 bg-[#0A0A0A] p-5 shadow-sm backdrop-blur sm:p-6">
       <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">At-a-glance</div>
@@ -58,9 +58,9 @@ export function SetupFlow() {
           const Icon = item.icon;
           return (
             <div key={item.title} className="contents">
-              <div className="rounded-2xl border border-slate-800/70 bg-white/5 p-5">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
                 <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-sky-500/15 text-sky-300">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-500/15 text-emerald-300">
                     <Icon className="h-5 w-5" />
                   </div>
                   <div className="text-sm font-medium text-slate-50">{item.title}</div>
@@ -70,7 +70,7 @@ export function SetupFlow() {
                   <div className="mt-4">
                     <Link
                       href={item.cta.href}
-                      className="inline-flex items-center gap-2 rounded-xl border border-slate-800/80 bg-white/5 px-3 py-2 text-xs font-medium text-slate-50 hover:bg-white/10"
+                      className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs font-medium text-slate-50 hover:bg-white/10"
                     >
                       {item.cta.label}
                       <ArrowRight className="h-4 w-4 text-slate-300" />

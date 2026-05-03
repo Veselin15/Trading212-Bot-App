@@ -15,9 +15,9 @@ const ITEMS = [...STATS, ...STATS];
 
 export function StatsTicker() {
   return (
-    <div className="relative select-none overflow-hidden border-y border-slate-800/60 bg-slate-950/80 py-3">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-slate-950 to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-slate-950 to-transparent" />
+    <div className="relative select-none overflow-hidden border-y border-white/10 bg-[#0A0A0A] py-3">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-background to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-background to-transparent" />
 
       <div
         className="flex w-max gap-10"

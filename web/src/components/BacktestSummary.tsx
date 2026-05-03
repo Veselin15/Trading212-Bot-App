@@ -119,7 +119,7 @@ export function BacktestSummary() {
 
   if (!summary) {
     return (
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+      <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 text-sm text-slate-300">
         Loading…
       </div>
     );
@@ -127,7 +127,7 @@ export function BacktestSummary() {
 
   return (
     <div ref={rootRef} className="mt-4 flex flex-col gap-3 sm:mt-5">
-      <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]">
+      <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
         <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</div>
         <div className="mt-1 text-sm font-medium text-slate-50">{summary.dateRange ?? "—"}</div>
         {summary.symbols.length ? (
@@ -136,7 +136,7 @@ export function BacktestSummary() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]">
+        <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total return</div>
           <div className="mt-1 text-2xl font-semibold tracking-tight text-emerald-300">
             {typeof summary.totalReturnPct === "number" ? (
@@ -148,7 +148,7 @@ export function BacktestSummary() {
           <div className="mt-1 text-xs text-slate-400">Over the period above (model)</div>
         </div>
 
-        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-sky-500/25 hover:shadow-[0_0_24px_-10px_rgba(56,189,248,0.2)]">
+        <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">CAGR / max drawdown</div>
           <div className="mt-1 text-sm font-medium text-slate-50">
             {typeof summary.cagrPct === "number" && typeof summary.maxDrawdownPct === "number" ? (

@@ -55,50 +55,50 @@ export function HeroFlowDiagram() {
             <stop offset="100%" stopColor="rgba(2,6,23,0.98)" />
           </linearGradient>
           <linearGradient id="hfd-execFill" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="rgba(4,26,20,0.97)" />
-            <stop offset="45%" stopColor="rgba(2,12,10,0.86)" />
+            <stop offset="0%" stopColor="rgba(6,28,42,0.97)" />
+            <stop offset="45%" stopColor="rgba(4,14,28,0.86)" />
             <stop offset="100%" stopColor="rgba(2,6,23,0.98)" />
           </linearGradient>
 
           {/* Pill borders — symmetric, brightness peaks at center */}
           <linearGradient id="hfd-feedStroke" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="rgba(56,189,248,0.22)" />
-            <stop offset="28%"  stopColor="rgba(99,102,241,0.82)" />
-            <stop offset="50%"  stopColor="rgba(148,180,255,1)" />
-            <stop offset="72%"  stopColor="rgba(99,102,241,0.82)" />
-            <stop offset="100%" stopColor="rgba(56,189,248,0.22)" />
+            <stop offset="0%" stopColor="rgba(16,185,129,0.22)" />
+            <stop offset="28%" stopColor="rgba(0,230,118,0.78)" />
+            <stop offset="50%" stopColor="rgba(34,211,238,0.98)" />
+            <stop offset="72%" stopColor="rgba(0,230,118,0.78)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0.22)" />
           </linearGradient>
           <linearGradient id="hfd-execStroke" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="rgba(16,185,129,0.22)" />
-            <stop offset="28%"  stopColor="rgba(52,211,153,0.80)" />
-            <stop offset="50%"  stopColor="rgba(110,231,183,1)" />
-            <stop offset="72%"  stopColor="rgba(52,211,153,0.80)" />
-            <stop offset="100%" stopColor="rgba(16,185,129,0.22)" />
+            <stop offset="0%" stopColor="rgba(0,230,118,0.22)" />
+            <stop offset="28%" stopColor="rgba(16,185,129,0.78)" />
+            <stop offset="50%" stopColor="rgba(0,230,118,1)" />
+            <stop offset="72%" stopColor="rgba(16,185,129,0.78)" />
+            <stop offset="100%" stopColor="rgba(0,230,118,0.22)" />
           </linearGradient>
 
           {/* Outer glow halos */}
           <radialGradient id="hfd-feedGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="rgba(56,189,248,0.26)" />
-            <stop offset="52%"  stopColor="rgba(56,189,248,0.10)" />
-            <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+            <stop offset="0%" stopColor="rgba(16,185,129,0.26)" />
+            <stop offset="52%" stopColor="rgba(0,230,118,0.11)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0)" />
           </radialGradient>
           <radialGradient id="hfd-execGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%"   stopColor="rgba(16,185,129,0.24)" />
-            <stop offset="52%"  stopColor="rgba(16,185,129,0.09)" />
-            <stop offset="100%" stopColor="rgba(16,185,129,0)" />
+            <stop offset="0%" stopColor="rgba(0,230,118,0.24)" />
+            <stop offset="52%" stopColor="rgba(16,185,129,0.09)" />
+            <stop offset="100%" stopColor="rgba(0,230,118,0)" />
           </radialGradient>
 
           {/* Animated flow pulses on lines */}
           <linearGradient id="hfd-skyPulse" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="rgba(56,189,248,0)" />
-            <stop offset="38%"  stopColor="rgba(99,102,241,0.92)" />
-            <stop offset="60%"  stopColor="rgba(56,189,248,0.88)" />
-            <stop offset="100%" stopColor="rgba(56,189,248,0)" />
+            <stop offset="0%" stopColor="rgba(16,185,129,0)" />
+            <stop offset="38%" stopColor="rgba(0,230,118,0.9)" />
+            <stop offset="60%" stopColor="rgba(34,211,238,0.88)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0)" />
           </linearGradient>
           <linearGradient id="hfd-emeraldPulse" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%"   stopColor="rgba(52,211,153,0)" />
-            <stop offset="50%"  stopColor="rgba(52,211,153,0.92)" />
-            <stop offset="100%" stopColor="rgba(52,211,153,0)" />
+            <stop offset="0%" stopColor="rgba(16,185,129,0)" />
+            <stop offset="50%" stopColor="rgba(0,230,118,0.92)" />
+            <stop offset="100%" stopColor="rgba(16,185,129,0)" />
           </linearGradient>
 
           {/* Drop shadow for pills */}
@@ -131,8 +131,8 @@ export function HeroFlowDiagram() {
 
         {/* ── Ambient background hazes ── */}
         <ellipse cx={CX}       cy={190} rx={290} ry={170} fill="rgba(2,6,23,0.22)" />
-        <ellipse cx={CX - 90}  cy={120} rx={230} ry={145} fill="rgba(56,189,248,0.055)" />
-        <ellipse cx={CX + 70}  cy={268} rx={240} ry={158} fill="rgba(16,185,129,0.048)" />
+        <ellipse cx={CX - 90} cy={120} rx={230} ry={145} fill="rgba(16,185,129,0.06)" />
+        <ellipse cx={CX + 70} cy={268} rx={240} ry={158} fill="rgba(0,230,118,0.05)" />
 
         {/* ── Source badges ── */}
         {SOURCES.map((src, i) => (
@@ -282,8 +282,8 @@ export function HeroFlowDiagram() {
             width={84}
             height={21}
             rx={10.5}
-            fill="rgba(56,189,248,0.11)"
-            stroke="rgba(56,189,248,0.42)"
+            fill="rgba(16,185,129,0.11)"
+            stroke="rgba(16,185,129,0.42)"
             strokeWidth={1}
           />
           <text
@@ -375,15 +375,15 @@ export function HeroFlowDiagram() {
             width={76}
             height={21}
             rx={10.5}
-            fill="rgba(16,185,129,0.10)"
-            stroke="rgba(16,185,129,0.42)"
+            fill="rgba(0,230,118,0.1)"
+            stroke="rgba(0,230,118,0.42)"
             strokeWidth={1}
           />
           <text
             x={CX}
             y={EXEC_TOP - 14}
             textAnchor="middle"
-            fill="rgba(167,243,208,1)"
+            fill="rgba(165,243,252,1)"
             fontSize="10.5"
             fontFamily="system-ui, sans-serif"
             letterSpacing="1.5"

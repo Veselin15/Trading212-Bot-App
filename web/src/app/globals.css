@@ -1,12 +1,14 @@
 @import "tailwindcss";
 
 :root {
-  --background: #020617; /* slate-950 */
-  --foreground: #f8fafc; /* slate-50 */
-  --muted: #94a3b8; /* slate-400 */
-  --card: color-mix(in srgb, white 5%, transparent);
-  --border: color-mix(in srgb, #1f2937 70%, transparent); /* slate-800-ish */
-  --accent: #38bdf8; /* sky-400 */
+  /* Pitch black + neon profit green */
+  --background: #000000;
+  --foreground: #ffffff;
+  --muted: #94a3b8;
+  --card: #0a0a0a;
+  --border: rgba(255, 255, 255, 0.1);
+  --accent: #10b981;
+  --accent-neon: #00e676;
 
   /* Build-safe font vars (no network fetch) */
   --font-geist-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji",
@@ -17,6 +19,9 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-muted-foreground: var(--muted);
+  --color-card: var(--card);
+  --color-border-subtle: var(--border);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -36,10 +41,10 @@ html {
 }
 
 ::selection {
-  background: color-mix(in srgb, #18181b 18%, transparent);
+  background: color-mix(in srgb, var(--accent-neon) 38%, transparent);
 }
 
-/* A subtle site-wide background sheen. */
+/* A subtle site-wide background sheen — emerald scanner glow */
 main {
   position: relative;
 }
@@ -50,9 +55,9 @@ main::before {
   inset: 0;
   pointer-events: none;
   background:
-    radial-gradient(1100px 520px at 50% -140px, rgba(56, 189, 248, 0.14), transparent 65%),
-    radial-gradient(900px 480px at 15% 12%, rgba(16, 185, 129, 0.08), transparent 62%),
-    radial-gradient(900px 480px at 85% 18%, rgba(168, 85, 247, 0.06), transparent 62%);
+    radial-gradient(1100px 520px at 50% -140px, color-mix(in srgb, var(--accent) 18%, transparent), transparent 65%),
+    radial-gradient(900px 480px at 15% 12%, color-mix(in srgb, var(--accent-neon) 10%, transparent), transparent 62%),
+    radial-gradient(900px 480px at 85% 18%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 62%);
   opacity: 0.95;
   z-index: -1;
 }

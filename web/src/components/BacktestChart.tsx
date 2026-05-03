@@ -67,7 +67,7 @@ function BacktestTooltip(props: unknown) {
 
   return (
     <div
-      className="rounded-2xl border border-slate-800/80 bg-slate-950/90 px-4 py-3 shadow-lg backdrop-blur transition-[transform,opacity] duration-150 ease-out"
+      className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 shadow-lg backdrop-blur transition-[transform,opacity] duration-150 ease-out"
       style={{ willChange: "transform" }}
     >
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Month</div>
@@ -134,7 +134,7 @@ export function BacktestChart({
   if (!payload) {
     return (
       <div className={className}>
-        <div className="rounded-2xl border border-slate-800/70 bg-slate-950/40 px-4 py-3 text-sm text-slate-300">
+        <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 text-sm text-slate-300">
           Loading chart…
         </div>
       </div>

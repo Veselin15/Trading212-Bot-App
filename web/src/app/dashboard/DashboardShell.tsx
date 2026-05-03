@@ -185,10 +185,10 @@ export function DashboardShell({
         <div>
           <div className="flex flex-wrap items-center gap-2 sm:gap-3">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
-              Welcome back, <span className="text-sky-400">{userEmail ?? "you@example.com"}</span>
+              Welcome back, <span className="text-emerald-400">{userEmail ?? "you@example.com"}</span>
             </h1>
             {planTier === "pro" ? (
-              <Badge className="border-sky-500/45 bg-sky-500/15 text-sky-200">Pro</Badge>
+              <Badge className="border-emerald-500/45 bg-emerald-500/15 text-emerald-200">Pro</Badge>
             ) : (
               <Badge className="border-slate-600/80 bg-white/5 text-slate-300">Free</Badge>
             )}
@@ -247,7 +247,7 @@ export function DashboardShell({
           {showBillingBlock ? (
             <div className="mt-6 border-t border-white/10 pt-5">
               <div className="mb-3 flex items-center gap-2 text-slate-300">
-                <CreditCard className="h-4 w-4 text-sky-400" />
+                <CreditCard className="h-4 w-4 text-emerald-400" />
                 <span className="text-sm font-medium text-slate-200">Billing &amp; plan</span>
               </div>
               <p className="mb-4 text-xs text-slate-500">
@@ -299,7 +299,7 @@ export function DashboardShell({
         </Card>
 
         <Card variant="accent" className="relative overflow-hidden p-6">
-          <div className="pointer-events-none absolute -right-28 -top-24 h-72 w-72 rounded-full bg-sky-500/10 blur-3xl" />
+          <div className="pointer-events-none absolute -right-28 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
           <div className="pointer-events-none absolute -left-28 -bottom-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
 
           <div className="relative">
@@ -310,7 +310,7 @@ export function DashboardShell({
 
             <div className="mt-6">
               {proFeatures ? (
-                <ButtonLink href="/download" className="h-11 w-full gap-2 bg-sky-500 text-slate-950 hover:bg-sky-400">
+                <ButtonLink href="/download" className="h-11 w-full gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
                   <Download className="h-4 w-4" />
                   Download App (.exe)
                 </ButtonLink>

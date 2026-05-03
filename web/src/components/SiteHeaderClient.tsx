@@ -32,18 +32,18 @@ export function SiteHeaderClient({
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-background/80 backdrop-blur-md">
       <Container>
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="group flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-sky-500/30 bg-sky-500/15 transition-colors group-hover:bg-sky-500/25">
-              <Zap className="h-3.5 w-3.5 text-sky-400" />
+            <div className="flex h-7 w-7 items-center justify-center rounded-lg border border-emerald-500/30 bg-emerald-500/15 transition-colors group-hover:bg-emerald-500/25">
+              <Zap className="h-3.5 w-3.5 text-emerald-400" />
             </div>
             <span
               className="tracking-tight text-white"
               style={{ fontSize: "1rem", fontWeight: 600, letterSpacing: "-0.01em" }}
             >
-              Trading212 <span className="text-sky-400">Bot</span>
+              Trading212 <span className="text-emerald-400">Bot</span>
             </span>
           </Link>
 
@@ -80,7 +80,7 @@ export function SiteHeaderClient({
                     Log in
                   </span>
                 </Link>
-                <ButtonLink href="/login" className="h-10 bg-sky-500 px-4 text-slate-950 hover:bg-sky-400">
+                <ButtonLink href="/login" className="h-10 bg-emerald-500 px-4 text-slate-950 hover:bg-[#00E676]">
                   Get started
                 </ButtonLink>
               </>
@@ -90,7 +90,7 @@ export function SiteHeaderClient({
                   Dashboard
                 </ButtonLink>
                 <form action="/logout" method="post">
-                  <button className="inline-flex h-10 items-center justify-center rounded-xl border border-slate-800/80 bg-white/5 px-4 text-sm font-medium text-slate-50 transition-colors hover:bg-white/10">
+                  <button className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-50 transition-colors hover:bg-white/10">
                     Log out
                   </button>
                 </form>
@@ -115,7 +115,7 @@ export function SiteHeaderClient({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-slate-800/60 md:hidden"
+            className="overflow-hidden border-t border-white/10 md:hidden"
           >
             <Container>
               <nav className="flex flex-col gap-1 py-4">
@@ -135,7 +135,7 @@ export function SiteHeaderClient({
                 ))}
                 {!isAuthed ? (
                   <div className="mt-2 border-t border-slate-800 pt-2">
-                    <ButtonLink href="/login" className="w-full bg-sky-500 text-slate-950 hover:bg-sky-400">
+                    <ButtonLink href="/login" className="w-full bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
                       Get started
                     </ButtonLink>
                   </div>
