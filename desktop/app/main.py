@@ -466,16 +466,14 @@ QScrollArea > QWidget > QWidget {{ background: transparent; }}
 
 /* ── menu bar (hidden — replaced by custom navbar) ───────────────── */
 QMenuBar {{
-    background-color: {_BG};
-    color: {_MUTED};
-    padding: 0 4px;
-    spacing: 0;
-    font-size: 8.5pt;
     min-height: 0;
     max-height: 0;
+    padding: 0;
+    margin: 0;
     border: none;
+    background: transparent;
 }}
-QMenuBar::item {{ max-height: 0; padding: 0; }}
+QMenuBar::item {{ max-height: 0; min-height: 0; padding: 0; margin: 0; }}
 QMenu {{
     background-color: {_SURFACE2};
     color: {_TEXT};
@@ -871,9 +869,12 @@ class MainWindow(QMainWindow):
     # ── menu bar (hidden, only for keyboard shortcuts) ────────────────────────
 
     def _build_menu_bar(self) -> None:
-        bar = self.menuBar()
-        bar.setVisible(False)   # navbar replaces it; shortcuts still work
-        hmenu = bar.addMenu("&Help")
+        # Completely crush the native menu bar so it contributes zero height.
+        # The navbar frame replaces it visually; we keep QActions for shortcuts.
+        mb = self.menuBar()
+        mb.setFixedHeight(0)
+        mb.setVisible(False)
+        hmenu = mb.addMenu("&Help")
         for label, slot in [
             ("&Quick start tips", self._show_quick_tips),
             ("&About AlgoFlow", self._show_about),
