@@ -4,11 +4,13 @@ import json
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from .default_executor_url import DEFAULT_EXECUTOR_WS_URL
+
 
 @dataclass
 class AppSettings:
     # Connection
-    ws_url: str = "ws://127.0.0.1:8010/ws/exec"
+    ws_url: str = field(default_factory=lambda: DEFAULT_EXECUTOR_WS_URL)
     license_key: str = ""
     reconnect_interval_s: int = 5
     max_reconnect_attempts: int = 0  # 0 = unlimited
@@ -51,8 +53,16 @@ class SettingsStore:
             return AppSettings()
         try:
             obj = json.loads(self._path.read_text(encoding="utf-8"))
+            # If a release build baked in a server URL, migrate any stale localhost value
+            # that was persisted from a previous dev/install.
+            _saved_url = str(obj.get("ws_url") or "").strip()
+            _dev_defaults = {"ws://127.0.0.1:8010/ws/exec", "ws://localhost:8010/ws/exec"}
+            if not _saved_url or (
+                _saved_url in _dev_defaults and DEFAULT_EXECUTOR_WS_URL not in _dev_defaults
+            ):
+                _saved_url = DEFAULT_EXECUTOR_WS_URL
             return AppSettings(
-                ws_url=str(obj.get("ws_url") or AppSettings.ws_url),
+                ws_url=_saved_url,
                 license_key=str(obj.get("license_key") or ""),
                 reconnect_interval_s=int(obj.get("reconnect_interval_s") or 5),
                 max_reconnect_attempts=int(obj.get("max_reconnect_attempts") or 0),

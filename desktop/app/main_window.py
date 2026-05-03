@@ -35,7 +35,9 @@ from PySide6.QtWidgets import (
 )
 from qasync import asyncSlot
 
+from .__version__ import __version__ as _APP_VERSION
 from .crypto_store import CryptoStore, SecretPayload
+from .default_executor_url import DEFAULT_EXECUTOR_WS_URL
 from .license_checker import LicenseResult, check_license
 from .paper_live_toggle import PaperLiveToggle
 from .paths import load_brand_icon, repo_root
@@ -119,9 +121,10 @@ class MainWindow(QMainWindow):
         self.license_key.setPlaceholderText("Paste your license key from the SwiftTrade portal")
         self.license_key.setToolTip("UUID from the SwiftTrade portal, e.g. 550e8400-e29b-41d4-a716-446655440000")
 
-        self.ws_url = QLineEdit("ws://127.0.0.1:8010/ws/exec")
+        self.ws_url = QLineEdit(DEFAULT_EXECUTOR_WS_URL)
         self.ws_url.setToolTip(
-            "Backend WebSocket address. Leave as default if the bot server runs on this PC."
+            "SwiftTrade signal server (WebSocket). Pre-filled for the standard cloud server; "
+            "change only if support gives you a different address."
         )
 
         self.practice_t212_api_key = QLineEdit()
@@ -293,7 +296,7 @@ class MainWindow(QMainWindow):
 
         self._set_status("OFFLINE")
         self._append_event("info", "App started — SwiftTrade Desktop Executor.")
-        self._append_event("info", f"Build: {self._git_version()}")
+        self._append_event("info", f"Version: {self._app_version()}")
         self._refresh_t212_status()
 
         settings = self._settings_store.load()
@@ -332,15 +335,19 @@ class MainWindow(QMainWindow):
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
-    def _git_version(self) -> str:
+    def _app_version(self) -> str:
+        """App version string; appends git short-hash in dev when git is available."""
+        base = _APP_VERSION
+        if getattr(sys, "frozen", False):
+            return base
         try:
             root = repo_root()
-            out = subprocess.check_output(
+            sha = subprocess.check_output(
                 ["git", "rev-parse", "--short", "HEAD"], cwd=str(root), text=True
-            )
-            return out.strip()
+            ).strip()
+            return f"{base}+{sha}"
         except Exception:
-            return "unknown"
+            return base
 
     # ── navbar ────────────────────────────────────────────────────────────────
 
@@ -722,10 +729,9 @@ class MainWindow(QMainWindow):
             self,
             "About SwiftTrade Desktop",
             f"SwiftTrade — Desktop Executor\n\n"
-            "Bridges your SwiftTrade bot server to Trading212. Signals from TradingView "
-            "(or any webhook source) flow through the server to this app, which can "
-            "optionally place real orders on your behalf.\n\n"
-            f"Build: {self._git_version()}",
+            "Connects to the SwiftTrade signal server and optionally executes trades "
+            "on Trading212 on your behalf.\n\n"
+            f"Version: {self._app_version()}",
         )
 
     def _show_quick_tips(self) -> None:

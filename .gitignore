@@ -15,6 +15,12 @@ venv/
 
 # Desktop runtime
 .t212_executor/
+# Generated at release build time (see desktop/scripts/build-windows.ps1)
+desktop/executor_defaults.json
+
+# PyInstaller output (rebuild with desktop/scripts/build-windows.ps1)
+desktop/build/
+desktop/dist/
 
 # Bot runtime artifacts (do not commit)
 Server-App/t212_miner_bot/state*.json

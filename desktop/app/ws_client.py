@@ -6,24 +6,40 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 from urllib.parse import urlparse
 
+import aiohttp
 import websockets
 from websockets.exceptions import ConnectionClosed
 
 
-def _smoke_health_url(ws_url: str) -> str:
-    """Map ``ws://host:port/...`` to ``http://host:port/health/supabase-smoke`` for diagnostics."""
+def _http_base(ws_url: str) -> str:
+    """Map ``wss://host/...`` → ``https://host``.  Used to derive REST endpoints."""
     try:
         p = urlparse(ws_url.strip())
         if p.scheme in ("ws", "wss") and p.hostname:
-            http_scheme = "https" if p.scheme == "wss" else "http"
-            if p.port:
-                netloc = f"{p.hostname}:{p.port}"
-            else:
-                netloc = p.hostname
-            return f"{http_scheme}://{netloc}/health/supabase-smoke"
+            scheme = "https" if p.scheme == "wss" else "http"
+            netloc = f"{p.hostname}:{p.port}" if p.port else str(p.hostname)
+            return f"{scheme}://{netloc}"
     except Exception:
         pass
-    return "http://127.0.0.1:8010/health/supabase-smoke"
+    return "http://127.0.0.1:8010"
+
+
+def _smoke_health_url(ws_url: str) -> str:
+    return f"{_http_base(ws_url)}/health/supabase-smoke"
+
+
+async def _fetch_backend_version(base: str) -> str | None:
+    """GET /version from the backend; returns the version string or None on any error."""
+    try:
+        timeout = aiohttp.ClientTimeout(total=5.0)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(f"{base}/version") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    return str(data.get("version") or "").strip() or None
+    except Exception:
+        pass
+    return None
 
 
 @dataclass(frozen=True)
@@ -67,7 +83,12 @@ class ExecWsClient:
                 ) as ws:
                     self._on_status("ONLINE")
                     attempt = 0
-                    self._on_event(f"Connected to {self._cfg.url}")
+                    base = _http_base(self._cfg.url)
+                    server_ver = await _fetch_backend_version(base)
+                    if server_ver:
+                        self._on_event(f"Connected — server v{server_ver}")
+                    else:
+                        self._on_event(f"Connected to {self._cfg.url}")
                     await ws.send(json.dumps({"type": "HELLO", "license_key": self._cfg.license_key}))
 
                     while not self._stop.is_set():
@@ -95,27 +116,42 @@ class ExecWsClient:
                 self._on_status("OFFLINE")
                 code = getattr(exc, "code", None)
                 reason = getattr(exc, "reason", "") or ""
-                if code == 4401:
-                    self._on_event("Disconnected: invalid license key format.")
-                elif code == 4404:
-                    self._on_event("Disconnected: license not found or revoked.")
-                elif code == 4403:
-                    self._on_event("Disconnected: subscription/license not active.")
-                elif code == 4409:
-                    self._on_event("Disconnected: license already locked to a different IP.")
+                if code == 4000:
+                    self._on_event(
+                        "Session ended: your license key connected from another device or session. "
+                        "Reconnect here to take the session back."
+                    )
                 elif code == 4400:
-                    self._on_event("Disconnected: bad handshake.")
+                    self._on_event("Disconnected: bad handshake (unexpected message type sent).")
+                elif code == 4401:
+                    self._on_event("Disconnected: invalid license key format. Check your key in the Setup tab.")
+                elif code == 4403:
+                    self._on_event(
+                        "Disconnected: subscription or license not active. "
+                        "Visit the SwiftTrade website to renew, then reconnect."
+                    )
+                elif code == 4404:
+                    self._on_event(
+                        "Disconnected: license key not found or has been revoked. "
+                        "Check your key in the Setup tab."
+                    )
+                elif code == 4409:
+                    self._on_event("Disconnected: session conflict — reconnecting will resolve this.")
                 elif code == 4420:
                     smoke = _smoke_health_url(self._cfg.url)
                     self._on_event(
-                        "Disconnected: backend could not load Supabase URL + service role key. "
-                        f"Open {smoke} in a browser (lengths only, no secrets). "
-                        "If the WS URL uses 'localhost', try '127.0.0.1' to match uvicorn --host 127.0.0.1."
+                        "Disconnected: server could not load its credentials. "
+                        f"Server health: {smoke}"
                     )
                     if reason.strip():
-                        self._on_event(f"Server close reason: {reason.strip()}")
+                        self._on_event(f"Server reason: {reason.strip()}")
+                elif code == 1011:
+                    self._on_event("Disconnected: internal server error — will retry.")
                 else:
-                    self._on_event(f"Disconnected (code={code}): {reason}".strip())
+                    msg = f"Disconnected (code={code})"
+                    if reason.strip():
+                        msg += f": {reason.strip()}"
+                    self._on_event(msg)
                 attempt += 1
                 if self._cfg.max_reconnect_attempts > 0 and attempt >= self._cfg.max_reconnect_attempts:
                     self._on_event(f"Max reconnect attempts ({self._cfg.max_reconnect_attempts}) reached. Stopped.")
