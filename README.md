@@ -4,7 +4,6 @@ Web portal, FastAPI backend, and Windows desktop executor for Trading212.
 
 **MVP tiers**
 
-
 | Tier | License | Trading |
 |------|---------|---------|
 | **Paper / Free** | Optional — leave license blank | Practice (demo) account only |
