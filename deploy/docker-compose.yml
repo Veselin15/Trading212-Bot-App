@@ -16,6 +16,7 @@ services:
       - .env
     environment:
       RUN_DB_MIGRATIONS: ${RUN_DB_MIGRATIONS:-false}
+      RUN_STRATEGY: ${RUN_STRATEGY:-false}
       DEBUG_ROUTES_ENABLED: ${DEBUG_ROUTES_ENABLED:-false}
       APP_BASE_URL: ${APP_BASE_URL:-https://signals.swifttrade.app}
     volumes:

@@ -13,7 +13,6 @@ APP_VERSION = "1.0.0"
 from app.api.license import router as license_router
 from app.api.ws import heartbeat_loop, router as ws_router
 from app.core.config import settings
-from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
 
 _log = logging.getLogger("uvicorn.error")
 
@@ -83,7 +82,13 @@ def create_app() -> FastAPI:
         # reload / multi-listener quirks can otherwise see empty env in the handler).
         app.state.supabase_rest = SupabaseRest.from_settings()
         asyncio.create_task(heartbeat_loop())
-        asyncio.create_task(run_t212_miner_strategy_forever())
+        if settings.run_strategy:
+            _log.warning("Strategy runner ENABLED (RUN_STRATEGY=true).")
+            from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
+
+            asyncio.create_task(run_t212_miner_strategy_forever())
+        else:
+            _log.info("Strategy runner disabled (RUN_STRATEGY=false).")
 
     return app
 

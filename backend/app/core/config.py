@@ -89,6 +89,10 @@ class Settings(BaseSettings):
     # Legacy SQLAlchemy Postgres (unused for licensing). Set false in production deploy.
     run_db_migrations: bool = True
 
+    # Strategy runner (Server-App/t212_miner_bot). Disable on low-spec prod boxes by default.
+    # When enabled, requires additional deps and data feed reliability.
+    run_strategy: bool = False
+
 
 settings = Settings()  # type: ignore[call-arg]
 
