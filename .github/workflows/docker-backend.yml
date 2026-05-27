@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
 
 env:
-  IMAGE_NAME: veselin15/swifttrade-backend
+  IMAGE_NAME: veski4a06/swifttrade-backend
 
 jobs:
   docker:

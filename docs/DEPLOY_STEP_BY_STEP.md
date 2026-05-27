@@ -13,7 +13,7 @@ Follow **every step in order**. Do not skip verification checkpoints (✅).
 **Prerequisites (before Step 1)**
 
 - [ ] GitHub repo with this code pushed to `main`
-- [ ] Docker Hub account (e.g. `veselin15`)
+- [ ] Docker Hub account (e.g. `veski4a06`)
 - [ ] Home server: Ubuntu, Docker, Watchtower, `cloudflared` tunnel already running
 - [ ] Domain `swifttrade.app` on Cloudflare
 - [ ] Windows PC with Python 3.12+ (for building `SwiftTrade.exe`)
@@ -114,7 +114,7 @@ Skip for now. You will create the webhook after `https://swifttrade.app` works.
 
 | Secret name | Value |
 |-------------|--------|
-| `DOCKERHUB_USERNAME` | Your Docker Hub username (e.g. `veselin15`) |
+| `DOCKERHUB_USERNAME` | Your Docker Hub username (e.g. `veski4a06`) |
 | `DOCKERHUB_TOKEN` | Token from Step 9 |
 
 ✅ **Check:** Two secrets listed under Actions.
@@ -129,7 +129,7 @@ Skip for now. You will create the webhook after `https://swifttrade.app` works.
 
 3. GitHub → **Actions** → workflow **Build and push backend image** → wait until green.
 
-✅ **Check:** [hub.docker.com](https://hub.docker.com) → repository `veselin15/swifttrade-backend` → tag `latest` exists.
+✅ **Check:** [hub.docker.com](https://hub.docker.com) → repository `veski4a06/swifttrade-backend` → tag `latest` exists.
 
 > If the workflow does not run: push a small change under `backend/` or run workflow manually (**Actions** → workflow → **Run workflow**).
 
@@ -168,7 +168,7 @@ nano .env
 Paste and **replace every placeholder**:
 
 ```env
-SWIFTTRADE_BACKEND_IMAGE=veselin15/swifttrade-backend:latest
+SWIFTTRADE_BACKEND_IMAGE=veski4a06/swifttrade-backend:latest
 BACKEND_HOST_PORT=8010
 
 SUPABASE_URL=https://YOUR_PROJECT_REF.supabase.co
@@ -505,7 +505,7 @@ Add to GitHub Actions secrets (for docker-web workflow):
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 - `NEXT_PUBLIC_SITE_URL` = `https://swifttrade.app`
 
-Push changes under `web/` to build `veselin15/swifttrade-web:latest`.
+Push changes under `web/` to build `veski4a06/swifttrade-web:latest`.
 
 ### Alt-2 — Server env file
 

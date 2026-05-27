@@ -7,7 +7,7 @@
 
 services:
   backend:
-    image: ${SWIFTTRADE_BACKEND_IMAGE:-veselin15/swifttrade-backend:latest}
+    image: ${SWIFTTRADE_BACKEND_IMAGE:-veski4a06/swifttrade-backend:latest}
     container_name: swifttrade_backend
     restart: always
     ports:
@@ -30,7 +30,7 @@ services:
   # Optional: self-host the Next.js portal on the same machine.
   # Prefer Cloudflare Pages for swifttrade.app if the server CPU is tight.
   web:
-    image: ${SWIFTTRADE_WEB_IMAGE:-veselin15/swifttrade-web:latest}
+    image: ${SWIFTTRADE_WEB_IMAGE:-veski4a06/swifttrade-web:latest}
     container_name: swifttrade_web
     restart: always
     profiles: ["web"]

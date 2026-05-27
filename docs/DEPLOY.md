@@ -42,7 +42,7 @@ Add repository secrets:
 
 | Secret | Purpose |
 |--------|---------|
-| `DOCKERHUB_USERNAME` | e.g. `veselin15` |
+| `DOCKERHUB_USERNAME` | e.g. `veski4a06` |
 | `DOCKERHUB_TOKEN` | Docker Hub access token |
 | `NEXT_PUBLIC_SUPABASE_URL` | Baked into web image (optional if using Pages) |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Same |
@@ -50,8 +50,8 @@ Add repository secrets:
 
 Workflows:
 
-- `.github/workflows/docker-backend.yml` → `veselin15/swifttrade-backend:latest`
-- `.github/workflows/docker-web.yml` → `veselin15/swifttrade-web:latest` (only if self-hosting web)
+- `.github/workflows/docker-backend.yml` → `veski4a06/swifttrade-backend:latest`
+- `.github/workflows/docker-web.yml` → `veski4a06/swifttrade-web:latest` (only if self-hosting web)
 
 Push to `main` to build. **Watchtower** on the server pulls new tags every ~5 minutes.
 
