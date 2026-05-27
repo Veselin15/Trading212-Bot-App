@@ -10,8 +10,9 @@ from fastapi import WebSocket
 
 @dataclass
 class Connection:
-    license_id: uuid.UUID
-    license_key: uuid.UUID
+    connection_id: uuid.UUID
+    license_key: uuid.UUID | None
+    tier: str
     ip: str
     websocket: WebSocket
     last_pong_at: datetime
@@ -24,21 +25,21 @@ class WsManager:
 
     async def upsert(self, conn: Connection) -> None:
         async with self._lock:
-            old = self._connections.get(conn.license_id)
-            self._connections[conn.license_id] = conn
+            old = self._connections.get(conn.connection_id)
+            self._connections[conn.connection_id] = conn
         if old is not None and old.websocket is not conn.websocket:
             try:
                 await old.websocket.close(code=4000)
             except Exception:
                 pass
 
-    async def remove(self, license_id: uuid.UUID) -> None:
+    async def remove(self, connection_id: uuid.UUID) -> None:
         async with self._lock:
-            self._connections.pop(license_id, None)
+            self._connections.pop(connection_id, None)
 
-    async def touch_pong(self, license_id: uuid.UUID) -> None:
+    async def touch_pong(self, connection_id: uuid.UUID) -> None:
         async with self._lock:
-            conn = self._connections.get(license_id)
+            conn = self._connections.get(connection_id)
             if conn:
                 conn.last_pong_at = datetime.now(tz=UTC)
 
@@ -51,7 +52,7 @@ class WsManager:
                 await conn.websocket.send_json(message)
                 sent += 1
             except Exception:
-                await self.remove(conn.license_id)
+                await self.remove(conn.connection_id)
         return sent
 
     async def ping_sweep(self, *, ping_payload: dict, pong_timeout_s: float) -> None:
@@ -63,15 +64,13 @@ class WsManager:
             try:
                 await conn.websocket.send_json(ping_payload)
             except Exception:
-                await self.remove(conn.license_id)
+                await self.remove(conn.connection_id)
                 continue
 
-            # If the client hasn't ponged recently, evict after deadline.
             age_s = (now - conn.last_pong_at).total_seconds()
             if age_s > pong_timeout_s:
                 try:
                     await conn.websocket.close(code=4001)
                 except Exception:
                     pass
-                await self.remove(conn.license_id)
-
+                await self.remove(conn.connection_id)

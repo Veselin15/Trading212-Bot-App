@@ -3,14 +3,19 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 
+from app.api.debug_auth import require_debug_api_key
 from app.api.ws import ws_manager
 from app.integrations.supabase_rest import supabase_config_smoke_dict
 
 
-router = APIRouter(prefix="/debug", tags=["debug"])
+router = APIRouter(
+    prefix="/debug",
+    tags=["debug"],
+    dependencies=[Depends(require_debug_api_key)],
+)
 
 
 class TestSignalIn(BaseModel):

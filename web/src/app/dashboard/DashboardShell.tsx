@@ -151,6 +151,7 @@ export type DashboardShellProps = {
   planTier: "free" | "pro";
   stripeCheckoutEnabled: boolean;
   stripePortalEnabled: boolean;
+  schemaSetupMessage?: string | null;
 };
 
 export function DashboardShell({
@@ -160,6 +161,7 @@ export function DashboardShell({
   planTier,
   stripeCheckoutEnabled,
   stripePortalEnabled,
+  schemaSetupMessage,
 }: DashboardShellProps) {
   const proFeatures = canUseProFeatures(subscription);
   const ui = subscriptionUi(subscription, planTier);
@@ -180,6 +182,12 @@ export function DashboardShell({
       <Suspense fallback={null}>
         <DashboardUrlToasts />
       </Suspense>
+
+      {schemaSetupMessage ? (
+        <Alert className="mb-6 border-amber-500/30 bg-amber-500/10 text-amber-100">
+          <span className="font-semibold">Setup required:</span> {schemaSetupMessage}
+        </Alert>
+      ) : null}
 
       <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -308,31 +316,16 @@ export function DashboardShell({
               Download the Windows client to connect your Trading212 account securely. Keys are encrypted locally.
             </p>
 
-            <div className="mt-6">
-              {proFeatures ? (
-                <ButtonLink href="/download" className="h-11 w-full gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
-                  <Download className="h-4 w-4" />
-                  Download App (.exe)
-                </ButtonLink>
-              ) : (
-                <div className="space-y-3">
-                  <p className="text-sm text-slate-400">
-                    An active Pro subscription is required to download the desktop executor.
-                  </p>
-                  {showUpgrade ? (
-                    <form action="/api/stripe/checkout" method="post">
-                      <Button type="submit" className="h-11 w-full gap-2">
-                        <Download className="h-4 w-4" />
-                        Upgrade to download
-                      </Button>
-                    </form>
-                  ) : (
-                    <ButtonLink href="/pricing" variant="secondary" className="h-11 w-full">
-                      View pricing
-                    </ButtonLink>
-                  )}
-                </div>
-              )}
+            <div className="mt-6 space-y-3">
+              <ButtonLink href="/download" className="h-11 w-full gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+                <Download className="h-4 w-4" />
+                Download App (.exe)
+              </ButtonLink>
+              {!proFeatures ? (
+                <p className="text-sm text-slate-400">
+                  Free plan: paper trade on your Trading212 practice account. Pro unlocks real-money automation.
+                </p>
+              ) : null}
             </div>
           </div>
         </Card>
@@ -372,12 +365,16 @@ export function DashboardShell({
           </Card>
         ) : (
           <Card variant="solid" className="p-6">
-            <h2 className="text-base font-semibold text-slate-50">License Key</h2>
+            <h2 className="text-base font-semibold text-slate-50">Desktop app</h2>
             <p className="mt-1 text-sm text-slate-400">
-              An active Pro subscription is required to create and manage a desktop license key.
+              Download the desktop app and paper trade on your Trading212 practice account — no license
+              key or subscription required. Upgrade to Pro when you want real-money automation.
             </p>
+            <ButtonLink href="/download" variant="secondary" className="mt-5 inline-flex h-11 items-center">
+              Download desktop app
+            </ButtonLink>
             {showUpgrade ? (
-              <form action="/api/stripe/checkout" method="post" className="mt-5">
+              <form action="/api/stripe/checkout" method="post" className="mt-3">
                 <Button type="submit" variant="secondary" className="h-11">
                   Upgrade to Pro
                 </Button>

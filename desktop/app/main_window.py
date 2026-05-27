@@ -39,6 +39,7 @@ from .__version__ import __version__ as _APP_VERSION
 from .crypto_store import CryptoStore, SecretPayload
 from .default_executor_url import DEFAULT_EXECUTOR_WS_URL
 from .license_checker import LicenseResult, check_license
+from .license_key_util import normalize_license_key
 from .paper_live_toggle import PaperLiveToggle
 from .paths import load_brand_icon, repo_root
 from .settings_store import AppSettings, SettingsStore
@@ -52,6 +53,7 @@ from .t212_client import (
 from .ui.activity_panel import build_activity_tab
 from .ui.log_panel import build_log_panel
 from .ui.preferences_dialog import run_preferences_dialog
+from .ui.nav_status import NavStatusPill
 from .ui.setup_panel import build_setup_tab
 from .ui.theme import (
     _DANGER,
@@ -75,8 +77,8 @@ class MainWindow(QMainWindow):
         _icon_file = repo_root() / "logo.png"
         if _icon_file.is_file():
             self.setWindowIcon(QIcon(str(_icon_file)))
-        self.setMinimumSize(980, 640)
-        self.resize(1120, 720)
+        self.setMinimumSize(1040, 700)
+        self.resize(1180, 760)
 
         self._base_dir = base_dir if base_dir is not None else (Path.home() / ".t212_executor")
         self._store = CryptoStore(self._base_dir)
@@ -112,14 +114,21 @@ class MainWindow(QMainWindow):
         self.status_label.setMinimumWidth(100)
         self.status_label.setStyleSheet(f"font-weight: 600; font-size: 9pt; color: {_DANGER};")
 
-        # ── broker indicator ─────────────────────────────────────────
-        self.t212_status = QLabel("Broker: not configured")
-        self.t212_status.setObjectName("BrokerPill")
+        # ── consolidated nav status (replaces separate broker/license pills) ──
+        self.nav_status = NavStatusPill()
+
+        # kept for tests / internal checks — not shown in navbar
+        self.t212_status = QLabel("")
+        self.t212_status.hide()
+        self.tier_badge_nav = QLabel("")
+        self.tier_badge_nav.hide()
 
         # ── inputs ───────────────────────────────────────────────────
         self.license_key = QLineEdit()
-        self.license_key.setPlaceholderText("Paste your license key from the SwiftTrade portal")
-        self.license_key.setToolTip("UUID from the SwiftTrade portal, e.g. 550e8400-e29b-41d4-a716-446655440000")
+        self.license_key.setPlaceholderText("Optional — Pro license key from the SwiftTrade portal")
+        self.license_key.setToolTip(
+            "Only needed for real-money trading. Leave blank to use paper trading on your T212 demo account."
+        )
 
         self.ws_url = QLineEdit(DEFAULT_EXECUTOR_WS_URL)
         self.ws_url.setToolTip(
@@ -128,19 +137,19 @@ class MainWindow(QMainWindow):
         )
 
         self.practice_t212_api_key = QLineEdit()
-        self.practice_t212_api_key.setPlaceholderText("Practice API key — Trading212 Practice → Settings → API")
+        self.practice_t212_api_key.setPlaceholderText("Paste your Trading212 demo API key here")
         self.practice_t212_api_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.practice_t212_secret_key = QLineEdit()
-        self.practice_t212_secret_key.setPlaceholderText("Practice API secret (optional)")
+        self.practice_t212_secret_key.setPlaceholderText("Optional — only if Trading212 gave you a secret")
         self.practice_t212_secret_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.live_t212_api_key = QLineEdit()
-        self.live_t212_api_key.setPlaceholderText("Invest / real-money API key — Trading212 Invest → Settings → API")
+        self.live_t212_api_key.setPlaceholderText("Paste your Trading212 real-money API key here")
         self.live_t212_api_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.live_t212_secret_key = QLineEdit()
-        self.live_t212_secret_key.setPlaceholderText("Invest API secret (optional)")
+        self.live_t212_secret_key.setPlaceholderText("Optional — only if Trading212 gave you a secret")
         self.live_t212_secret_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         # ── checkboxes ───────────────────────────────────────────────
@@ -150,68 +159,65 @@ class MainWindow(QMainWindow):
 
         self.trading_mode = PaperLiveToggle()
         self.trading_mode.setToolTip(
-            "Paper: log signals only — no broker orders.\n"
-            "Live: place real orders (requires active Pro license; re-checked periodically)."
+            "Demo mode: place orders on your Trading212 practice account.\n"
+            "Real trades: place orders on your real-money account (Pro subscription required)."
         )
         self.trading_mode.set_pro_unlocked(False)
         self.trading_mode.live_enable_requested.connect(self._on_live_enable_requested)  # type: ignore[arg-type]
         self.trading_mode.mode_changed.connect(self._on_trading_mode_changed)  # type: ignore[arg-type]
 
         self._setup_trading_mode_hint = QLabel(
-            "Top bar: Paper trading — use the toggle to switch (Live requires Pro)."
+            "Top bar: Demo mode — orders go to your Trading212 practice account."
         )
         self._setup_trading_mode_hint.setObjectName("HintLabel")
         self._setup_trading_mode_hint.setWordWrap(True)
 
         # ── license tier state & widgets ─────────────────────────────
-        self._license_tier: str = "unvalidated"
+        self._license_tier: str = "free"
         self._license_check_busy: bool = False
 
-        self.validate_btn = QPushButton("Validate")
-        self.validate_btn.setObjectName("SecondaryBtn")
-        self.validate_btn.setFixedWidth(92)
+        self.validate_btn = QPushButton("Check license")
+        self.validate_btn.setObjectName("PrimaryBtn")
+        self.validate_btn.setMinimumWidth(130)
         self.validate_btn.setToolTip(
             "Check your license tier against the SwiftTrade backend.\n"
-            "Pro subscription required to enable live trading."
+            "Pro subscription required to enable real trades."
         )
         self.validate_btn.clicked.connect(self.on_validate_clicked)  # type: ignore[arg-type]
 
         self.tier_status_label = QLabel(
-            "Not validated — click Validate to check your license tier."
+            "Paper trading mode — no license needed. Add a Pro key only for real-money trades."
         )
-        self.tier_status_label.setObjectName("HintLabel")
+        self.tier_status_label.setObjectName("TierStatusLabel")
         self.tier_status_label.setWordWrap(True)
 
-        self.tier_badge_nav = QLabel("● Not validated")
-        self.tier_badge_nav.setStyleSheet(
-            f"color: {_MUTED}; font-size: 8.5pt; background: transparent; border: none; padding: 0 4px;"
-        )
+        self._server_connected = False
 
         # ── buttons ──────────────────────────────────────────────────
         self.connect_btn = QPushButton("Connect")
         self.connect_btn.setObjectName("PrimaryBtn")
-        self.connect_btn.setFixedWidth(88)
+        self.connect_btn.setMinimumWidth(96)
 
         self.disconnect_btn = QPushButton("Disconnect")
         self.disconnect_btn.setObjectName("DangerBtn")
         self.disconnect_btn.setFixedWidth(88)
         self.disconnect_btn.setEnabled(False)
 
-        self.test_t212_practice_btn = QPushButton("Test practice (demo)")
+        self.test_t212_practice_btn = QPushButton("Test connection")
         self.test_t212_practice_btn.setObjectName("SecondaryBtn")
-        self.test_t212_practice_btn.setToolTip("GET cash on demo.trading212.com using the Practice fields above.")
+        self.test_t212_practice_btn.setToolTip("Verify your demo API keys with Trading212.")
 
-        self.test_t212_live_btn = QPushButton("Test live (Invest)")
+        self.test_t212_live_btn = QPushButton("Test real account")
         self.test_t212_live_btn.setObjectName("SecondaryBtn")
-        self.test_t212_live_btn.setToolTip("GET cash on live.trading212.com using the Invest fields (Pro only).")
+        self.test_t212_live_btn.setToolTip("Verify your real-money API keys (Pro license required).")
 
-        self.save_practice_keys_btn = QPushButton("Save practice keys")
+        self.save_practice_keys_btn = QPushButton("Save demo keys")
         self.save_practice_keys_btn.setObjectName("PrimaryBtn")
-        self.save_practice_keys_btn.setToolTip("Encrypt and store the Practice account key pair on this PC.")
+        self.save_practice_keys_btn.setToolTip("Encrypt and store your demo account keys on this PC.")
 
-        self.save_live_keys_btn = QPushButton("Save live keys")
+        self.save_live_keys_btn = QPushButton("Save real-money keys")
         self.save_live_keys_btn.setObjectName("SecondaryBtn")
-        self.save_live_keys_btn.setToolTip("Encrypt and store the Invest / real-money key pair on this PC.")
+        self.save_live_keys_btn.setToolTip("Encrypt and store your real-money key pair on this PC.")
 
         self._broker_keys_hint = QLabel()
         self._broker_keys_hint.setObjectName("HintLabel")
@@ -261,11 +267,11 @@ class MainWindow(QMainWindow):
 
         # ── tabs ─────────────────────────────────────────────────────
         self.tabs = QTabWidget()
-        self.tabs.addTab(self._build_setup_tab(), "  Setup  ")
-        self.tabs.setTabToolTip(0, "License key, server address, and Trading212 API keys")
-        self.tabs.addTab(self._build_activity_tab(), "  Markets && Bot  ")
-        self.tabs.setTabToolTip(1, "Live market hours, bot state, and recent signals")
-        self.tabs.addTab(self._build_trades_tab(), "  Trades  ")
+        self.tabs.addTab(self._build_setup_tab(), "  Get started  ")
+        self.tabs.setTabToolTip(0, "License key, Trading212 API keys, and connection")
+        self.tabs.addTab(self._build_activity_tab(), "  Live feed  ")
+        self.tabs.setTabToolTip(1, "Market hours, bot state, and recent signals")
+        self.tabs.addTab(self._build_trades_tab(), "  Signals  ")
         self.tabs.setTabToolTip(2, "Signal queue and execution status")
         self.tabs.setDocumentMode(True)
 
@@ -303,7 +309,11 @@ class MainWindow(QMainWindow):
         if settings.ws_url:
             self.ws_url.setText(settings.ws_url)
         if settings.license_key:
-            self.license_key.setText(settings.license_key)
+            normalized = normalize_license_key(settings.license_key)
+            if normalized:
+                self.license_key.setText(normalized)
+            elif settings.license_key.strip():
+                self.license_key.clear()
         self._apply_log_settings(settings)
         self._apply_trading_settings(settings)
         self._update_broker_keys_hint()
@@ -331,7 +341,13 @@ class MainWindow(QMainWindow):
         if settings.auto_connect_on_start:
             QTimer.singleShot(600, self.on_connect_clicked)
 
+        self.license_key.textChanged.connect(lambda _: self._refresh_setup_checklist())  # type: ignore[arg-type]
+        self._update_tier_ui("free")
         self._sync_setup_mode_hint()
+        self._refresh_setup_checklist()
+
+        if not settings.seen_welcome:
+            QTimer.singleShot(400, self._show_welcome_and_dismiss)
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -399,14 +415,7 @@ class MainWindow(QMainWindow):
         sb_inner.addWidget(self.status_label)
         bar.addWidget(status_badge)
         bar.addSpacing(10)
-
-        # broker pill (text-only, next to badge)
-        bar.addWidget(self.t212_status)
-        bar.addSpacing(4)
-
-        # tier badge
-        bar.addWidget(self.tier_badge_nav)
-
+        bar.addWidget(self.nav_status)
         bar.addStretch(1)
 
         # ── right cluster ─────────────────────────────────────────
@@ -436,6 +445,12 @@ class MainWindow(QMainWindow):
         settings_btn.clicked.connect(self._show_settings)  # type: ignore[arg-type]
         bar.addWidget(settings_btn)
         bar.addSpacing(4)
+
+        help_btn = QPushButton("?")
+        help_btn.setObjectName("NavSettingsBtn")
+        help_btn.setToolTip("Quick start guide")
+        help_btn.clicked.connect(self._show_quick_tips)  # type: ignore[arg-type]
+        bar.addWidget(help_btn)
 
         return nav
 
@@ -468,58 +483,44 @@ class MainWindow(QMainWindow):
     # ── license tier enforcement ──────────────────────────────────────────────
 
     def _update_tier_ui(self, tier: str) -> None:
-        """Apply UI state for the validated tier: pro / free / unvalidated."""
+        """Apply UI state for the validated tier: pro / free / invalid."""
         self._license_tier = tier
         if tier == "pro":
             self.trading_mode.set_pro_unlocked(True)
             self.trading_mode.setToolTip(
-                "Paper: log signals only; Trading212 calls use Practice keys + demo.trading212.com.\n"
-                "Live: place real orders using your saved Invest keys + live.trading212.com (tier re-checked on the server)."
+                "Demo mode: place orders on your Trading212 practice account.\n"
+                "Real trades: place orders using your saved real-money keys (tier re-checked on the server)."
             )
-            self.tier_badge_nav.setText("● Pro")
-            self.tier_badge_nav.setStyleSheet(
-                f"color: {_SUCCESS}; font-size: 8.5pt; font-weight: 700; "
-                "background: transparent; border: none; padding: 0 4px;"
-            )
-            self.tier_status_label.setText("Pro license active — live trading is unlocked.")
-            self.tier_status_label.setStyleSheet(
-                f"color: {_SUCCESS}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
-            )
+            self.tier_status_label.setText("Pro license active — real trades are unlocked.")
+            self.tier_status_label.setProperty("tierKind", "pro")
         elif tier == "free":
             self.trading_mode.set_pro_unlocked(False)
             self.trading_mode.setToolTip(
-                "Pro subscription required for Live trading. Upgrade on the SwiftTrade website.\n"
-                "Paper mode stays available."
+                "Demo mode: paper trade on your Trading212 practice account.\n"
+                "Pro subscription required for real-money trades."
             )
-            self.tier_badge_nav.setText("● Free")
-            self.tier_badge_nav.setStyleSheet(
-                f"color: {_WARN}; font-size: 8.5pt; font-weight: 700; "
-                "background: transparent; border: none; padding: 0 4px;"
-            )
-            self.tier_status_label.setText(
-                "Free Demo License active — live trading disabled. Upgrade on the SwiftTrade website."
-            )
-            self.tier_status_label.setStyleSheet(
-                f"color: {_WARN}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
-            )
+            if self.license_key.text().strip():
+                self.tier_status_label.setText(
+                    "Free tier — demo account only. Upgrade on the SwiftTrade website for real trades."
+                )
+            else:
+                self.tier_status_label.setText(
+                    "Paper trading mode — no license needed. Add a Pro key only for real-money trades."
+                )
+            self.tier_status_label.setProperty("tierKind", "free")
         else:
             self.trading_mode.set_pro_unlocked(False)
             self.trading_mode.setToolTip(
-                "Validate your license key against the SwiftTrade server to unlock Live trading."
+                "Fix or remove your license key. Paper trading works without a key."
             )
-            self.tier_badge_nav.setText("● Not validated")
-            self.tier_badge_nav.setStyleSheet(
-                f"color: {_MUTED}; font-size: 8.5pt; "
-                "background: transparent; border: none; padding: 0 4px;"
-            )
-            self.tier_status_label.setText(
-                "Not validated — click Validate to check your license tier."
-            )
-            self.tier_status_label.setStyleSheet(
-                f"color: {_MUTED}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
-            )
+            self.tier_status_label.setText("License key invalid or revoked — remove it to stay on free paper trading.")
+            self.tier_status_label.setProperty("tierKind", "pending")
+        self.tier_status_label.style().unpolish(self.tier_status_label)
+        self.tier_status_label.style().polish(self.tier_status_label)
         self._update_broker_keys_hint()
         self._sync_setup_mode_hint()
+        self._refresh_nav_status()
+        self._refresh_setup_checklist()
 
     async def _run_license_validation(self, *, silent: bool) -> LicenseResult | None:
         """
@@ -565,18 +566,18 @@ class MainWindow(QMainWindow):
                 self._append_event("ok", result.message)
                 self._append_event(
                     "info",
-                    "Invest keys: save under “Real-money / Invest”, then use the top bar Live mode when you want real orders.",
+                    "Real-money keys: save under Step 2, then use Real trades in the top bar when ready.",
                 )
-                self._set_sb("Pro license validated — live trading unlocked.")
+                self._set_sb("Pro license validated — real trades unlocked.")
             elif result.tier == "free":
                 self._append_event("warn", result.message)
-                self._set_sb("Free license — live trading disabled.")
+                self._set_sb("Free license — real trades disabled.")
             else:
                 self._append_event("error", result.message)
                 self._set_sb("License validation failed.")
         finally:
             self.validate_btn.setEnabled(True)
-            self.validate_btn.setText("Validate")
+            self.validate_btn.setText("Check license")
 
     @asyncSlot()
     async def _on_license_recheck_tick(self) -> None:
@@ -594,14 +595,14 @@ class MainWindow(QMainWindow):
         """Mirror the top-bar Paper/Live state in the Setup tab hint."""
         if self.trading_mode.is_live():
             self._setup_trading_mode_hint.setText(
-                "Top bar: Live trading is ON — real orders may be sent when signals arrive."
+                "Top bar: Real trades ON — market orders may be sent to your real-money account."
             )
             self._setup_trading_mode_hint.setStyleSheet(
                 f"color: {_DANGER}; font-size: 8.8pt; font-weight: 600; background: transparent; padding: 0; margin: 0;"
             )
         else:
             self._setup_trading_mode_hint.setText(
-                "Top bar: Paper trading — signals are logged only; no broker orders."
+                "Top bar: Demo mode — orders go to your Trading212 practice account."
             )
             self._setup_trading_mode_hint.setStyleSheet(
                 f"color: {_MUTED}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
@@ -611,10 +612,10 @@ class MainWindow(QMainWindow):
         """User clicked Live — confirm before we arm real-money execution."""
         r = QMessageBox.warning(
             self,
-            "Enable live trading?",
-            "Live mode will send real-money orders on live.trading212.com using your saved Invest keys "
+            "Enable real trades?",
+            "Real trades mode will send real-money orders on Trading212 using your saved real-money keys "
             "every time the bot fires a LONG signal.\n\n"
-            "Your Pro license is active. Stay on Paper if you only want to watch signals in the log.",
+            "Your Pro license is active. Stay on Demo mode if you only want to watch signals in the log.",
             QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
             QMessageBox.StandardButton.Cancel,
         )
@@ -624,9 +625,9 @@ class MainWindow(QMainWindow):
 
     def _on_trading_mode_changed(self, live: bool) -> None:
         if live:
-            self._set_sb("Live trading ON — Invest API + real orders when signals arrive.")
+            self._set_sb("Real trades ON — orders sent to your live account when signals arrive.")
         else:
-            self._set_sb("Paper trading — Practice API; signals logged only.")
+            self._set_sb("Demo mode — orders sent to your practice account when signals arrive.")
         self._update_broker_keys_hint()
         self._refresh_t212_status()
         self._sync_setup_mode_hint()
@@ -663,16 +664,16 @@ class MainWindow(QMainWindow):
         self.test_t212_live_btn.setEnabled(is_pro and not busy)
         if is_pro and self.trading_mode.is_live():
             self._broker_keys_hint.setText(
-                "Trading mode is Live (top bar): the app uses your saved Invest keys on live.trading212.com "
-                "for orders and market data. Use “Test live” to verify those keys."
+                "Real trades mode is ON: the app uses your saved real-money keys on Trading212. "
+                "Use Test real account to verify those keys."
             )
             self._broker_keys_hint.setStyleSheet(
                 f"color: {_DANGER}; font-size: 8.8pt; font-weight: 600; background: transparent; padding: 0; margin: 0;"
             )
         else:
             self._broker_keys_hint.setText(
-                "Trading mode is Paper (top bar): the app uses Practice keys on demo.trading212.com. "
-                "Pro users can still press “Test live” to check Invest keys without turning on Live trading."
+                "Demo mode is ON (top bar): the app uses your demo account keys for paper trading. "
+                "Pro users can still test real-money keys without enabling real trades."
             )
             self._broker_keys_hint.setStyleSheet(
                 f"color: {_MUTED}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
@@ -734,16 +735,141 @@ class MainWindow(QMainWindow):
             f"Version: {self._app_version()}",
         )
 
+    def _show_welcome_and_dismiss(self) -> None:
+        self._show_welcome()
+        saved = self._settings_store.load()
+        self._persist_settings(saved, seen_welcome=True)
+
+    def _persist_settings(self, saved: AppSettings, **overrides) -> None:
+        fields = {
+            "ws_url": saved.ws_url,
+            "license_key": saved.license_key,
+            "reconnect_interval_s": saved.reconnect_interval_s,
+            "max_reconnect_attempts": saved.max_reconnect_attempts,
+            "order_quantity": saved.order_quantity,
+            "max_daily_trades": saved.max_daily_trades,
+            "signal_cooldown_s": saved.signal_cooldown_s,
+            "default_stop_loss_pct": saved.default_stop_loss_pct,
+            "confirm_before_trade": saved.confirm_before_trade,
+            "skip_non_long_signals": saved.skip_non_long_signals,
+            "log_font_size": saved.log_font_size,
+            "log_max_lines": saved.log_max_lines,
+            "log_auto_scroll": saved.log_auto_scroll,
+            "log_show_timestamps": saved.log_show_timestamps,
+            "log_level_filter": saved.log_level_filter,
+            "notify_on_signal": saved.notify_on_signal,
+            "notify_on_connect": saved.notify_on_connect,
+            "auto_connect_on_start": saved.auto_connect_on_start,
+            "start_minimized": saved.start_minimized,
+            "seen_welcome": saved.seen_welcome,
+            "splitter_sizes": saved.splitter_sizes,
+        }
+        fields.update(overrides)
+        self._settings_store.save(AppSettings(**fields))
+
     def _show_quick_tips(self) -> None:
         QMessageBox.information(
             self,
             "Quick start",
-            "1.  Setup tab — paste your license key from the SwiftTrade portal and click Validate.\n\n"
-            "2.  Trading212 — save Practice and/or Invest keys; use Paper/Live in the top bar for broker mode; Test each side as needed.\n\n"
-            "3.  Click Connect (top bar) — status changes to green when linked.\n\n"
-            "4.  Paper / Live — use the top-bar toggle (Live needs Pro). Tier is re-checked periodically on the server.\n\n"
+            "1.  Get started tab — paste your license key from swifttrade.io and click Check license.\n\n"
+            "2.  Trading212 — add your demo API keys (Trading212 app → Settings → API), "
+            "click Save demo keys, then Test connection.\n\n"
+            "3.  Click Connect in the top bar — the status dot turns green when linked.\n\n"
+            "4.  Demo mode vs Real trades — use the toggle in the top bar. "
+            "Demo mode only logs signals; Real trades places orders (Pro required).\n\n"
             "Tip: right-click any table row to copy it.",
         )
+
+    def _show_welcome(self) -> None:
+        QMessageBox.information(
+            self,
+            "Welcome to SwiftTrade",
+            "This app runs on your computer and connects to Trading212 for you.\n\n"
+            "Setup is easy — just follow the 3 cards on the Get started tab:\n\n"
+            "  1. Paste your license key from swifttrade.io\n"
+            "  2. Add your Trading212 demo API key (from the phone app)\n"
+            "  3. Click Connect\n\n"
+            "Tip: stay on Demo mode at first. It lets you watch signals without spending money.\n\n"
+            "Click ? in the top bar anytime for help.",
+        )
+
+    def _has_saved_broker_keys(self) -> bool:
+        stored = self._store.load()
+        if not stored:
+            return False
+        return bool(stored.practice_api_key.strip() or stored.live_api_key.strip())
+
+    def _refresh_setup_checklist(self) -> None:
+        checklist = getattr(self, "setup_checklist", None)
+        if checklist is None:
+            return
+        license_validated = self._license_tier in ("pro", "free")
+        has_broker_keys = self._has_saved_broker_keys()
+        connected = self._server_connected
+        checklist.update_state(
+            license_validated=license_validated,
+            has_broker_keys=has_broker_keys,
+            connected=connected,
+        )
+
+        step1 = getattr(self, "_setup_step1", None)
+        step2 = getattr(self, "_setup_step2", None)
+        step3 = getattr(self, "_setup_step3", None)
+        if step1 is None:
+            return
+
+        if connected:
+            step1.set_state("done", expand=False)
+            step2.set_state("done", expand=False)
+            step3.set_state("done", expand=False)
+        elif not has_broker_keys:
+            if self.license_key.text().strip() and self._license_tier not in ("pro",):
+                step1.set_state("active")
+            else:
+                step1.set_state("done", expand=False)
+            step2.set_state("active")
+            step3.set_state("locked", expand=False)
+        else:
+            step1.set_state("done", expand=False)
+            step2.set_state("done", expand=False)
+            step3.set_state("active")
+
+        setup_connect = getattr(self, "setup_connect_btn", None)
+        setup_disconnect = getattr(self, "setup_disconnect_btn", None)
+        if setup_connect is not None:
+            if connected:
+                setup_connect.hide()
+                if setup_disconnect is not None:
+                    setup_disconnect.show()
+            elif self.connect_btn.isEnabled():
+                setup_connect.setText("  Connect to SwiftTrade  ")
+                setup_connect.setEnabled(True)
+                setup_connect.show()
+                if setup_disconnect is not None:
+                    setup_disconnect.hide()
+            else:
+                setup_connect.setText("  Connecting…  ")
+                setup_connect.setEnabled(False)
+                setup_connect.show()
+                if setup_disconnect is not None:
+                    setup_disconnect.hide()
+
+        self._refresh_nav_status()
+
+        QTimer.singleShot(80, self._scroll_to_active_setup_step)
+
+    def _scroll_to_active_setup_step(self) -> None:
+        scroll = getattr(self, "_setup_scroll", None)
+        if scroll is None:
+            return
+        for step in (
+            getattr(self, "_setup_step1", None),
+            getattr(self, "_setup_step2", None),
+            getattr(self, "_setup_step3", None),
+        ):
+            if step is not None and step.property("stepState") == "active":
+                scroll.ensureWidgetVisible(step, 24, 24)
+                break
 
     # ── status helpers ────────────────────────────────────────────────────────
 
@@ -757,6 +883,9 @@ class MainWindow(QMainWindow):
 
     def _on_ws_status(self, status: str) -> None:
         self._set_status(status)
+        self._server_connected = status == "ONLINE"
+        self._refresh_nav_status()
+        self._refresh_setup_checklist()
         if status == "ONLINE":
             self._set_sb("Connected to bot server — receiving data.")
         elif status == "CONNECTING":
@@ -764,25 +893,37 @@ class MainWindow(QMainWindow):
         else:
             self._set_sb("")
 
-    def _refresh_t212_status(self) -> None:
-        stored = self._store.load()
-        active = self._stored_active_t212_keys()
-        if active and active[0]:
-            label = "T212 ✓ live" if self._t212_base_url() == T212_API_LIVE_BASE else "T212 ✓ practice"
-            self.t212_status.setText(label)
-            self.t212_status.setStyleSheet(
-                f"color: {_SUCCESS}; font-size: 8.5pt; background: transparent; border: none; padding: 0 4px;"
-            )
-        elif stored and (stored.practice_api_key.strip() or stored.live_api_key.strip()):
-            self.t212_status.setText("T212 keys saved — use top bar Paper/Live for active broker")
-            self.t212_status.setStyleSheet(
-                f"color: {_WARN}; font-size: 8.5pt; background: transparent; border: none; padding: 0 4px;"
-            )
+    def _refresh_nav_status(self) -> None:
+        """One plain-English status pill instead of scattered broker/license labels."""
+        if not hasattr(self, "nav_status"):
+            return
+        status = getattr(self, "status_label", None)
+        status_text_val = status.text() if status else ""
+
+        if status_text_val == "Connecting…":
+            self.nav_status.set_kind("connecting")
+            return
+        if self._server_connected:
+            if self.trading_mode.is_live():
+                self.nav_status.set_kind("online_live")
+            else:
+                self.nav_status.set_kind("online_demo")
+            return
+
+        license_ok = self._license_tier in ("pro", "free")
+        has_keys = self._has_saved_broker_keys()
+
+        if license_ok and has_keys:
+            self.nav_status.set_kind("ready")
+        elif license_ok:
+            self.nav_status.set_kind("custom", "Add Trading212 keys")
+        elif bool(self.license_key.text().strip()):
+            self.nav_status.set_kind("custom", "Check your license")
         else:
-            self.t212_status.setText("Broker not configured")
-            self.t212_status.setStyleSheet(
-                f"color: {_MUTED}; font-size: 8.5pt; background: transparent; border: none; padding: 0 4px;"
-            )
+            self.nav_status.set_kind("setup")
+
+    def _refresh_t212_status(self) -> None:
+        self._refresh_nav_status()
 
     # ── coloured log append ───────────────────────────────────────────────────
 
@@ -841,23 +982,14 @@ class MainWindow(QMainWindow):
     async def on_connect_clicked(self) -> None:
         if self._ws_task and not self._ws_task.done():
             return
-        lic = self.license_key.text().strip()
-        if not lic:
-            QMessageBox.information(
-                self,
-                "License key required",
-                "Paste your license key from the SwiftTrade portal in the Setup tab, then click Connect.",
+        lic_raw = self.license_key.text().strip()
+        lic = normalize_license_key(lic_raw)
+        if lic_raw and lic is None:
+            self._append_event(
+                "warn",
+                "Invalid license key ignored — connecting in paper mode (demo account only).",
             )
-            return
-        try:
-            uuid.UUID(lic)
-        except ValueError:
-            QMessageBox.warning(
-                self,
-                "License key format",
-                "The key should look like:\n\n550e8400-e29b-41d4-a716-446655440000\n\nCopy it again from the SwiftTrade portal.",
-            )
-            return
+            self.license_key.clear()
 
         url = self.ws_url.text().strip()
         saved = self._settings_store.load()
@@ -867,39 +999,35 @@ class MainWindow(QMainWindow):
             reconnect_interval_s=self._reconnect_interval_s,
             max_reconnect_attempts=self._max_reconnect_attempts,
         )
-        self._settings_store.save(AppSettings(
+        self._persist_settings(
+            saved,
             ws_url=url,
-            license_key=lic,
-            reconnect_interval_s=saved.reconnect_interval_s,
-            max_reconnect_attempts=saved.max_reconnect_attempts,
-            order_quantity=saved.order_quantity,
-            max_daily_trades=saved.max_daily_trades,
-            signal_cooldown_s=saved.signal_cooldown_s,
-            default_stop_loss_pct=saved.default_stop_loss_pct,
-            confirm_before_trade=saved.confirm_before_trade,
-            skip_non_long_signals=saved.skip_non_long_signals,
-            log_font_size=saved.log_font_size,
-            log_max_lines=saved.log_max_lines,
-            log_auto_scroll=saved.log_auto_scroll,
-            log_show_timestamps=saved.log_show_timestamps,
-            log_level_filter=saved.log_level_filter,
-            notify_on_signal=saved.notify_on_signal,
-            notify_on_connect=saved.notify_on_connect,
-            auto_connect_on_start=saved.auto_connect_on_start,
-            start_minimized=saved.start_minimized,
+            license_key=lic or "",
             splitter_sizes=self._splitter.sizes(),
-        ))
+        )
         self._ws_client = ExecWsClient(
             cfg=cfg,
             on_status=self._on_ws_status,
             on_event=lambda msg: self._append_event("info", msg),
             on_signal=self._handle_signal,
             on_bot_snapshot=self._handle_bot_snapshot,
+            on_tier=self._on_ws_tier,
         )
         self._ws_task = asyncio.create_task(self._ws_client.run_forever())
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
-        self._set_sb("Connecting…")
+        if hasattr(self, "setup_connect_btn"):
+            self.setup_connect_btn.setEnabled(False)
+        self._refresh_setup_checklist()
+        if lic:
+            self._set_sb("Connecting…")
+        else:
+            self._set_sb("Connecting in paper mode (no license)…")
+            self._append_event("info", "Paper mode — no license key; demo trading only.")
+
+    def _on_ws_tier(self, tier: str) -> None:
+        if tier in ("pro", "free"):
+            self._update_tier_ui(tier)
 
     @asyncSlot()
     async def on_disconnect_clicked(self) -> None:
@@ -912,10 +1040,13 @@ class MainWindow(QMainWindow):
                 pass
         self._ws_task = None
         self._ws_client = None
+        self._server_connected = False
+        self._refresh_setup_checklist()
         self._set_status("OFFLINE")
         self._append_event("info", "Disconnected. You can reconnect at any time.")
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
+        self._refresh_setup_checklist()
         self._set_sb("")
 
     # ── save keys (practice / live are independent) ───────────────────────────
@@ -929,12 +1060,13 @@ class MainWindow(QMainWindow):
             live_secret_key=(cur.live_secret_key if cur else None),
         )
         if not payload.practice_api_key:
-            QMessageBox.warning(self, "No API key", "Enter your Practice Trading212 API key before saving.")
+            QMessageBox.warning(self, "No API key", "Enter your demo Trading212 API key before saving.")
             return
         self._store.save(payload)
-        self._append_event("ok", "Practice Trading212 keys saved (encrypted).")
+        self._append_event("ok", "Demo Trading212 keys saved (encrypted).")
         self._refresh_t212_status()
-        self._set_sb("Practice keys saved.")
+        self._refresh_setup_checklist()
+        self._set_sb("Demo keys saved.")
 
     def on_save_live_keys_clicked(self) -> None:
         cur = self._store.load()
@@ -945,12 +1077,13 @@ class MainWindow(QMainWindow):
             live_secret_key=self.live_t212_secret_key.text().strip() or None,
         )
         if not payload.live_api_key:
-            QMessageBox.warning(self, "No API key", "Enter your Invest / live Trading212 API key before saving.")
+            QMessageBox.warning(self, "No API key", "Enter your real-money Trading212 API key before saving.")
             return
         self._store.save(payload)
-        self._append_event("ok", "Live (Invest) Trading212 keys saved (encrypted).")
+        self._append_event("ok", "Real-money Trading212 keys saved (encrypted).")
         self._refresh_t212_status()
-        self._set_sb("Live keys saved.")
+        self._refresh_setup_checklist()
+        self._set_sb("Real-money keys saved.")
 
     # ── test connection (practice / live — independent of top-bar mode) ─────────
 
@@ -1026,7 +1159,7 @@ class MainWindow(QMainWindow):
         api = self.practice_t212_api_key.text().strip()
         sec = self.practice_t212_secret_key.text().strip() or None
         if not api:
-            QMessageBox.warning(self, "API key required", "Enter your Practice API key first.")
+            QMessageBox.warning(self, "API key required", "Enter your demo API key first.")
             return
         self._t212_test_busy = True
         self._update_broker_keys_hint()
@@ -1048,13 +1181,13 @@ class MainWindow(QMainWindow):
             QMessageBox.information(
                 self,
                 "Pro required",
-                "Testing the live (Invest) API requires an active Pro license.",
+                "Testing the real-money API requires an active Pro license.",
             )
             return
         api = self.live_t212_api_key.text().strip()
         sec = self.live_t212_secret_key.text().strip() or None
         if not api:
-            QMessageBox.warning(self, "API key required", "Enter your Invest / live API key first.")
+            QMessageBox.warning(self, "API key required", "Enter your real-money API key first.")
             return
         self._t212_test_busy = True
         self._update_broker_keys_hint()
@@ -1194,18 +1327,28 @@ class MainWindow(QMainWindow):
         if self._notify_on_signal:
             self._append_event("info", f"Signal received: {line}")
 
-        if not self.trading_mode.is_live():
-            self._append_event("info", "Paper trading — signal logged, no order sent.")
-            return
-
-        if self._license_tier != "pro":
+        if self.trading_mode.is_live() and self._license_tier != "pro":
             self._append_event(
                 "error",
-                "Live execution blocked — server reports this license is not Pro. "
-                "Validate again or switch to Paper.",
+                "Live execution blocked — Pro subscription required. Switching to demo account.",
             )
             self.trading_mode.set_live(False)
+
+        pair = self._stored_active_t212_keys()
+        if not pair or not pair[0]:
+            if self.trading_mode.is_live() and self._license_tier == "pro":
+                self._append_event("error", "T212 keys missing for the active profile — save keys and try again.")
+            else:
+                self._append_event(
+                    "warn",
+                    "Paper trading — signal logged. Save your Trading212 practice API keys to auto-trade on the demo account.",
+                )
             return
+
+        if self.trading_mode.is_live() and self._license_tier == "pro":
+            profile = "live"
+        else:
+            profile = "demo"
 
         direction_upper = str(payload.get("direction") or "LONG").strip().upper()
         sym_str = str(payload.get("symbol") or "").strip()
@@ -1238,10 +1381,11 @@ class MainWindow(QMainWindow):
 
         # Confirm before trade
         if self._confirm_before_trade:
+            account_label = "live" if profile == "live" else "demo"
             r = QMessageBox.question(
                 self,
                 "Confirm trade",
-                f"Place a {direction_upper} market order for {sym_str}?\n\n"
+                f"Place a {direction_upper} market order for {sym_str} on your {account_label} account?\n\n"
                 f"Quantity: {self._order_quantity:.2f} units",
                 QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
                 QMessageBox.StandardButton.No,
@@ -1251,11 +1395,6 @@ class MainWindow(QMainWindow):
                 return
 
         try:
-            pair = self._stored_active_t212_keys()
-            if not pair or not pair[0]:
-                self._append_event("error", "T212 keys missing for the active profile — save keys and try again.")
-                return
-
             async with T212Client(
                 keys=T212Keys(api_key=pair[0], secret_key=pair[1]),
                 base_url=self._t212_base_url(),
@@ -1272,7 +1411,8 @@ class MainWindow(QMainWindow):
                     price = 0.0
 
                 resp = await client.place_market_order(sym_str, qty)
-                self._append_event("ok", f"Market order placed: {resp}")
+                label = "Live" if profile == "live" else "Demo"
+                self._append_event("ok", f"{label} market order placed: {resp}")
                 self._trades_today += 1
 
                 order_id = resp.get("id") if isinstance(resp, dict) else None

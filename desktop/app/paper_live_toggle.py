@@ -35,30 +35,40 @@ class PaperLiveToggle(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(1)
 
-        cap = QLabel("Trading mode")
-        cap.setStyleSheet(f"color: {_MUTED}; font-size: 7.5pt; letter-spacing: 0.04em; background: transparent;")
+        cap = QLabel("Order mode")
+        cap.setStyleSheet(f"color: {_MUTED}; font-size: 7.5pt; background: transparent;")
         outer.addWidget(cap)
 
         rail = QFrame()
         rail.setObjectName("TradingModeRail")
         rail.setStyleSheet(
-            f"QFrame#TradingModeRail {{ background-color: {_BG_RAIL}; border: 1px solid {_BORDER}; "
-            "border-radius: 8px; padding: 2px; }}"
+            f"QFrame#TradingModeRail {{"
+            f" background-color: {_BG_RAIL};"
+            f" border: 1px solid {_BORDER};"
+            f" border-radius: 8px;"
+            f" padding: 2px;"
+            f"}}"
         )
         row = QHBoxLayout(rail)
         row.setContentsMargins(3, 3, 3, 3)
         row.setSpacing(4)
 
-        self._paper_btn = QPushButton("  Paper trading  ")
+        self._paper_btn = QPushButton("  Demo mode  ")
         self._paper_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._paper_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self._paper_btn.setMinimumHeight(26)
+        self._paper_btn.setToolTip(
+            "Place orders on your Trading212 practice account when signals arrive."
+        )
         self._paper_btn.clicked.connect(self._on_paper_clicked)  # type: ignore[arg-type]
 
-        self._live_btn = QPushButton("  Live trading  ")
+        self._live_btn = QPushButton("  Real trades  ")
         self._live_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._live_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self._live_btn.setMinimumHeight(26)
+        self._live_btn.setToolTip(
+            "Place real market orders on your Trading212 account when signals arrive (Pro required)."
+        )
         self._live_btn.clicked.connect(self._on_live_clicked)  # type: ignore[arg-type]
 
         row.addWidget(self._paper_btn)

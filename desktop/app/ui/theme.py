@@ -30,8 +30,8 @@ QMainWindow, QWidget {{
 QFrame#Navbar {{
     background-color: {_SURFACE};
     border-bottom: 1px solid {_BORDER};
-    min-height: 44px;
-    max-height: 52px;
+    min-height: 52px;
+    max-height: 58px;
 }}
 
 QLabel#AppWordmark {{
@@ -103,6 +103,299 @@ QLabel#FieldLabel {{
     background: transparent;
     padding: 0;
     margin: 0;
+}}
+
+/* ── setup progress header ───────────────────────────────────────── */
+QFrame#SetupChecklist {{
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 {_SURFACE2}, stop:1 {_SURFACE});
+    border-bottom: 1px solid {_BORDER};
+}}
+
+QLabel#ChecklistTitle {{
+    color: {_TEXT};
+    font-size: 13pt;
+    font-weight: 700;
+    background: transparent;
+}}
+
+QLabel#ChecklistSubtitle {{
+    color: {_MUTED};
+    font-size: 9pt;
+    background: transparent;
+}}
+
+QLabel#ChecklistPct {{
+    color: {_SKY};
+    font-size: 11pt;
+    font-weight: 700;
+    background: transparent;
+    min-width: 88px;
+}}
+
+QProgressBar#SetupProgress {{
+    background-color: {_BG};
+    border: none;
+    border-radius: 4px;
+}}
+QProgressBar#SetupProgress::chunk {{
+    background-color: {_SKY};
+    border-radius: 4px;
+}}
+
+QLabel#ChecklistChip {{
+    background-color: {_BG};
+    border: 1px solid {_BORDER};
+    border-radius: 8px;
+    padding: 8px 6px;
+    font-size: 8pt;
+    color: {_MUTED};
+}}
+QLabel#ChecklistChip[chipState="active"] {{
+    background-color: {_SKY_DIM};
+    border-color: {_SKY};
+    color: {_TEXT};
+    font-weight: 700;
+}}
+QLabel#ChecklistChip[chipState="done"] {{
+    background-color: #052e16;
+    border-color: #166534;
+    color: {_SUCCESS};
+    font-weight: 600;
+}}
+
+QFrame#ChecklistCallout {{
+    background-color: {_BG};
+    border: 1px solid {_BORDER};
+    border-radius: 10px;
+}}
+QFrame#ChecklistCallout[calloutKind="active"] {{
+    background-color: {_SKY_DIM};
+    border-color: {_SKY};
+}}
+QFrame#ChecklistCallout[calloutKind="success"] {{
+    background-color: #052e16;
+    border-color: #166534;
+}}
+
+QLabel#ChecklistCalloutIcon {{
+    font-size: 14pt;
+    background: transparent;
+    padding-right: 6px;
+}}
+QLabel#ChecklistCalloutText {{
+    color: {_TEXT};
+    font-size: 9.5pt;
+    background: transparent;
+    line-height: 1.4;
+}}
+
+/* ── setup step cards ────────────────────────────────────────────── */
+QFrame#SetupStepCard {{
+    background-color: {_SURFACE};
+    border: 1px solid {_BORDER};
+    border-radius: 12px;
+}}
+QFrame#SetupStepCard[stepState="active"] {{
+    border: 2px solid {_SKY};
+    background-color: {_SURFACE2};
+}}
+QFrame#SetupStepCard[stepState="done"] {{
+    border: 1px solid #166534;
+}}
+QFrame#SetupStepCard[stepState="locked"] {{
+    background-color: #0e0e14;
+    border-color: {_BORDER};
+}}
+
+/* ── nav status pill ─────────────────────────────────────────────── */
+QFrame#NavStatusPill {{
+    background-color: {_BG};
+    border: 1px solid {_BORDER};
+    border-radius: 14px;
+}}
+QFrame#NavStatusPill[statusKind="setup"] {{
+    border-color: {_BORDER2};
+}}
+QFrame#NavStatusPill[statusKind="ready"] {{
+    background-color: {_SKY_DIM};
+    border-color: {_SKY};
+}}
+QFrame#NavStatusPill[statusKind="connecting"] {{
+    background-color: #422006;
+    border-color: {_WARN};
+}}
+QFrame#NavStatusPill[statusKind="online"] {{
+    background-color: #052e16;
+    border-color: #166534;
+}}
+QFrame#NavStatusPill[statusKind="live"] {{
+    background-color: #450a0a;
+    border-color: {_DANGER};
+}}
+QLabel#NavStatusDot {{
+    font-size: 10pt;
+    background: transparent;
+}}
+QLabel#NavStatusDot[statusKind="setup"] {{ color: {_MUTED}; }}
+QLabel#NavStatusDot[statusKind="ready"] {{ color: {_SKY}; }}
+QLabel#NavStatusDot[statusKind="connecting"] {{ color: {_WARN}; }}
+QLabel#NavStatusDot[statusKind="online"] {{ color: {_SUCCESS}; }}
+QLabel#NavStatusDot[statusKind="live"] {{ color: {_DANGER}; }}
+QLabel#NavStatusText {{
+    color: {_TEXT};
+    font-size: 8.5pt;
+    font-weight: 600;
+    background: transparent;
+}}
+
+QLabel#TierStatusLabel {{
+    font-size: 9pt;
+    background: transparent;
+    padding: 6px 0 0 0;
+}}
+QLabel#TierStatusLabel[tierKind="pro"] {{ color: {_SUCCESS}; font-weight: 600; }}
+QLabel#TierStatusLabel[tierKind="free"] {{ color: {_WARN}; }}
+QLabel#TierStatusLabel[tierKind="pending"] {{ color: {_MUTED}; }}
+
+QFrame#SetupStepHeader {{
+    background: transparent;
+    border: none;
+    border-top-left-radius: 12px;
+    border-top-right-radius: 12px;
+}}
+QFrame#SetupStepHeader[stepState="active"] {{
+    background-color: rgba(16, 185, 129, 0.06);
+}}
+
+QLabel#SetupStepBadge {{
+    background-color: {_BG};
+    border: 2px solid {_BORDER2};
+    border-radius: 20px;
+    color: {_MUTED};
+    font-size: 14pt;
+    font-weight: 800;
+}}
+QLabel#SetupStepBadge[stepState="active"] {{
+    background-color: {_SKY};
+    border-color: {_SKY};
+    color: #ffffff;
+}}
+QLabel#SetupStepBadge[stepState="done"] {{
+    background-color: #166534;
+    border-color: {_SUCCESS};
+    color: #ffffff;
+    font-size: 16pt;
+}}
+
+QLabel#SetupStepTitle {{
+    color: {_TEXT};
+    font-size: 11pt;
+    font-weight: 700;
+    background: transparent;
+}}
+QLabel#SetupStepSubtitle {{
+    color: {_MUTED};
+    font-size: 9pt;
+    background: transparent;
+}}
+QLabel#SetupStepStatus {{
+    font-size: 8.5pt;
+    font-weight: 700;
+    background: transparent;
+    min-width: 72px;
+}}
+QLabel#SetupStepStatus[statusKind="active"] {{
+    color: {_SKY};
+}}
+QLabel#SetupStepStatus[statusKind="done"] {{
+    color: {_SUCCESS};
+}}
+QLabel#SetupStepStatus[statusKind="locked"] {{
+    color: {_MUTED};
+}}
+QLabel#SetupStepChevron {{
+    color: {_MUTED};
+    font-size: 10pt;
+    background: transparent;
+}}
+
+QFrame#SetupStepBody {{
+    background: transparent;
+    border: none;
+    border-top: 1px solid {_BORDER};
+}}
+
+QFrame#DemoKeyBox {{
+    background-color: {_BG};
+    border: 1px solid {_BORDER};
+    border-radius: 10px;
+}}
+
+/* ── callouts & instructions ─────────────────────────────────────── */
+QFrame#Callout {{
+    background-color: {_BG};
+    border: 1px solid {_BORDER};
+    border-radius: 10px;
+}}
+QFrame#Callout[calloutKind="info"] {{
+    background-color: rgba(16, 185, 129, 0.08);
+    border-color: rgba(16, 185, 129, 0.35);
+}}
+QFrame#Callout[calloutKind="warn"] {{
+    background-color: rgba(245, 158, 11, 0.1);
+    border-color: rgba(245, 158, 11, 0.35);
+}}
+QFrame#Callout[calloutKind="success"] {{
+    background-color: rgba(34, 197, 94, 0.1);
+    border-color: rgba(34, 197, 94, 0.35);
+}}
+QLabel#CalloutText {{
+    color: {_TEXT};
+    font-size: 9.5pt;
+    background: transparent;
+}}
+
+QFrame#InstructionRow {{
+    background-color: {_BG};
+    border: 1px solid {_BORDER};
+    border-radius: 8px;
+}}
+QLabel#InstructionBadge {{
+    background-color: {_SKY_DIM};
+    border: 1px solid {_SKY};
+    border-radius: 14px;
+    color: {_SKY};
+    font-size: 10pt;
+    font-weight: 800;
+}}
+QLabel#InstructionText {{
+    color: {_TEXT};
+    font-size: 9.5pt;
+    background: transparent;
+    padding-top: 2px;
+}}
+
+/* ── hero connect button ─────────────────────────────────────────── */
+QPushButton#HeroBtn {{
+    background-color: {_SKY};
+    color: #ffffff;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-weight: 800;
+    font-size: 11pt;
+    letter-spacing: 0.02em;
+}}
+QPushButton#HeroBtn:hover {{
+    background-color: {_SKY_HVR};
+}}
+QPushButton#HeroBtn:pressed {{
+    background-color: #059669;
+}}
+QPushButton#HeroBtn:disabled {{
+    background-color: #166534;
+    color: #d1fae5;
 }}
 
 /* ── hint text ───────────────────────────────────────────────────── */
@@ -194,12 +487,12 @@ QTabBar::tab {{
     color: {_MUTED};
     border: 1px solid {_BORDER};
     border-bottom: none;
-    border-top-left-radius: 6px;
-    border-top-right-radius: 6px;
-    padding: 4px 14px;
-    margin-right: 2px;
-    min-width: 4.5em;
-    font-size: 8.5pt;
+    border-top-left-radius: 8px;
+    border-top-right-radius: 8px;
+    padding: 8px 18px;
+    margin-right: 3px;
+    min-width: 5em;
+    font-size: 9.5pt;
 }}
 QTabBar::tab:selected {{
     background-color: {_SURFACE};

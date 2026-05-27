@@ -1,9 +1,9 @@
 """Resolve the default executor WebSocket URL (Setup tab).
 
-Development: ``ws://127.0.0.1:8010/ws/exec``.
+Development (``dev.ps1``): ``ws://127.0.0.1:8011/ws/exec``.
 
-Release EXE: ``build-windows.ps1`` writes ``desktop/executor_defaults.json``; PyInstaller
-bundles it next to ``logo.png`` at the extraction root so this module can read it when frozen.
+Docker / release EXE: ``ws://127.0.0.1:8010/ws/exec`` — set via ``build-windows.ps1`` →
+``desktop/executor_defaults.json`` (bundled when frozen).
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ import json
 import sys
 from pathlib import Path
 
-_DEV_DEFAULT = "ws://127.0.0.1:8010/ws/exec"
+_DEV_DEFAULT = "ws://127.0.0.1:8011/ws/exec"
 
 
 def _defaults_json_path() -> Path | None:

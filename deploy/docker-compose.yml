@@ -1,0 +1,47 @@
+# Production stack for the home server (Watchtower pulls from Docker Hub).
+# Copy deploy/env.backend.example → deploy/.env and fill secrets before `docker compose up -d`.
+#
+# Cloudflare Tunnel (Zero Trust) public hostnames (suggested):
+#   signals.swifttrade.app  → http://localhost:8010
+#   swifttrade.app          → http://localhost:3000  (if self-hosting web; Pages is lighter)
+
+services:
+  backend:
+    image: ${SWIFTTRADE_BACKEND_IMAGE:-veselin15/swifttrade-backend:latest}
+    container_name: swifttrade_backend
+    restart: always
+    ports:
+      - "${BACKEND_HOST_PORT:-8010}:8010"
+    env_file:
+      - .env
+    environment:
+      RUN_DB_MIGRATIONS: ${RUN_DB_MIGRATIONS:-false}
+      DEBUG_ROUTES_ENABLED: ${DEBUG_ROUTES_ENABLED:-false}
+      APP_BASE_URL: ${APP_BASE_URL:-https://signals.swifttrade.app}
+    volumes:
+      - swifttrade_bot_state:/app/Server-App/t212_miner_bot
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health')\""]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 40s
+
+  # Optional: self-host the Next.js portal on the same machine.
+  # Prefer Cloudflare Pages for swifttrade.app if the server CPU is tight.
+  web:
+    image: ${SWIFTTRADE_WEB_IMAGE:-veselin15/swifttrade-web:latest}
+    container_name: swifttrade_web
+    restart: always
+    profiles: ["web"]
+    ports:
+      - "${WEB_HOST_PORT:-3000}:3000"
+    env_file:
+      - .env.web
+    environment:
+      NODE_ENV: production
+      HOSTNAME: "0.0.0.0"
+      PORT: "3000"
+
+volumes:
+  swifttrade_bot_state:

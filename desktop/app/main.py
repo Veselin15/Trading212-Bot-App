@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import sys
 
+from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 from qasync import QEventLoop
 
@@ -11,6 +12,16 @@ from .main_window import MainWindow
 from .ui.theme import apply_desktop_styles
 
 __all__ = ["MainWindow", "main"]
+
+
+def _center_on_primary_screen(window: MainWindow) -> None:
+    screen = QGuiApplication.primaryScreen()
+    if screen is None:
+        return
+    geo = screen.availableGeometry()
+    frame = window.frameGeometry()
+    frame.moveCenter(geo.center())
+    window.move(frame.topLeft())
 
 
 def main() -> None:
@@ -23,10 +34,13 @@ def main() -> None:
     asyncio.set_event_loop(loop)
 
     w = MainWindow()
+    _center_on_primary_screen(w)
     if getattr(w, "start_minimized", False):
         w.showMinimized()
     else:
-        w.show()
+        w.showNormal()
+        w.raise_()
+        w.activateWindow()
 
     with loop:
         loop.run_forever()

@@ -303,5 +303,6 @@ def run_preferences_dialog(
         notify_on_connect=notify_connect_cb.isChecked(),
         auto_connect_on_start=auto_connect_cb.isChecked(),
         start_minimized=start_min_cb.isChecked(),
+        seen_welcome=s.seen_welcome,
         splitter_sizes=splitter_sizes,
     )

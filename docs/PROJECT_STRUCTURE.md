@@ -5,9 +5,17 @@ This project is split by runtime boundary so each piece can evolve independently
 ### Boundaries
 
 - **Web (`web/`)**: UI + route handlers (Stripe, license regeneration). Reads/writes Supabase.
-- **Backend (`backend/`)**: WebSocket gateway + strategy runner. Validates `license_key` against Supabase and enforces IP lock.
-- **Desktop (`desktop/`)**: end-user executor. Stores Trading212 keys encrypted locally and connects to backend WS using `license_key`.
-- **Supabase (`supabase/`)**: source-of-truth for subscriptions/signals/licenses used by web + backend.
+- **Backend (`backend/`)**: WebSocket gateway + strategy runner. Validates licenses against Supabase; **guest paper mode** accepts connections without a license when `mode: paper`.
+- **Desktop (`desktop/`)**: End-user **`SwiftTrade.exe`** (PyInstaller, no console). Dev source runs via `pyw` / `launch-dev.ps1`.
+- **Supabase (`supabase/`)**: Source of truth for subscriptions, signals, and licenses.
+- **Server-App (`Server-App/t212_miner_bot/`)**: Strategy logic consumed by the backend runner (not a separate deployable in MVP).
+
+### Dev ports
+
+| Context | Backend port | Desktop default WS |
+|---------|--------------|-------------------|
+| `dev.ps1` / `stop.ps1` | 8011 | `ws://127.0.0.1:8011/ws/exec` |
+| Docker / release EXE | 8010 | `ws://127.0.0.1:8010/ws/exec` (or production URL via build) |
 
 ### Conventions
 

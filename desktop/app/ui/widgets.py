@@ -1,7 +1,8 @@
 """Small Qt widget factories for tab layouts."""
 from __future__ import annotations
 
-from PySide6.QtWidgets import QFrame, QLabel
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from .theme import _BORDER, _DANGER, _MUTED, _SUCCESS, _TEXT, _WARN
 
@@ -33,6 +34,45 @@ def divider() -> QFrame:
     d.setFrameShape(QFrame.Shape.HLine)
     d.setStyleSheet(f"color: {_BORDER}; background: {_BORDER}; max-height: 1px; border: none;")
     return d
+
+
+def callout(text: str, *, kind: str = "info") -> QFrame:
+    """Colored instruction box (info | success | warn)."""
+    frame = QFrame()
+    frame.setObjectName("Callout")
+    frame.setProperty("calloutKind", kind)
+    layout = QVBoxLayout(frame)
+    layout.setContentsMargins(14, 12, 14, 12)
+    lab = QLabel(text)
+    lab.setObjectName("CalloutText")
+    lab.setWordWrap(True)
+    layout.addWidget(lab)
+    return frame
+
+
+def instruction_steps(steps: list[str]) -> QWidget:
+    """Numbered how-to list — number on the left, text on the right."""
+    wrap = QWidget()
+    layout = QVBoxLayout(wrap)
+    layout.setContentsMargins(0, 0, 0, 0)
+    layout.setSpacing(6)
+    for i, text in enumerate(steps, start=1):
+        row = QFrame()
+        row.setObjectName("InstructionRow")
+        row_layout = QHBoxLayout(row)
+        row_layout.setContentsMargins(12, 10, 12, 10)
+        row_layout.setSpacing(12)
+        num = QLabel(str(i))
+        num.setObjectName("InstructionBadge")
+        num.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        num.setFixedSize(28, 28)
+        body = QLabel(text)
+        body.setObjectName("InstructionText")
+        body.setWordWrap(True)
+        row_layout.addWidget(num, alignment=Qt.AlignmentFlag.AlignTop)
+        row_layout.addWidget(body, 1)
+        layout.addWidget(row)
+    return wrap
 
 
 def status_text(status: str) -> tuple[str, str]:

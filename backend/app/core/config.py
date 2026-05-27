@@ -82,6 +82,13 @@ class Settings(BaseSettings):
     supabase_url: str = ""
     supabase_service_role_key: str = ""
 
+    # Local dev: true. Production deploy sets DEBUG_ROUTES_ENABLED=false.
+    debug_routes_enabled: bool = True
+    debug_api_key: str = ""
+
+    # Legacy SQLAlchemy Postgres (unused for licensing). Set false in production deploy.
+    run_db_migrations: bool = True
+
 
 settings = Settings()  # type: ignore[call-arg]
 

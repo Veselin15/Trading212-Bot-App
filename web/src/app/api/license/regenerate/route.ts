@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { type SubscriptionRow, canUseProFeatures } from "@/lib/subscription-model";
+import { refreshSubscriptionRowFromStripe } from "@/lib/stripe-subscription-refresh";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -16,7 +17,8 @@ export async function POST() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  // Only allow license regeneration for active subscribers.
+  await refreshSubscriptionRowFromStripe(userRes.user.id, { email: userRes.user.email });
+
   const { data: subRow } = await supabase
     .from("subscriptions")
     .select("status,current_period_end,stripe_customer_id,stripe_subscription_id")

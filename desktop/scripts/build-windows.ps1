@@ -66,25 +66,46 @@ if ($DefaultExecutorWsUrl -and $DefaultExecutorWsUrl.Trim().Length -gt 0) {
     }
 }
 
-# Locate Python
+# Locate Python 3.12+ (PATH ``python`` is often 3.8 on Windows)
 $pythonExe = $null
-if (Get-Command python -ErrorAction SilentlyContinue) {
-    $pythonExe = (Get-Command python).Source
-}
-elseif (Get-Command py -ErrorAction SilentlyContinue) {
-    $pythonExe = (Get-Command py).Source
+$pythonArgs = @()
+$pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+if ($pyLauncher) {
+    & py -3.12 -c "import sys" 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        $pythonExe = $pyLauncher.Source
+        $pythonArgs = @("-3.12")
+    }
 }
 if (-not $pythonExe) {
-    throw "Python was not found on PATH. Install Python 3.12+ and retry."
+    $pythonCmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($pythonCmd) {
+        $ver = & $pythonCmd.Source -c "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')" 2>$null
+        if ($ver -ge "3.12") {
+            $pythonExe = $pythonCmd.Source
+        }
+    }
 }
-Write-Host "Python: $pythonExe" -ForegroundColor Gray
+if (-not $pythonExe) {
+    throw "Python 3.12+ was not found. Install from python.org or use the py launcher (py -3.12)."
+}
+Write-Host "Python: $pythonExe $($pythonArgs -join ' ')" -ForegroundColor Gray
+
+function Invoke-Python {
+    param([string[]]$ExtraArgs)
+    if ($pythonArgs.Count -gt 0) {
+        & $pythonExe @pythonArgs @ExtraArgs
+    } else {
+        & $pythonExe @ExtraArgs
+    }
+}
 
 Write-Host "Installing desktop requirements..." -ForegroundColor Cyan
-& $pythonExe -m pip install -r (Join-Path $desktopDir "requirements.txt") --quiet
+Invoke-Python @("-m", "pip", "install", "-r", (Join-Path $desktopDir "requirements.txt"), "--quiet")
 if (-not $?) { throw "pip install desktop/requirements.txt failed." }
 
 Write-Host "Ensuring PyInstaller is installed..." -ForegroundColor Cyan
-& $pythonExe -m pip install pyinstaller --quiet
+Invoke-Python @("-m", "pip", "install", "pyinstaller", "--quiet")
 if (-not $?) { throw "pip install pyinstaller failed." }
 
 # PyInstaller must overwrite desktop/dist/SwiftTrade.exe. Windows denies this if the EXE is running,
@@ -125,7 +146,7 @@ Ensure-DistExeWritable -Path $distExe
 
 Write-Host "Running PyInstaller..." -ForegroundColor Cyan
 Set-Location $desktopDir
-& $pythonExe -m PyInstaller SwiftTrade.spec --clean --noconfirm
+Invoke-Python @("-m", "PyInstaller", "SwiftTrade.spec", "--clean", "--noconfirm")
 if (-not $?) { throw "PyInstaller build failed." }
 
 if (Test-Path $distExe) {

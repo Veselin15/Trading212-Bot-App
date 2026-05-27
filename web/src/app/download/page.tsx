@@ -9,9 +9,7 @@ export default async function DownloadPage() {
   const { user, subscription } = await getMySubscription();
   if (!user) redirect("/login");
 
-  const active = canUseProFeatures(subscription);
-  if (!active) redirect("/dashboard");
-
+  const pro = canUseProFeatures(subscription);
   const downloadUrl = process.env.DESKTOP_DOWNLOAD_URL || "";
   const version = process.env.DESKTOP_APP_VERSION || "";
   const changelogUrl = process.env.DESKTOP_CHANGELOG_URL || "";
@@ -27,7 +25,9 @@ export default async function DownloadPage() {
               Download SwiftTrade
             </h1>
             <p className="mt-2 text-sm text-slate-300">
-              Your subscription is active. Download the desktop executor and start receiving live signals.
+              {pro
+                ? "Your Pro subscription is active. Download the desktop app for live trading and paper mode."
+                : "Download the desktop app and start paper trading on your Trading212 practice account — no subscription required."}
             </p>
 
             {/* Build info */}
@@ -98,12 +98,10 @@ export default async function DownloadPage() {
                   2
                 </span>
                 <span>
-                  In the <strong className="text-slate-100">Setup</strong> tab, paste your license
-                  key (shown on the{" "}
-                  <a href="/dashboard" className="text-emerald-400 hover:underline">
-                    Dashboard
-                  </a>
-                  ) and click <strong className="text-slate-100">Validate</strong>.
+                  In the <strong className="text-slate-100">Setup</strong> tab, add your{" "}
+                  <strong className="text-slate-100">Trading212 Practice API key</strong> and click{" "}
+                  <strong className="text-slate-100">Save demo keys</strong>. No license key is
+                  required for paper trading.
                 </span>
               </li>
               <li className="flex gap-3">
@@ -111,23 +109,26 @@ export default async function DownloadPage() {
                   3
                 </span>
                 <span>
-                  Add your <strong className="text-slate-100">Trading212 Practice API key</strong>{" "}
-                  (Settings → API inside Trading212) and click{" "}
-                  <strong className="text-slate-100">Save practice keys</strong>.
+                  Click <strong className="text-slate-100">Connect</strong>. The status dot turns
+                  green when signals are flowing. Orders go to your practice account in{" "}
+                  <strong className="text-slate-100">Demo mode</strong> by default.
                 </span>
               </li>
-              <li className="flex gap-3">
-                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-400">
-                  4
-                </span>
-                <span>
-                  Click <strong className="text-slate-100">Connect</strong> in the top bar. The
-                  status dot turns green when live signals are flowing. Trades run in{" "}
-                  <strong className="text-slate-100">Paper</strong> mode by default — switch to{" "}
-                  <strong className="text-slate-100">Live</strong> only when you are ready to place
-                  real orders (Pro license required).
-                </span>
-              </li>
+              {pro ? (
+                <li className="flex gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-xs font-bold text-emerald-400">
+                    4
+                  </span>
+                  <span>
+                    Optional: paste your Pro license key from the{" "}
+                    <a href="/dashboard" className="text-emerald-400 hover:underline">
+                      Dashboard
+                    </a>{" "}
+                    and click <strong className="text-slate-100">Check license</strong> to unlock{" "}
+                    <strong className="text-slate-100">Real trades</strong> on your live account.
+                  </span>
+                </li>
+              ) : null}
             </ol>
           </Card>
         </div>

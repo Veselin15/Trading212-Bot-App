@@ -10,6 +10,9 @@ import aiohttp
 import websockets
 from websockets.exceptions import ConnectionClosed
 
+from .default_executor_url import DEFAULT_EXECUTOR_WS_URL
+from .license_key_util import normalize_license_key
+
 
 def _http_base(ws_url: str) -> str:
     """Map ``wss://host/...`` → ``https://host``.  Used to derive REST endpoints."""
@@ -21,7 +24,10 @@ def _http_base(ws_url: str) -> str:
             return f"{scheme}://{netloc}"
     except Exception:
         pass
-    return "http://127.0.0.1:8010"
+    fb = urlparse(DEFAULT_EXECUTOR_WS_URL.strip())
+    scheme = "https" if fb.scheme == "wss" else "http"
+    netloc = f"{fb.hostname}:{fb.port}" if fb.port else str(fb.hostname)
+    return f"{scheme}://{netloc}"
 
 
 def _smoke_health_url(ws_url: str) -> str:
@@ -45,7 +51,7 @@ async def _fetch_backend_version(base: str) -> str | None:
 @dataclass(frozen=True)
 class WsConfig:
     url: str
-    license_key: str
+    license_key: str | None = None
     reconnect_interval_s: int = 5
     max_reconnect_attempts: int = 0  # 0 = unlimited
 
@@ -59,16 +65,25 @@ class ExecWsClient:
         on_event: Callable[[str], None],
         on_signal: Callable[[dict[str, Any]], Awaitable[None]],
         on_bot_snapshot: Callable[[dict[str, Any]], None],
+        on_tier: Callable[[str], None] | None = None,
     ) -> None:
         self._cfg = cfg
         self._on_status = on_status
         self._on_event = on_event
         self._on_signal = on_signal
         self._on_bot_snapshot = on_bot_snapshot
+        self._on_tier = on_tier
         self._stop = asyncio.Event()
 
     def stop(self) -> None:
         self._stop.set()
+
+    def _hello_payload(self) -> dict[str, Any]:
+        key = normalize_license_key(self._cfg.license_key)
+        payload: dict[str, Any] = {"type": "HELLO", "mode": "paper" if key is None else "licensed"}
+        if key is not None:
+            payload["license_key"] = key
+        return payload
 
     async def run_forever(self) -> None:
         attempt = 0
@@ -89,14 +104,20 @@ class ExecWsClient:
                         self._on_event(f"Connected — server v{server_ver}")
                     else:
                         self._on_event(f"Connected to {self._cfg.url}")
-                    await ws.send(json.dumps({"type": "HELLO", "license_key": self._cfg.license_key}))
+                    await ws.send(json.dumps(self._hello_payload()))
 
                     while not self._stop.is_set():
                         raw = await ws.recv()
                         msg = json.loads(raw)
                         mtype = msg.get("type")
                         if mtype == "WELCOME":
-                            self._on_event("Handshake OK (WELCOME).")
+                            tier = str(msg.get("tier") or "free")
+                            if self._on_tier:
+                                self._on_tier(tier)
+                            if tier == "pro":
+                                self._on_event("Handshake OK — Pro tier (live trading unlocked).")
+                            else:
+                                self._on_event("Handshake OK — Paper tier (demo account only).")
                             continue
                         if mtype == "PING":
                             await ws.send(json.dumps({"type": "PONG"}))
@@ -124,7 +145,10 @@ class ExecWsClient:
                 elif code == 4400:
                     self._on_event("Disconnected: bad handshake (unexpected message type sent).")
                 elif code == 4401:
-                    self._on_event("Disconnected: invalid license key format. Check your key in the Setup tab.")
+                    self._on_event(
+                        "Disconnected: server rejected paper mode (code 4401). "
+                        "Leave the license field empty and restart the SwiftTrade backend, then reconnect."
+                    )
                 elif code == 4403:
                     self._on_event(
                         "Disconnected: subscription or license not active. "
@@ -168,4 +192,3 @@ class ExecWsClient:
                 interval = self._cfg.reconnect_interval_s
                 self._on_event(f"Disconnected. Reconnecting in {interval}s…")
                 await asyncio.sleep(float(interval))
-

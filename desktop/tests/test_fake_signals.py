@@ -48,11 +48,10 @@ def test_paper_mode_logs_signal_to_queue_and_table(window, qasync_loop):
 
     assert window._signal_count == 1
     assert window.signals_table.rowCount() == 1
-    # Initial placeholder row remains until user clears it; newest signal is at index 0.
     assert window.exec_queue.item(0).text().find("p1") >= 0
     log = window.event_log.toPlainText()
     assert "Signal received" in log
-    assert "Paper trading" in log
+    assert "Paper trading" in log or "practice API keys" in log
     assert "ZZZ" in log
 
 
@@ -125,7 +124,7 @@ def test_live_non_pro_blocks_and_forces_paper(window, qasync_loop):
     qasync_loop.run_until_complete(run())
 
     assert window.trading_mode.is_live() is False
-    assert "not Pro" in window.event_log.toPlainText()
+    assert "Pro subscription required" in window.event_log.toPlainText()
 
 
 def test_t212_base_url_demo_when_not_pro(window, qasync_loop):

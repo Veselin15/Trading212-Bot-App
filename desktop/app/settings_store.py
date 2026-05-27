@@ -37,6 +37,7 @@ class AppSettings:
     # Startup
     auto_connect_on_start: bool = False
     start_minimized: bool = False
+    seen_welcome: bool = False
 
     # Layout
     splitter_sizes: list[int] = field(default_factory=lambda: [580, 440])
@@ -56,7 +57,7 @@ class SettingsStore:
             # If a release build baked in a server URL, migrate any stale localhost value
             # that was persisted from a previous dev/install.
             _saved_url = str(obj.get("ws_url") or "").strip()
-            _dev_defaults = {"ws://127.0.0.1:8010/ws/exec", "ws://localhost:8010/ws/exec"}
+            _dev_defaults = {"ws://127.0.0.1:8010/ws/exec", "ws://localhost:8010/ws/exec", "ws://127.0.0.1:8011/ws/exec", "ws://localhost:8011/ws/exec"}
             if not _saved_url or (
                 _saved_url in _dev_defaults and DEFAULT_EXECUTOR_WS_URL not in _dev_defaults
             ):
@@ -81,6 +82,7 @@ class SettingsStore:
                 notify_on_connect=bool(obj.get("notify_on_connect", True)),
                 auto_connect_on_start=bool(obj.get("auto_connect_on_start", False)),
                 start_minimized=bool(obj.get("start_minimized", False)),
+                seen_welcome=bool(obj.get("seen_welcome", False)),
                 splitter_sizes=list(obj.get("splitter_sizes") or [580, 440]),
             )
         except Exception:

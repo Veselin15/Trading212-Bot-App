@@ -6,6 +6,8 @@ from urllib.parse import urlparse
 
 import aiohttp
 
+from .ws_client import _http_base
+
 
 # The three possible outcomes from the validation endpoint.
 TierType = Literal["pro", "free", "invalid"]
@@ -21,7 +23,7 @@ class LicenseResult:
 def _build_validate_url(ws_url: str) -> str:
     """
     Derive the HTTP validate URL from the WebSocket server URL.
-    e.g. ws://127.0.0.1:8010/ws/exec  →  http://127.0.0.1:8010/api/license/validate
+    e.g. ws://127.0.0.1:8011/ws/exec  →  http://127.0.0.1:8011/api/license/validate
     """
     try:
         p = urlparse(ws_url.strip())
@@ -31,7 +33,7 @@ def _build_validate_url(ws_url: str) -> str:
             return f"{http_scheme}://{netloc}/api/license/validate"
     except Exception:
         pass
-    return "http://127.0.0.1:8010/api/license/validate"
+    return f"{_http_base(ws_url)}/api/license/validate"
 
 
 async def check_license(license_key: str, ws_url: str) -> LicenseResult:

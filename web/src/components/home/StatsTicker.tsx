@@ -15,34 +15,27 @@ const ITEMS = [...STATS, ...STATS];
 
 export function StatsTicker() {
   return (
-    <div className="relative select-none overflow-hidden border-y border-white/10 bg-[#0A0A0A] py-3">
-      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-16 bg-gradient-to-r from-background to-transparent" />
-      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-16 bg-gradient-to-l from-background to-transparent" />
+    <div className="stats-ticker relative select-none overflow-hidden border-y border-white/[0.06] bg-[#060608]/90 py-3.5 backdrop-blur-sm">
+      <div className="pointer-events-none absolute inset-y-0 left-0 z-10 w-20 bg-gradient-to-r from-background via-background/80 to-transparent" />
+      <div className="pointer-events-none absolute inset-y-0 right-0 z-10 w-20 bg-gradient-to-l from-background via-background/80 to-transparent" />
 
-      <div
-        className="flex w-max gap-10"
-        style={{
-          animation: "ticker-scroll 38s linear infinite",
-        }}
-      >
+      <div className="stats-ticker-track flex w-max gap-12">
         {ITEMS.map((item, i) => (
-          <div key={i} className="flex shrink-0 items-center gap-2">
-            <span className="whitespace-nowrap text-xs uppercase tracking-wider text-slate-500">{item.label}</span>
-            <span className={`font-mono text-sm ${item.positive ? "text-emerald-400" : "text-red-400"}`}>
+          <div key={i} className="flex shrink-0 items-center gap-2.5">
+            <span className="whitespace-nowrap text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-slate-500">
+              {item.label}
+            </span>
+            <span
+              className={`font-mono text-sm font-medium tabular-nums ${item.positive ? "text-emerald-400" : "text-rose-400/90"}`}
+            >
               {item.value}
             </span>
-            <span className="text-xs text-slate-700">·</span>
+            <span className="text-slate-700" aria-hidden>
+              ·
+            </span>
           </div>
         ))}
       </div>
-
-      <style>{`
-        @keyframes ticker-scroll {
-          from { transform: translateX(0); }
-          to   { transform: translateX(-50%); }
-        }
-      `}</style>
     </div>
   );
 }
-

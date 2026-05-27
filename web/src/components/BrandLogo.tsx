@@ -24,9 +24,11 @@ const headerAuthClass: Record<
 
 function Wordmark({ className }: { className?: string }) {
   return (
-    <span className={cx("inline-flex items-baseline select-none leading-none text-white", className)}>
-      <span className="font-semibold">Swift</span>
-      <span className="font-normal">Trade</span>
+    <span className={cx("inline-flex items-baseline select-none leading-none", className)}>
+      <span className="font-semibold tracking-tight text-white">Swift</span>
+      <span className="bg-gradient-to-r from-emerald-300 via-emerald-400 to-teal-300 bg-clip-text font-semibold tracking-tight text-transparent">
+        Trade
+      </span>
     </span>
   );
 }

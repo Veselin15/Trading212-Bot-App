@@ -33,26 +33,30 @@ export function SiteHeaderClient({
   ];
 
   return (
-    <header className="sticky top-0 z-50 border-b border-white/10 bg-background/80 backdrop-blur-md">
+    <header className="sticky top-0 z-50 border-b border-white/[0.06] bg-background/70 backdrop-blur-xl backdrop-saturate-150">
+      <div
+        className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/40 to-transparent"
+        aria-hidden
+      />
       <Container>
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-[4.25rem] items-center justify-between">
           <BrandLogo variant="header" />
 
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="hidden items-center gap-0.5 md:flex">
             {navLinks.map((link) => {
               const active = pathname === link.href;
               return (
                 <Link
                   key={link.href}
                   href={link.href}
-                  className={`relative rounded-lg px-3.5 py-2 text-sm transition-colors ${
-                    active ? "text-white" : "text-slate-400 hover:text-slate-200"
+                  className={`relative rounded-lg px-3.5 py-2 text-sm font-medium transition-colors ${
+                    active ? "text-white" : "text-slate-400 hover:text-slate-100"
                   }`}
                 >
                   {active ? (
                     <motion.span
                       layoutId="nav-active"
-                      className="absolute inset-0 rounded-lg bg-slate-800/70"
+                      className="absolute inset-0 rounded-lg border border-emerald-500/20 bg-emerald-500/10 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.06)]"
                       style={{ zIndex: -1 }}
                       transition={{ type: "spring", stiffness: 400, damping: 40 }}
                     />
@@ -63,15 +67,15 @@ export function SiteHeaderClient({
             })}
           </nav>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5 sm:gap-3">
             {!isAuthed ? (
               <>
                 <Link href="/login" className="hidden sm:block">
-                  <span className="inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium text-slate-400 transition-colors hover:bg-white/5 hover:text-white">
+                  <span className="inline-flex h-10 items-center justify-center rounded-xl px-4 text-sm font-medium text-slate-400 transition-colors hover:bg-white/[0.05] hover:text-white">
                     Log in
                   </span>
                 </Link>
-                <ButtonLink href="/login" className="h-10 bg-emerald-500 px-4 text-slate-950 hover:bg-[#00E676]">
+                <ButtonLink href="/login" className="h-10 px-4">
                   Get started
                 </ButtonLink>
               </>
@@ -81,7 +85,10 @@ export function SiteHeaderClient({
                   Dashboard
                 </ButtonLink>
                 <form action="/logout" method="post">
-                  <button className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 text-sm font-medium text-slate-50 transition-colors hover:bg-white/10">
+                  <button
+                    type="submit"
+                    className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-medium text-slate-200 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.05)] transition-all hover:border-white/15 hover:bg-white/[0.08]"
+                  >
                     Log out
                   </button>
                 </form>
@@ -89,7 +96,8 @@ export function SiteHeaderClient({
             )}
 
             <button
-              className="rounded-lg p-1.5 text-slate-400 transition-colors hover:text-white md:hidden"
+              type="button"
+              className="rounded-lg p-2 text-slate-400 transition-colors hover:bg-white/[0.06] hover:text-white md:hidden"
               onClick={() => setMenuOpen((o) => !o)}
               aria-label="Toggle menu"
             >
@@ -106,7 +114,7 @@ export function SiteHeaderClient({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-white/10 md:hidden"
+            className="overflow-hidden border-t border-white/[0.06] bg-background/95 backdrop-blur-xl md:hidden"
           >
             <Container>
               <nav className="flex flex-col gap-1 py-4">
@@ -115,18 +123,18 @@ export function SiteHeaderClient({
                     key={link.href}
                     href={link.href}
                     onClick={() => setMenuOpen(false)}
-                    className={`rounded-lg px-4 py-2.5 text-sm transition-colors ${
+                    className={`rounded-xl px-4 py-2.5 text-sm font-medium transition-colors ${
                       pathname === link.href
-                        ? "bg-slate-800 text-white"
-                        : "text-slate-400 hover:bg-slate-800/50 hover:text-white"
+                        ? "border border-emerald-500/25 bg-emerald-500/10 text-white"
+                        : "text-slate-400 hover:bg-white/[0.05] hover:text-white"
                     }`}
                   >
                     {link.label}
                   </Link>
                 ))}
                 {!isAuthed ? (
-                  <div className="mt-2 border-t border-slate-800 pt-2">
-                    <ButtonLink href="/login" className="w-full bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
+                  <div className="mt-2 border-t border-white/10 pt-3">
+                    <ButtonLink href="/login" className="w-full">
                       Get started
                     </ButtonLink>
                   </div>
@@ -139,4 +147,3 @@ export function SiteHeaderClient({
     </header>
   );
 }
-

@@ -1,11 +1,12 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 
 export function DashboardUrlToasts() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const lastHandled = useRef<string | null>(null);
 
   useEffect(() => {
@@ -16,7 +17,8 @@ export function DashboardUrlToasts() {
     lastHandled.current = sig;
 
     if (checkout === "success") {
-      toast.success("Subscription updated. It may take a few seconds for status to sync.");
+      toast.success("Payment received — syncing your subscription…");
+      router.refresh();
     } else if (checkout === "cancel") {
       toast.message("Checkout canceled — no changes were made.");
     }
@@ -24,7 +26,7 @@ export function DashboardUrlToasts() {
     if (license === "regenerated") {
       toast.success("License key regenerated.");
     }
-  }, [searchParams]);
+  }, [searchParams, router]);
 
   return null;
 }

@@ -5,6 +5,7 @@ import { revokeLicensesIfSubscriptionTerminal } from "@/lib/billing-license-sync
 import { getMySubscription, canUseProFeatures } from "@/lib/subscription";
 import { isStripeCheckoutConfigured, isStripePortalConfigured } from "@/lib/stripe-env";
 import { refreshSubscriptionRowFromStripe } from "@/lib/stripe-subscription-refresh";
+import { getSupabaseSchemaSetupMessage } from "@/lib/supabase/schema-health";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
@@ -16,7 +17,7 @@ export default async function DashboardPage() {
 
   if (!data.user) redirect("/login");
 
-  await refreshSubscriptionRowFromStripe(data.user.id);
+  await refreshSubscriptionRowFromStripe(data.user.id, { email: data.user.email });
 
   const admin = createSupabaseAdminClient();
   const { data: statusRow } = await admin
@@ -30,7 +31,11 @@ export default async function DashboardPage() {
     await revokeLicensesIfSubscriptionTerminal(admin, data.user.id, String(statusRow.status));
   }
 
-  const [{ subscription }, licenseKey] = await Promise.all([getMySubscription(), getMyLicenseKey()]);
+  const [{ subscription }, licenseKey, schemaSetupMessage] = await Promise.all([
+    getMySubscription(),
+    getMyLicenseKey(),
+    getSupabaseSchemaSetupMessage(),
+  ]);
 
   return (
     <DashboardShell
@@ -40,6 +45,7 @@ export default async function DashboardPage() {
       planTier={canUseProFeatures(subscription) ? "pro" : "free"}
       stripeCheckoutEnabled={isStripeCheckoutConfigured()}
       stripePortalEnabled={isStripePortalConfigured()}
+      schemaSetupMessage={schemaSetupMessage}
     />
   );
 }

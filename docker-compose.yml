@@ -21,6 +21,7 @@ services:
       context: .
       dockerfile: backend/Dockerfile
     container_name: t212_bot_backend
+    # Local dev only: production uses deploy/docker-compose.yml (Supabase, no Postgres).
     depends_on:
       postgres:
         condition: service_healthy
@@ -32,12 +33,40 @@ services:
     environment:
       DATABASE_URL: postgresql+asyncpg://t212_bot:t212_bot@postgres:5432/t212_bot
       APP_BASE_URL: http://localhost:8010
+      DEBUG_ROUTES_ENABLED: "true"
     ports:
       - "8010:8010"
     restart: unless-stopped
     volumes:
       # Persist bot state (open positions, risk tracking) across container restarts
       - t212_bot_state:/app/Server-App/t212_miner_bot
+
+  # Optional: forward Stripe webhooks to the Next.js app on the host (port 3000).
+  # Start only when testing checkout — not needed for normal backend/desktop dev.
+  #   docker compose --profile stripe up stripe-cli
+  # Or: npm run stripe:listen  (from web/)
+  stripe-cli:
+    image: stripe/stripe-cli:latest
+    container_name: t212_stripe_cli
+    profiles: ["stripe"]
+    env_file:
+      - ./web/.env.local
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        if [ -z "$$STRIPE_SECRET_KEY" ]; then
+          echo "ERROR: STRIPE_SECRET_KEY is missing. Add it to web/.env.local" >&2
+          exit 1
+        fi
+        export STRIPE_API_KEY="$$STRIPE_SECRET_KEY"
+        echo "Forwarding Stripe webhooks -> http://host.docker.internal:3000/api/stripe/webhook"
+        echo "Ensure the web portal is running: cd web && npm run dev"
+        echo "Copy the whsec_... secret below into web/.env.local as STRIPE_WEBHOOK_SECRET, then restart npm run dev."
+        exec stripe listen \
+          --forward-to host.docker.internal:3000/api/stripe/webhook \
+          --events checkout.session.completed,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,invoice.payment_failed,invoice.payment_succeeded,invoice.paid
 
 volumes:
   t212_bot_pgdata:

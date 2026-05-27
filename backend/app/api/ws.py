@@ -12,6 +12,7 @@ import httpx
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.integrations.supabase_rest import SupabaseRest, supabase_config_smoke_dict
+from app.services.license_tier import resolve_license_tier
 from app.ws.manager import Connection, WsManager
 
 
@@ -27,6 +28,18 @@ def _client_ip(ws: WebSocket) -> str:
     return ws.client.host or ""
 
 
+def _parse_license_key(raw: object) -> uuid.UUID | None:
+    if raw is None:
+        return None
+    text = str(raw).strip()
+    if not text or text.lower() in {"null", "none"}:
+        return None
+    try:
+        return uuid.UUID(text)
+    except Exception:
+        return None
+
+
 @router.websocket("/exec")
 async def ws_exec(ws: WebSocket) -> None:
     await ws.accept()
@@ -36,108 +49,67 @@ async def ws_exec(ws: WebSocket) -> None:
     if not isinstance(hello, dict) or hello.get("type") != "HELLO":
         await ws.close(code=4400)
         return
-    license_key_raw = hello.get("license_key")
-    try:
-        license_key = uuid.UUID(str(license_key_raw))
-    except Exception:
-        await ws.close(code=4401)
-        return
 
-    root = ws.app
-    sb = getattr(root.state, "supabase_rest", None)
-    if sb is None:
-        sb = SupabaseRest.from_settings()
-    if sb is None:
-        # 4420: missing SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY (not a generic internal error).
-        info = supabase_config_smoke_dict()
-        diag = json.dumps(info, indent=2)
-        _log.error("WS /ws/exec closing 4420 (no Supabase credentials). Diagnostics (no secrets):\n%s", diag)
-        print(f"WS4420 pid={os.getpid()} see uvicorn.error log for JSON diagnostics", file=sys.stderr, flush=True)
-        any_file = any(c.get("exists") for c in info.get("candidates", []) if isinstance(c, dict))
-        reason = (
-            f"file_url_len={info.get('file_url_len')} file_key_len={info.get('file_key_len')} "
-            f"any_dotenv={any_file}"
-        )
-        if len(reason) > 118:
-            reason = reason[:115] + "..."
-        await ws.close(code=4420, reason=reason)
-        return
-
+    license_key = _parse_license_key(hello.get("license_key"))
+    mode = str(hello.get("mode") or "").strip().lower()
+    if mode == "paper" or license_key is None:
+        license_key = None
     now = datetime.now(tz=UTC)
     ip = _client_ip(ws)
+    tier = "free"
+    lic: dict | None = None
+    connection_id: uuid.UUID
 
-    try:
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            # 1) Validate license row.
-            lic_rows = await sb.get(
-                client,
-                f"licenses?select=id,user_id,license_key,status,revoked_at,expires_at,last_ip_address&license_key=eq.{license_key}",
+    if license_key is None:
+        # Guest paper mode — no portal account or license required.
+        connection_id = uuid.uuid4()
+        _log.info("WS /ws/exec guest paper session (conn=%s ip=%s)", connection_id, ip or "?")
+    else:
+        root = ws.app
+        sb = getattr(root.state, "supabase_rest", None)
+        if sb is None:
+            sb = SupabaseRest.from_settings()
+        if sb is None:
+            info = supabase_config_smoke_dict()
+            diag = json.dumps(info, indent=2)
+            _log.error("WS /ws/exec closing 4420 (no Supabase credentials). Diagnostics (no secrets):\n%s", diag)
+            print(f"WS4420 pid={os.getpid()} see uvicorn.error log for JSON diagnostics", file=sys.stderr, flush=True)
+            any_file = any(c.get("exists") for c in info.get("candidates", []) if isinstance(c, dict))
+            reason = (
+                f"file_url_len={info.get('file_url_len')} file_key_len={info.get('file_key_len')} "
+                f"any_dotenv={any_file}"
             )
-            lic = lic_rows[0] if lic_rows else None
-            if not lic or lic.get("revoked_at") is not None:
-                await ws.close(code=4404)
-                return
-            if str(lic.get("status") or "inactive") != "active":
-                await ws.close(code=4403)
-                return
+            if len(reason) > 118:
+                reason = reason[:115] + "..."
+            await ws.close(code=4420, reason=reason)
+            return
 
-            expires_at = lic.get("expires_at")
-            if expires_at:
-                try:
-                    exp = datetime.fromisoformat(str(expires_at).replace("Z", "+00:00"))
-                    if exp <= now:
-                        await ws.close(code=4403)
-                        return
-                except Exception:
-                    # If unparsable, treat as invalid.
-                    await ws.close(code=4403)
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                tier, lic, _message = await resolve_license_tier(sb, client, license_key, now=now)
+                if tier == "invalid":
+                    await ws.close(code=4404)
                     return
 
-            user_id = str(lic.get("user_id") or "").strip()
-            if not user_id:
-                await ws.close(code=4404)
-                return
+                connection_id = uuid.UUID(str(lic["id"])) if lic else uuid.uuid4()
 
-            # 2) Validate subscription row (latest).
-            sub_rows = await sb.get(
-                client,
-                "subscriptions?select=status,current_period_end&"
-                f"user_id=eq.{user_id}&order=created_at.desc&limit=1",
-            )
-            sub = sub_rows[0] if sub_rows else None
-            if not sub or str(sub.get("status") or "") != "active":
-                await ws.close(code=4403)
-                return
-
-            cpe = sub.get("current_period_end")
-            if cpe:
-                try:
-                    end = datetime.fromisoformat(str(cpe).replace("Z", "+00:00"))
-                    if end <= now:
-                        await ws.close(code=4403)
-                        return
-                except Exception:
-                    await ws.close(code=4403)
-                    return
-
-            # Record IP + last-seen for audit (not enforced — users have dynamic IPs;
-            # single-session enforcement is handled by WsManager.upsert which evicts
-            # any prior connection for the same license_id with close code 4000).
-            await sb.patch(
-                client,
-                f"licenses?id=eq.{lic['id']}",
-                {"last_ip_address": ip or None, "last_seen_at": now.isoformat()},
-            )
-    except httpx.HTTPError:
-        await ws.close(code=1011)
-        return
-    except Exception:
-        await ws.close(code=1011)
-        return
+                if lic:
+                    await sb.patch(
+                        client,
+                        f"licenses?id=eq.{lic['id']}",
+                        {"last_ip_address": ip or None, "last_seen_at": now.isoformat()},
+                    )
+        except httpx.HTTPError:
+            await ws.close(code=1011)
+            return
+        except Exception:
+            await ws.close(code=1011)
+            return
 
     conn = Connection(
-        license_id=uuid.UUID(str(lic["id"])),
+        connection_id=connection_id,
         license_key=license_key,
+        tier=tier,
         ip=ip,
         websocket=ws,
         last_pong_at=now,
@@ -145,14 +117,14 @@ async def ws_exec(ws: WebSocket) -> None:
     await ws_manager.upsert(conn)
 
     try:
-        await ws.send_json({"type": "WELCOME"})
+        await ws.send_json({"type": "WELCOME", "tier": tier})
         while True:
             msg = await ws.receive_json()
             if not isinstance(msg, dict):
                 continue
             mtype = msg.get("type")
             if mtype == "PONG":
-                await ws_manager.touch_pong(conn.license_id)
+                await ws_manager.touch_pong(conn.connection_id)
                 continue
             if mtype == "ACK":
                 continue
@@ -160,9 +132,9 @@ async def ws_exec(ws: WebSocket) -> None:
                 await ws.send_json({"type": "ECHO", "payload": msg.get("payload")})
                 continue
     except WebSocketDisconnect:
-        await ws_manager.remove(conn.license_id)
+        await ws_manager.remove(conn.connection_id)
     except Exception:
-        await ws_manager.remove(conn.license_id)
+        await ws_manager.remove(conn.connection_id)
         try:
             await ws.close(code=1011)
         except Exception:
@@ -170,8 +142,6 @@ async def ws_exec(ws: WebSocket) -> None:
 
 
 async def heartbeat_loop() -> None:
-    # Runs inside the backend process; safe to start once.
     while True:
         await asyncio.sleep(30.0)
         await ws_manager.ping_sweep(ping_payload={"type": "PING"}, pong_timeout_s=40.0)
-

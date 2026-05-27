@@ -6,9 +6,12 @@
 import os
 from pathlib import Path
 
+from PyInstaller.utils.hooks import collect_submodules
+
 block_cipher = None
 
 _spec_dir = Path(os.path.abspath(SPEC)).parent
+_app_hidden = collect_submodules("app")
 _datas = [
     # Bundle the repo logo so the navbar icon works in the frozen exe.
     # paths.py returns sys._MEIPASS when frozen, so logo.png must be at its root.
@@ -23,12 +26,12 @@ if _ed.is_file():
     _datas.append((str(_ed), "."))
 
 a = Analysis(
-    # Entry point (relative to desktop/)
-    ["app/main.py"],
-    pathex=[str(Path(".").resolve())],
+    # entry.py imports app.main as a package — avoids "relative import" errors in the EXE.
+    ["entry.py"],
+    pathex=[str(_spec_dir)],
     binaries=[],
     datas=_datas,
-    hiddenimports=[
+    hiddenimports=_app_hidden + [
         # Qt / PySide6 — PyInstaller's built-in hooks cover the core modules,
         # but explicit entries avoid "No module named …" errors at runtime.
         "PySide6.QtWidgets",

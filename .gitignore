@@ -33,6 +33,11 @@ Thumbs.db
 
 # Local dev runner
 .run/
+.tmp/
+.npm-cache/
+
+# Node (root-level accidental installs)
+node_modules/
 
 # Next.js build artifacts (web app)
 web/.next/

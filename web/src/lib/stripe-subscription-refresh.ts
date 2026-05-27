@@ -1,69 +1,102 @@
 import Stripe from "stripe";
 
-import { revokeLicensesIfSubscriptionTerminal } from "@/lib/billing-license-sync";
+import {
+  ensureSubscriberLicense,
+  revokeLicensesIfSubscriptionTerminal,
+} from "@/lib/billing-license-sync";
 import { getStripeClient } from "@/lib/stripe";
 import { getStripeSubscriptionPeriodEndUnix } from "@/lib/stripe-subscription-period";
+import {
+  ensureSubscriptionRowForUser,
+  subscriptionPatchFromStripeSubscription,
+} from "@/lib/stripe-customer-user";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 
-type SubRow = { id: string; stripe_subscription_id: string | null };
+type SubRow = {
+  id: string;
+  stripe_subscription_id: string | null;
+  stripe_customer_id: string | null;
+};
+
+function pickStripeSubscription(subs: Stripe.Subscription[]): Stripe.Subscription | null {
+  if (subs.length === 0) return null;
+  return (
+    subs.find((s) => s.status === "active" || s.status === "trialing") ??
+    subs.find((s) => s.status !== "canceled" && s.status !== "incomplete_expired") ??
+    subs[0] ??
+    null
+  );
+}
+
+async function resolveStripeSubscription(
+  stripe: Stripe,
+  row: SubRow,
+): Promise<Stripe.Subscription | null> {
+  if (row.stripe_subscription_id) {
+    try {
+      return await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
+        expand: ["items.data.price"],
+      });
+    } catch {
+      // Fall through — subscription id may be stale; try customer lookup below.
+    }
+  }
+
+  if (!row.stripe_customer_id) return null;
+
+  const listed = await stripe.subscriptions.list({
+    customer: row.stripe_customer_id,
+    status: "all",
+    limit: 10,
+    expand: ["data.items.data.price"],
+  });
+
+  return pickStripeSubscription(listed.data);
+}
+
+export type RefreshSubscriptionOptions = {
+  email?: string | null;
+};
 
 /**
  * Pulls the latest period end + status from Stripe into `public.subscriptions`.
- * Fixes rows that missed `current_period_end` from webhooks (e.g. only invoice events received).
+ * Discovers subscriptions by Stripe customer when webhooks were missed (e.g. local dev).
  */
-export async function refreshSubscriptionRowFromStripe(userId: string): Promise<void> {
+export async function refreshSubscriptionRowFromStripe(
+  userId: string,
+  options?: RefreshSubscriptionOptions,
+): Promise<void> {
   if (!process.env.STRIPE_SECRET_KEY) return;
 
   const admin = createSupabaseAdminClient();
+  const stripe = getStripeClient();
 
-  const { data: withSub } = await admin
-    .from("subscriptions")
-    .select("id, stripe_subscription_id")
-    .eq("user_id", userId)
-    .not("stripe_subscription_id", "is", null)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  let row = (await ensureSubscriptionRowForUser(admin, userId, options?.email)) as SubRow | null;
 
-  let row = withSub as SubRow | null;
-  if (!row?.id || !row.stripe_subscription_id) {
-    const { data: anyRow } = await admin
+  if (!row?.id) {
+    const { data: rowData } = await admin
       .from("subscriptions")
-      .select("id, stripe_subscription_id")
+      .select("id, stripe_subscription_id, stripe_customer_id")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
-    row = anyRow as SubRow | null;
+    row = rowData as SubRow | null;
   }
 
   if (!row?.id) return;
-  const subId = row.stripe_subscription_id;
-  if (!subId || typeof subId !== "string") return;
 
-  let sub: Stripe.Subscription;
-  try {
-    sub = await getStripeClient().subscriptions.retrieve(subId, {
-      expand: ["items.data.price"],
-    });
-  } catch {
-    return;
-  }
+  const sub = await resolveStripeSubscription(stripe, row);
+  if (!sub) return;
 
-  const unix = getStripeSubscriptionPeriodEndUnix(sub);
-  const current_period_end = unix != null ? new Date(unix * 1000).toISOString() : null;
+  const patch = subscriptionPatchFromStripeSubscription(sub);
+
+  await admin.from("subscriptions").update(patch).eq("id", row.id);
 
   const raw = sub.status;
-  const status = raw === "active" ? "active" : raw;
+  if (raw === "active" || raw === "trialing") {
+    await ensureSubscriberLicense(admin, userId);
+  }
 
-  await admin
-    .from("subscriptions")
-    .update({
-      current_period_end: current_period_end,
-      status,
-      stripe_subscription_id: sub.id,
-    })
-    .eq("id", row.id);
-
-  await revokeLicensesIfSubscriptionTerminal(admin, userId, status);
+  await revokeLicensesIfSubscriptionTerminal(admin, userId, String(patch.status ?? raw));
 }

@@ -6,13 +6,12 @@ from typing import TYPE_CHECKING
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QHBoxLayout,
-    QLabel,
     QSplitter,
     QVBoxLayout,
     QWidget,
 )
 
-from .widgets import divider, hint, section_title
+from .widgets import callout, field_label, hint, section_title
 
 if TYPE_CHECKING:
     from ..main_window import MainWindow
@@ -21,16 +20,22 @@ if TYPE_CHECKING:
 def build_activity_tab(win: MainWindow) -> QWidget:
     w = QWidget()
     layout = QVBoxLayout(w)
-    layout.setContentsMargins(12, 12, 12, 10)
-    layout.setSpacing(10)
+    layout.setContentsMargins(16, 16, 16, 12)
+    layout.setSpacing(12)
+
+    layout.addWidget(
+        callout(
+            "This tab fills in after you connect. You'll see which markets are open, "
+            "what the bot is watching, and any trading signals as they arrive.",
+            kind="info",
+        )
+    )
 
     filt_row = QHBoxLayout()
     filt_row.setSpacing(8)
-    filt_row.addWidget(QLabel("Filter:"))
+    filt_row.addWidget(field_label("Search by stock symbol"))
     filt_row.addWidget(win.activity_symbol_filter, 1)
     layout.addLayout(filt_row)
-
-    layout.addWidget(divider())
 
     v_split = QSplitter(Qt.Orientation.Vertical)
 
@@ -38,7 +43,8 @@ def build_activity_tab(win: MainWindow) -> QWidget:
     lm = QVBoxLayout(p_market)
     lm.setContentsMargins(0, 0, 0, 0)
     lm.setSpacing(6)
-    lm.addWidget(section_title("Market hours  (from Trading212)"))
+    lm.addWidget(section_title("Market hours"))
+    lm.addWidget(hint("Whether each stock market is open right now (from Trading212)."))
     lm.addWidget(win.market_table, 1)
     v_split.addWidget(p_market)
 
@@ -46,12 +52,11 @@ def build_activity_tab(win: MainWindow) -> QWidget:
     lb = QVBoxLayout(p_bot)
     lb.setContentsMargins(0, 0, 0, 0)
     lb.setSpacing(4)
-    lb.addWidget(section_title("Bot state  (per symbol, latest snapshot)"))
+    lb.addWidget(section_title("Bot status"))
     lb.addWidget(
         hint(
-            "When the exchange is closed and the server has no cached price bars yet, "
-            "you will see ready=False and reason like market_closed_no_cache — that is expected. "
-            "After a session with data, cached bars allow richer fields even off-hours.",
+            "Shows what the bot is doing for each stock. "
+            "If markets are closed, many rows will say not ready — that's normal."
         ),
     )
     lb.addWidget(win.bot_table, 1)
@@ -61,7 +66,8 @@ def build_activity_tab(win: MainWindow) -> QWidget:
     ls = QVBoxLayout(p_sig)
     ls.setContentsMargins(0, 0, 0, 0)
     ls.setSpacing(6)
-    ls.addWidget(section_title("Recent signals  (newest first)"))
+    ls.addWidget(section_title("Recent signals"))
+    ls.addWidget(hint("Newest trading signals appear at the top."))
     ls.addWidget(win.signals_table, 1)
     v_split.addWidget(p_sig)
 

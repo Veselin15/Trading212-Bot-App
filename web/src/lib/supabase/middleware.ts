@@ -3,7 +3,7 @@ import { createServerClient } from "@supabase/ssr";
 
 import { requiredPublicEnv } from "@/lib/env";
 
-export function updateSession(request: NextRequest) {
+export async function updateSession(request: NextRequest) {
   let response = NextResponse.next({ request });
 
   const supabase = createServerClient(
@@ -23,8 +23,8 @@ export function updateSession(request: NextRequest) {
     },
   );
 
-  // Refresh auth session if needed.
-  void supabase.auth.getUser();
+  // Refresh auth session cookies on each request (required for SSR auth).
+  await supabase.auth.getUser();
 
   return response;
 }

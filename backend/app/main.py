@@ -10,9 +10,9 @@ from fastapi import FastAPI
 # Bump when you ship a new release.  Desktop app reads this from /version.
 APP_VERSION = "1.0.0"
 
-from app.api.debug import router as debug_router
 from app.api.license import router as license_router
 from app.api.ws import heartbeat_loop, router as ws_router
+from app.core.config import settings
 from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
 
 _log = logging.getLogger("uvicorn.error")
@@ -47,7 +47,11 @@ def create_app() -> FastAPI:
 
         return supabase_config_smoke_dict()
 
-    app.include_router(debug_router)
+    if settings.debug_routes_enabled:
+        from app.api.debug import router as debug_router
+
+        app.include_router(debug_router)
+        _log.warning("Debug routes are ENABLED — disable in production unless behind a secret key.")
     app.include_router(license_router)
     app.include_router(ws_router)
 

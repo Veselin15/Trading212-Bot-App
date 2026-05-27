@@ -24,17 +24,59 @@ $desktopErr = Join-Path $runDir "desktop.$stamp.err.log"
   desktop_err = $desktopErr
 } | ConvertTo-Json | Set-Content -Path (Join-Path $runDir "last_logs.json") -Encoding UTF8
 
-$pythonCmd = (Get-Command python -ErrorAction SilentlyContinue)
-if (-not $pythonCmd) {
-  $pythonCmd = (Get-Command py -ErrorAction SilentlyContinue)
+$pythonExe = $null
+$pythonModuleArgs = @()
+$pyLauncher = Get-Command py -ErrorAction SilentlyContinue
+if ($pyLauncher) {
+  & py -3.12 -c "import sys" 2>$null | Out-Null
+  if ($LASTEXITCODE -eq 0) {
+    $pythonExe = $pyLauncher.Source
+    $pythonModuleArgs = @("-3.12")
+  }
 }
-if (-not $pythonCmd) {
-  throw "Python was not found on PATH in this shell."
+if (-not $pythonExe) {
+  $pythonCmd = (Get-Command python -ErrorAction SilentlyContinue)
+  if (-not $pythonCmd) {
+    throw "Python 3.12+ was not found. Install from python.org or use the py launcher."
+  }
+  $pythonExe = $pythonCmd.Source
 }
-$pythonExe = $pythonCmd.Source
+
+function Resolve-DesktopLauncher {
+  param(
+    [string]$PythonExe,
+    [string[]]$PythonModuleArgs
+  )
+  # pyw / pythonw run GUI apps without attaching a console window.
+  $pyw = Get-Command pyw -ErrorAction SilentlyContinue
+  if ($pyw -and ($PythonModuleArgs -contains "-3.12")) {
+    & pyw -3.12 -c "import sys" 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+      return @{
+        Exe  = $pyw.Source
+        Args = @("-3.12", "-m", "desktop.app.main")
+      }
+    }
+  }
+  $pythonDir = Split-Path -Parent $PythonExe
+  $pythonw = Join-Path $pythonDir "pythonw.exe"
+  if (Test-Path $pythonw) {
+    $args = @()
+    if ($PythonModuleArgs.Count -gt 0 -and $PythonExe -notmatch "py(\.exe)?$") {
+      $args += $PythonModuleArgs
+    }
+    $args += @("-m", "desktop.app.main")
+    return @{ Exe = $pythonw; Args = $args }
+  }
+  throw @"
+Could not find pyw or pythonw for a windowed desktop launch.
+Install Python 3.12+ with the py launcher, or build SwiftTrade.exe for end-user testing:
+  .\desktop\scripts\build-windows.ps1
+"@
+}
 
 # Avoid Windows port 8000 where unrelated or zombie listeners often collide with this app.
-$BackendDevPort = 8010
+$BackendDevPort = 8011
 
 function Write-PidFile([string]$name, [int]$procId) {
   Set-Content -Path (Join-Path $runDir "$name.pid") -Value $procId -Encoding ASCII
@@ -113,15 +155,15 @@ $backendCmd = @(
 $backendProc = Start-Process -FilePath "powershell.exe" -ArgumentList $backendCmd -WindowStyle Normal -PassThru -RedirectStandardOutput $backendOut -RedirectStandardError $backendErr
 Write-PidFile "backend" $backendProc.Id
 
-# Desktop in a separate window
-Write-Host "Starting desktop..." -ForegroundColor Cyan
-$desktopCmd = @(
-  "-NoProfile",
-  "-ExecutionPolicy", "Bypass",
-  "-Command",
-  "Set-Location '$repoRoot'; & '$pythonExe' -m desktop.app.main"
-)
-$desktopProc = Start-Process -FilePath "powershell.exe" -ArgumentList $desktopCmd -WindowStyle Normal -PassThru -RedirectStandardOutput $desktopOut -RedirectStandardError $desktopErr
+# Desktop GUI — pyw/pythonw only; no PowerShell host window for the app.
+Write-Host "Starting desktop (GUI only, no console)..." -ForegroundColor Cyan
+$desktopLaunch = Resolve-DesktopLauncher -PythonExe $pythonExe -PythonModuleArgs $pythonModuleArgs
+$desktopProc = Start-Process `
+  -FilePath $desktopLaunch.Exe `
+  -ArgumentList $desktopLaunch.Args `
+  -WorkingDirectory $repoRoot `
+  -WindowStyle Hidden `
+  -PassThru
 Write-PidFile "desktop" $desktopProc.Id
 
 Write-Host ""

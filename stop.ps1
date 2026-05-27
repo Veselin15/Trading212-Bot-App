@@ -21,7 +21,7 @@ function Stop-IfRunning([string]$name) {
   Remove-Item -Force -ErrorAction SilentlyContinue (Join-Path $runDir "$name.pid")
 }
 
-$BackendDevPort = 8010
+$BackendDevPort = 8011
 
 function Stop-UvicornListenersOnPort([int]$Port) {
   $pids = New-Object "System.Collections.Generic.HashSet[int]"
@@ -37,16 +37,18 @@ function Stop-UvicornListenersOnPort([int]$Port) {
   foreach ($procId in $pids) {
     try {
       $p = Get-CimInstance Win32_Process -Filter "ProcessId=$procId" -ErrorAction SilentlyContinue
-      if (-not $p) { continue }
-      $cl = [string]$p.CommandLine
+      $cl = if ($p) { [string]$p.CommandLine } else { "" }
       $isThisBackend = $cl -match "app\.main:app" -and (
         $cl -match "uvicorn(\.exe)?" -or $cl -match "-m\s+uvicorn"
       )
-      if ($isThisBackend) {
-        Write-Host "Stopping backend listener on port $Port pid=$procId" -ForegroundColor Yellow
+      if ($isThisBackend -or $cl -eq "") {
+        Write-Host "Stopping listener on port $Port pid=$procId" -ForegroundColor Yellow
         Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
+        taskkill /F /PID $procId 2>$null | Out-Null
       }
-    } catch { }
+    } catch {
+      taskkill /F /PID $procId 2>$null | Out-Null
+    }
   }
 }
 
@@ -56,7 +58,8 @@ Stop-IfRunning "backend"
 Stop-UvicornListenersOnPort 8000
 Stop-UvicornListenersOnPort $BackendDevPort
 
-Write-Host "Stopping Postgres container..." -ForegroundColor Cyan
+Write-Host "Stopping Docker services (Postgres, Stripe CLI if running)..." -ForegroundColor Cyan
+docker compose --profile stripe stop 2>$null | Out-Null
 docker compose stop | Out-Null
 
 Write-Host "Done." -ForegroundColor Green

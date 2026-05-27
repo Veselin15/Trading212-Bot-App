@@ -36,17 +36,17 @@ export function GlowHoverCard({
     >
       <div
         className={cx(
-          "h-full rounded-3xl bg-gradient-to-br from-emerald-500/20 via-slate-800/60 to-emerald-700/15 p-[1px] transition-all duration-200 ease-out",
-          "group-hover/gh:from-emerald-400/45 group-hover/gh:via-slate-700/70 group-hover/gh:to-emerald-600/30",
-          "group-hover/gh:shadow-[0_0_32px_-8px_rgba(16,185,129,0.28)]",
+          "h-full rounded-3xl bg-gradient-to-br from-emerald-400/25 via-white/10 to-teal-500/20 p-px transition-all duration-300 ease-out",
+          "group-hover/gh:from-emerald-300/50 group-hover/gh:via-emerald-500/20 group-hover/gh:to-teal-400/35",
+          "group-hover/gh:shadow-[0_0_40px_-10px_rgba(0,230,118,0.35)]",
         )}
       >
         <Card
           {...cardProps}
           className={cx(
-            "h-full rounded-[calc(1.5rem-2px)] border-white/10 bg-[#0A0A0A] transition-[border-color,box-shadow,background-color] duration-200 ease-out",
-            "group-hover/gh:border-emerald-500/35 group-hover/gh:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.04)]",
-            "group-hover/gh:bg-[#0A0A0A]",
+            "h-full rounded-[calc(1.5rem-2px)] border-white/[0.08] bg-[#08080c] transition-[border-color,box-shadow,background-color] duration-300 ease-out",
+            "group-hover/gh:border-emerald-500/30 group-hover/gh:bg-[#0a0a10]",
+            "group-hover/gh:shadow-[inset_0_1px_0_0_rgba(255,255,255,0.07),0_20px_40px_-28px_rgba(0,0,0,0.8)]",
             className,
           )}
         >
