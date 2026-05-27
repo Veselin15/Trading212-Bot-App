@@ -25,17 +25,19 @@ Commit and push the `web/` OpenNext changes to `main`.
 |---------|--------|
 | **Root directory** | `web` |
 | **Framework preset** | None |
-| **Build command** | `npm ci && npm run pages:build` |
+| **Build command** | `npm ci && npm run build` |
+| **Deploy command** | `npx opennextjs-cloudflare deploy` |
 | **Build output directory** | *(leave empty)* |
-| **Deploy command** (if shown) | `npx opennextjs-cloudflare deploy` |
 
-If there is **no Deploy command** field, use:
+If there is **no Deploy command** field, use a single build command:
 
 | Build command |
 |---------------|
 | `npm ci && npm run pages:deploy` |
 
 **Do not** use `npm run build` alone — that skips the OpenNext adapter step.
+
+`web/wrangler.jsonc` **`name`** must match your Cloudflare project name (e.g. `trading212-bot-app`).
 
 ---
 
