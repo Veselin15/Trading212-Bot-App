@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "pages:build": "opennextjs-cloudflare build",
+    "pages:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "pages:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "start": "next start",
     "lint": "eslint",
     "stripe:listen": "powershell -NoProfile -ExecutionPolicy Bypass -File ../scripts/stripe-webhooks.ps1"
@@ -14,7 +17,7 @@
     "@supabase/supabase-js": "^2.105.0",
     "framer-motion": "^12.38.0",
     "lucide-react": "^1.14.0",
-    "next": "16.2.4",
+    "next": "16.2.6",
     "react": "19.2.4",
     "react-countup": "^6.5.3",
     "react-dom": "19.2.4",
@@ -23,13 +26,15 @@
     "stripe": "^22.1.0"
   },
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.19.11",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "16.2.4",
+    "eslint-config-next": "16.2.6",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "wrangler": "^4.86.0"
   }
 }

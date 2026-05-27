@@ -256,24 +256,32 @@ If this fails: tunnel not routing, backend not listening on 8010, or DNS not pro
 
 ---
 
-## PART F — Web portal (Cloudflare Pages)
+## PART F — Web portal (Cloudflare — free, OpenNext)
 
-### Step 21 — Create Pages project
+Full details: [CLOUDFLARE_PAGES.md](./CLOUDFLARE_PAGES.md)
 
-1. Cloudflare dashboard → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**.
-2. Select your GitHub repo.
+### Step 21 — Create Pages / Workers project
+
+1. Cloudflare dashboard → **Workers & Pages** → **Create application** → **Connect to Git**.
+2. Select your GitHub repo (`Trading212-Bot-App`).
 3. **Project name:** e.g. `swifttrade-web`
 4. **Production branch:** `main`
 
-### Step 22 — Build settings
+### Step 22 — Build settings (OpenNext — required for Stripe webhooks)
 
 | Setting | Value |
 |---------|--------|
 | **Root directory** | `web` |
-| **Build command** | `npm ci && npm run build` |
-| **Build output directory** | `.next` (default for Next.js preset) |
+| **Framework preset** | **None** |
+| **Build command** | `npm ci && npm run pages:build` |
+| **Build output directory** | *(leave empty)* |
+| **Deploy command** (if shown) | `npx opennextjs-cloudflare deploy` |
 
-If Cloudflare offers a **Next.js** framework preset, use it.
+If there is **no Deploy command** field, set build command to:
+
+`npm ci && npm run pages:deploy`
+
+**Do not** use `npm run build` alone.
 
 ### Step 23 — Environment variables (Pages → Settings → Environment variables)
 
@@ -301,9 +309,9 @@ Leave `STRIPE_WEBHOOK_SECRET` empty until Step 33.
 1. **Save and Deploy** (or push to `main` to trigger build).
 2. Wait until build status is **Success**.
 
-✅ **Check:** Pages gives you a `*.pages.dev` URL that loads the site.
+✅ **Check:** Project gives you a `*.pages.dev` or `*.workers.dev` URL that loads the site.
 
-> **If the build fails** (common with `output: "standalone"` in `web/next.config.ts`): use **Path F-alt** at the end of this document.
+> **If the build fails:** see [CLOUDFLARE_PAGES.md](./CLOUDFLARE_PAGES.md) troubleshooting, or **Path F-alt** (Docker web on home server).
 
 ### Step 25 — Custom domain for web
 
@@ -546,7 +554,7 @@ Skip Cloudflare Pages (Steps 21–25); continue from Step 27 (Stripe webhook) us
 | `DEBUG_ROUTES_ENABLED` | Yes | `false` (prod) |
 | `JWT_SECRET` | Yes | long random string |
 
-### Web (Cloudflare Pages or `deploy/.env.web`)
+### Web (Cloudflare Workers/Pages or `deploy/.env.web`)
 
 | Variable | Required |
 |----------|----------|

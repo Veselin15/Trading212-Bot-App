@@ -2,6 +2,8 @@
 
 **Strict linear guide:** [DEPLOY_STEP_BY_STEP.md](./DEPLOY_STEP_BY_STEP.md) (follow every step in order).
 
+**Cloudflare web (free):** [CLOUDFLARE_PAGES.md](./CLOUDFLARE_PAGES.md)
+
 Target domain: **swifttrade.app** (Cloudflare).
 
 Recommended split (fits a low-CPU home server):
