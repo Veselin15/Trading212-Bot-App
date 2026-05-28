@@ -34,9 +34,15 @@ async function resolveStripeSubscription(
 ): Promise<Stripe.Subscription | null> {
   if (row.stripe_subscription_id) {
     try {
-      return await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
+      const direct = await stripe.subscriptions.retrieve(row.stripe_subscription_id, {
         expand: ["items.data.price"],
       });
+      // If the stored subscription id is terminal, fall back to a customer lookup.
+      // This happens after a user cancels and later re-subscribes: Stripe creates a new
+      // subscription, but the DB may still point at the old canceled one.
+      if (direct.status !== "canceled" && direct.status !== "incomplete_expired") {
+        return direct;
+      }
     } catch {
       // Fall through — subscription id may be stale; try customer lookup below.
     }
