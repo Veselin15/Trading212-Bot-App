@@ -5,7 +5,7 @@ import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
-export async function POST() {
+export async function POST(request: Request) {
   if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_ID) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
   }
@@ -16,7 +16,10 @@ export async function POST() {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  // Prefer request origin; env fallback prevents localhost redirects in production.
+  const reqOrigin = new URL(request.url).origin;
+  const envOrigin = (process.env.NEXT_PUBLIC_SITE_URL || "").trim();
+  const siteUrl = envOrigin || reqOrigin || "https://swifttrade.app";
 
   const admin = createSupabaseAdminClient();
   const { data: existingSub, error: subErr } = await admin

@@ -13,5 +13,10 @@
       "binding": "WORKER_SELF_REFERENCE",
       "service": "trading212-bot-app"
     }
+  ],
+  "keep_vars": true,
+  "routes": [
+    { "pattern": "swifttrade.app/*", "zone_name": "swifttrade.app" },
+    { "pattern": "www.swifttrade.app/*", "zone_name": "swifttrade.app" }
   ]
 }
