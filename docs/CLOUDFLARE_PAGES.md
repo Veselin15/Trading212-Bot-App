@@ -21,23 +21,57 @@ Commit and push the `web/` OpenNext changes to `main`.
 
 ### Build settings (strict)
 
+Use **two commands** if the UI has **Build command** and **Deploy command** (recommended):
+
 | Setting | Value |
 |---------|--------|
 | **Root directory** | `web` |
 | **Framework preset** | None |
-| **Build command** | `npm ci && npm run build` |
+| **Build command** | `npm ci && npm run pages:build` |
 | **Deploy command** | `npx opennextjs-cloudflare deploy` |
 | **Build output directory** | *(leave empty)* |
 
-If there is **no Deploy command** field, use a single build command:
+If you only have **one** command field, use:
+
+| Build command |
+|---------------|
+| `npm ci && npm run pages:build` |
+
+…and add **Build secrets** below (required for deploy in a single step).
+
+**Do not** use `npm run pages:deploy` unless `CLOUDFLARE_API_TOKEN` is set (see Step 2b).
+
+`web/wrangler.jsonc` **`name`** must match your Cloudflare project name (e.g. `trading212-bot-app`).
+
+### Step 2b — Build secrets (required for deploy)
+
+Cloudflare’s log error:
+
+`CLOUDFLARE_API_TOKEN environment variable` … `necessary` … `non-interactive environment`
+
+Fix:
+
+1. Cloudflare Dashboard → **My Profile** → **API Tokens** → **Create Token**
+2. Use template **“Edit Cloudflare Workers”** (or custom: Account + Workers Scripts Edit)
+3. Copy the token once
+
+4. Workers & Pages → **trading212-bot-app** → **Settings** → **Variables and Secrets** (or **Build** → **Environment variables**)
+5. Add **Secrets** (encrypted):
+
+| Name | Value |
+|------|--------|
+| `CLOUDFLARE_API_TOKEN` | token from step 3 |
+| `CLOUDFLARE_ACCOUNT_ID` | your account ID (Dashboard URL or **Workers & Pages** overview) |
+
+6. **Redeploy**
+
+If using **one** build command field only:
 
 | Build command |
 |---------------|
 | `npm ci && npm run pages:deploy` |
 
-**Do not** use `npm run build` alone — that skips the OpenNext adapter step.
-
-`web/wrangler.jsonc` **`name`** must match your Cloudflare project name (e.g. `trading212-bot-app`).
+(with both secrets set above)
 
 ---
 
