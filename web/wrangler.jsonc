@@ -15,6 +15,11 @@
     }
   ],
   "keep_vars": true,
+  "observability": {
+    "logs": {
+      "enabled": true
+    }
+  },
   "routes": [
     { "pattern": "swifttrade.app/*", "zone_name": "swifttrade.app" },
     { "pattern": "www.swifttrade.app/*", "zone_name": "swifttrade.app" }
