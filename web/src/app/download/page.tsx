@@ -11,6 +11,8 @@ export default async function DownloadPage() {
 
   const pro = canUseProFeatures(subscription);
   const downloadUrl = process.env.DESKTOP_DOWNLOAD_URL || "";
+  const downloadSha256 = process.env.DESKTOP_DOWNLOAD_SHA256 || "";
+  const virusTotalUrl = process.env.DESKTOP_VIRUSTOTAL_URL || "";
   const version = process.env.DESKTOP_APP_VERSION || "";
   const changelogUrl = process.env.DESKTOP_CHANGELOG_URL || "";
   const signalServer = process.env.DESKTOP_SIGNAL_SERVER_URL || "";
@@ -55,7 +57,7 @@ export default async function DownloadPage() {
                   href={downloadUrl}
                   className="inline-flex h-11 items-center justify-center rounded-xl bg-emerald-500 px-5 text-sm font-medium text-slate-950 shadow-sm shadow-emerald-500/20 transition-colors hover:bg-[#00E676] focus:outline-none focus:ring-2 focus:ring-emerald-400/60"
                 >
-                  Download SwiftTrade.exe
+                  Download SwiftTrade (Windows)
                 </a>
               ) : (
                 <div className="rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
@@ -76,6 +78,41 @@ export default async function DownloadPage() {
               <ButtonLink href="/dashboard" variant="secondary" className="w-full sm:w-auto">
                 Back to dashboard
               </ButtonLink>
+            </div>
+
+            {/* Trust + AV notes */}
+            <div className="mt-6 space-y-3 rounded-2xl border border-white/10 bg-white/5 p-4 text-sm text-slate-200">
+              <div className="text-slate-300">
+                Antivirus products can occasionally flag new releases as suspicious. If your download is blocked, use
+                the steps below (we never ask for your Trading212 keys on this website).
+              </div>
+
+              {downloadSha256 ? (
+                <div className="flex flex-col gap-1">
+                  <span className="text-slate-400">SHA256</span>
+                  <code className="break-all rounded-xl bg-black/40 px-3 py-2 font-mono text-xs text-slate-200">
+                    {downloadSha256}
+                  </code>
+                </div>
+              ) : null}
+
+              {virusTotalUrl ? (
+                <a
+                  href={virusTotalUrl}
+                  className="inline-flex items-center justify-center rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-slate-50 backdrop-blur transition-colors hover:bg-white/10"
+                >
+                  View VirusTotal scan
+                </a>
+              ) : null}
+
+              <div className="space-y-2 text-slate-300">
+                <div className="font-medium text-slate-100">If Avast blocks SwiftTrade</div>
+                <ol className="list-decimal space-y-1 pl-5">
+                  <li>Open Avast → <strong>Protection</strong> → <strong>Quarantine</strong>.</li>
+                  <li>Select SwiftTrade → <strong>Restore and add exception</strong>.</li>
+                  <li>Re-run the app from your Downloads folder (or extracted ZIP).</li>
+                </ol>
+              </div>
             </div>
           </Card>
 

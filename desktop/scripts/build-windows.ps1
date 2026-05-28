@@ -36,7 +36,10 @@ $scriptDir  = Split-Path -Parent $MyInvocation.MyCommand.Path
 $desktopDir = Split-Path -Parent $scriptDir
 $repoRoot   = Split-Path -Parent $desktopDir
 $specFile   = Join-Path $desktopDir "SwiftTrade.spec"
-$distExe    = Join-Path $desktopDir "dist\SwiftTrade.exe"
+$distDir    = Join-Path $desktopDir "dist\SwiftTrade"
+$distExe    = Join-Path $distDir "SwiftTrade.exe"
+$releaseDir = Join-Path $desktopDir "release"
+$zipOut     = Join-Path $releaseDir "SwiftTrade-windows.zip"
 $defaultsJson = Join-Path $desktopDir "executor_defaults.json"
 
 Write-Host ""
@@ -45,6 +48,7 @@ Write-Host "====================================" -ForegroundColor Cyan
 Write-Host "  Repo root   : $repoRoot"
 Write-Host "  Desktop dir : $desktopDir"
 Write-Host "  Spec file   : $specFile"
+Write-Host "  Dist dir    : $distDir"
 Write-Host "  Output      : $distExe"
 Write-Host ""
 
@@ -156,7 +160,13 @@ if (Test-Path $distExe) {
     Write-Host "  Output : $distExe" -ForegroundColor Green
     Write-Host "  Size   : $sizeMB MB" -ForegroundColor Green
     Write-Host ""
-    Write-Host "Ship SwiftTrade.exe to users; they only run the EXE." -ForegroundColor Green
+    # Create a ZIP for distribution (more AV-friendly than shipping a raw .exe).
+    New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
+    if (Test-Path $zipOut) { Remove-Item -Force $zipOut }
+    Compress-Archive -Path (Join-Path $distDir "*") -DestinationPath $zipOut -Force
+
+    Write-Host "Build output is one-folder. Ship the ZIP:" -ForegroundColor Green
+    Write-Host "  $zipOut" -ForegroundColor Green
     if ($DefaultExecutorWsUrl) {
         Write-Host "This build uses your signal server URL by default." -ForegroundColor Green
     } else {

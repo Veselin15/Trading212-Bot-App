@@ -96,8 +96,6 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-# One-file executable: all binaries and data are packed inside the .exe.
-# On first run Windows extracts to %TEMP%\MEIxxxxxx; subsequent launches reuse the cache.
 exe = EXE(
     pyz,
     a.scripts,
@@ -109,7 +107,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=False,
     upx_exclude=[],
     runtime_tmpdir=None,
     # No console window — this is a GUI app.
@@ -120,4 +118,16 @@ exe = EXE(
     codesign_identity=None,
     entitlements_file=None,
     # Optionally add a Windows .ico file:  icon="assets/SwiftTrade.ico"
+)
+
+# One-folder build (recommended for reducing AV false positives).
+coll = COLLECT(
+    exe,
+    a.binaries,
+    a.zipfiles,
+    a.datas,
+    strip=False,
+    upx=False,
+    upx_exclude=[],
+    name="SwiftTrade",
 )

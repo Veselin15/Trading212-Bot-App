@@ -22,9 +22,11 @@ Accounts and billing live in **Supabase** (`auth.users`, `public.subscriptions`,
 - `NEXT_PUBLIC_SITE_URL` (default `https://swifttrade.app`; use `http://localhost:3000` for local dev)
 - `STRIPE_CUSTOMER_PORTAL_RETURN_URL` (default `${NEXT_PUBLIC_SITE_URL}/dashboard`)
 - `DESKTOP_DOWNLOAD_URL` (link to installer, e.g. GitHub Releases asset URL)
+- `DESKTOP_DOWNLOAD_SHA256` (optional checksum shown on /download to help users verify integrity)
 - `DESKTOP_APP_VERSION` (display-only version string shown on /download, e.g. `1.0.0`)
 - `DESKTOP_CHANGELOG_URL` (optional link to release notes)
 - `DESKTOP_SIGNAL_SERVER_URL` (display-only — the wss:// address baked into the EXE, shown on /download so users know which server their app connects to)
+- `DESKTOP_VIRUSTOTAL_URL` (optional VirusTotal link shown on /download)
 
 ## Stripe webhooks
 
