@@ -16,7 +16,7 @@ function getCreds(formData: FormData) {
 }
 
 function siteUrl() {
-  return process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  return process.env.NEXT_PUBLIC_SITE_URL || "https://swifttrade.app";
 }
 
 export async function signIn(formData: FormData): Promise<AuthActionResult | void> {

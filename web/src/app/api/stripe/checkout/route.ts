@@ -19,7 +19,12 @@ export async function POST(request: Request) {
   // Prefer request origin; env fallback prevents localhost redirects in production.
   const reqOrigin = new URL(request.url).origin;
   const envOrigin = (process.env.NEXT_PUBLIC_SITE_URL || "").trim();
-  const siteUrl = envOrigin || reqOrigin || "https://swifttrade.app";
+  // If NEXT_PUBLIC_SITE_URL is accidentally left as localhost in production, ignore it.
+  const envLooksLocal =
+    envOrigin.startsWith("http://localhost") ||
+    envOrigin.startsWith("https://localhost") ||
+    envOrigin.includes("127.0.0.1");
+  const siteUrl = (envOrigin && !envLooksLocal ? envOrigin : "") || reqOrigin || "https://swifttrade.app";
 
   const admin = createSupabaseAdminClient();
   const { data: existingSub, error: subErr } = await admin

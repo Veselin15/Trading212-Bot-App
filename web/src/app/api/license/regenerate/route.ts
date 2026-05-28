@@ -59,7 +59,7 @@ export async function POST() {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const site = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
+  const site = process.env.NEXT_PUBLIC_SITE_URL || "https://swifttrade.app";
   return NextResponse.redirect(new URL("/dashboard?license=regenerated", site), { status: 303 });
 }
 
