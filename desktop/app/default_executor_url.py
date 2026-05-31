@@ -1,9 +1,8 @@
 """Resolve the default executor WebSocket URL (Setup tab).
 
-Development (``dev.ps1``): ``ws://127.0.0.1:8011/ws/exec``.
+Production default: ``wss://signals.swifttrade.app/ws/exec``.
 
-Docker / release EXE: ``ws://127.0.0.1:8010/ws/exec`` — set via ``build-windows.ps1`` →
-``desktop/executor_defaults.json`` (bundled when frozen).
+Release builds can override via ``build-windows.ps1`` → ``desktop/executor_defaults.json`` (bundled when frozen).
 """
 from __future__ import annotations
 
@@ -11,7 +10,7 @@ import json
 import sys
 from pathlib import Path
 
-_DEV_DEFAULT = "ws://127.0.0.1:8011/ws/exec"
+_DEV_DEFAULT = "wss://signals.swifttrade.app/ws/exec"
 
 
 def _defaults_json_path() -> Path | None:

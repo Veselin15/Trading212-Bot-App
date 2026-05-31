@@ -185,6 +185,21 @@ class ExecWsClient:
                 await asyncio.sleep(float(interval))
             except Exception:
                 self._on_status("OFFLINE")
+                # Show the actual error so users can diagnose TLS / DNS / proxy issues.
+                # (Common in production: blocked WebSocket, bad clock, TLS interception, etc.)
+                try:
+                    import ssl
+
+                    if isinstance(sys.exc_info()[1], ssl.SSLCertVerificationError):
+                        self._on_event(
+                            "TLS error: certificate verification failed. "
+                            "Check your system clock, antivirus HTTPS scanning, or corporate proxy."
+                        )
+                except Exception:
+                    pass
+                exc = sys.exc_info()[1]
+                if exc is not None:
+                    self._on_event(f"Connection error: {type(exc).__name__}: {exc}")
                 attempt += 1
                 if self._cfg.max_reconnect_attempts > 0 and attempt >= self._cfg.max_reconnect_attempts:
                     self._on_event(f"Max reconnect attempts ({self._cfg.max_reconnect_attempts}) reached. Stopped.")
