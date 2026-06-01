@@ -1,7 +1,21 @@
 "use client";
 
 import { Suspense, useState } from "react";
-import { Copy, CreditCard, Download, Eye, EyeOff, LogOut } from "lucide-react";
+import {
+  Activity,
+  ArrowRight,
+  CheckCircle2,
+  Copy,
+  CreditCard,
+  Download,
+  Eye,
+  EyeOff,
+  Key,
+  LogOut,
+  RefreshCw,
+  Shield,
+  Zap,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import type { SubscriptionRow } from "@/lib/subscription-model";
@@ -11,79 +25,58 @@ import {
   isActiveSubscription,
   isPastDueWithGrace,
 } from "@/lib/subscription-model";
+import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
-import { Alert } from "@/components/ui/Alert";
 
 import { DashboardUrlToasts } from "./DashboardUrlToasts";
 
-function formatDateForUi(iso: string | null) {
+function formatDate(iso: string | null) {
   if (!iso) return "—";
-  const parsed = new Date(iso);
-  if (!Number.isFinite(parsed.getTime())) return iso;
-  return parsed.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
+  const d = new Date(iso);
+  if (!Number.isFinite(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { year: "numeric", month: "short", day: "2-digit" });
 }
 
-function maskLicenseKey(value: string) {
+function maskKey(value: string) {
   return "•".repeat(Math.min(28, Math.max(12, value.length)));
 }
 
 function subscriptionUi(sub: SubscriptionRow | null, planTier: "free" | "pro") {
-  if (!sub) {
-    return { badgeLabel: "Free", badgeActive: false, detail: "No paid plan yet." };
-  }
-
+  if (!sub) return { badgeLabel: "Free", badgeActive: false, detail: "No paid plan yet." };
   if (sub.status === "canceled") {
     return {
       badgeLabel: "Canceled",
       badgeActive: false,
       detail: sub.current_period_end
-        ? `Subscription canceled in Stripe. Pro access is off. Last billing period reference: ${formatDateForUi(sub.current_period_end)}.`
-        : "Subscription canceled in Stripe. Pro access is off.",
+        ? `Canceled. Pro access is off. Last period: ${formatDate(sub.current_period_end)}.`
+        : "Canceled. Pro access is off.",
     };
   }
-
   if (sub.status === "past_due") {
     const grace = isPastDueWithGrace(sub);
     return {
       badgeLabel: "Past due",
       badgeActive: grace,
       detail: grace
-        ? "Update payment in Manage billing. Limited access may remain until the period end."
+        ? "Update payment in Manage billing. Limited access may remain until period end."
         : "Subscription is not active.",
     };
   }
-
   if (isActiveSubscription(sub)) {
     if (sub.status === "trialing") {
-      return {
-        badgeLabel: "Trial",
-        badgeActive: true,
-        detail: planTier === "pro" ? "Pro · trial access is active." : "Trial access is active.",
-      };
+      return { badgeLabel: "Trial", badgeActive: true, detail: planTier === "pro" ? "Pro · trial access is active." : "Trial active." };
     }
-    return {
-      badgeLabel: "Active",
-      badgeActive: true,
-      detail: planTier === "pro" ? "Pro plan · subscription is active." : "Paid subscription is active.",
-    };
+    return { badgeLabel: "Active", badgeActive: true, detail: planTier === "pro" ? "Pro plan · active." : "Paid subscription active." };
   }
-
-  if (sub.status === "unpaid") {
-    return { badgeLabel: "Inactive", badgeActive: false, detail: "Subscription is not active." };
-  }
-  return {
-    badgeLabel: sub.status.replace(/_/g, " "),
-    badgeActive: false,
-    detail: "Subscription is not active.",
-  };
+  if (sub.status === "unpaid") return { badgeLabel: "Inactive", badgeActive: false, detail: "Subscription is not active." };
+  return { badgeLabel: sub.status.replace(/_/g, " "), badgeActive: false, detail: "Subscription is not active." };
 }
 
 function LicenseKeyManager({ licenseKey }: { licenseKey: string }) {
   const [revealed, setRevealed] = useState(false);
-
-  const displayed = revealed ? licenseKey : maskLicenseKey(licenseKey);
+  const displayed = revealed ? licenseKey : maskKey(licenseKey);
 
   async function onCopy() {
     try {
@@ -95,52 +88,58 @@ function LicenseKeyManager({ licenseKey }: { licenseKey: string }) {
   }
 
   return (
-    <Card variant="solid" className="p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-semibold text-slate-50">License Key Manager</h2>
-          <p className="mt-1 text-sm text-slate-400">
-            Paste this key into your Desktop App to authenticate with our realtime signal channel.
-          </p>
+    <div className="relative overflow-hidden rounded-3xl border border-emerald-500/25 bg-[#07090d] p-6 shadow-[0_0_40px_-16px_rgba(0,230,118,0.22)]">
+      <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-emerald-500/8 blur-3xl" />
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-500/35 to-transparent" />
+
+      <div className="relative">
+        {/* Header */}
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div className="flex items-start gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-emerald-500/30 bg-emerald-500/10">
+              <Key className="h-4 w-4 text-emerald-400" />
+            </div>
+            <div>
+              <p className="font-semibold text-slate-50">License Key</p>
+              <p className="mt-0.5 text-xs text-slate-500">Paste into the Desktop App to activate live signals</p>
+            </div>
+          </div>
+          <form action="/api/license/regenerate" method="post">
+            <Button
+              type="submit"
+              variant="secondary"
+              className="h-9 gap-1.5 border-rose-500/25 text-xs text-rose-300/90 hover:border-rose-500/40 hover:bg-rose-500/10"
+            >
+              <RefreshCw className="h-3 w-3" />
+              Regenerate
+            </Button>
+          </form>
         </div>
 
-        <form action="/api/license/regenerate" method="post">
-          <Button
-            type="submit"
-            variant="secondary"
-            className="h-10 gap-2 border-rose-500/30 text-rose-200 hover:bg-rose-500/10"
-          >
-            Regenerate Key
-          </Button>
-        </form>
-      </div>
-
-      <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex min-w-0 items-center gap-2 rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
-          <span className="truncate font-mono text-sm text-slate-100">{displayed}</span>
-          <button
-            type="button"
-            className="inline-flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-slate-200 hover:bg-white/10"
-            onClick={() => setRevealed((v) => !v)}
-            aria-label={revealed ? "Hide license key" : "Reveal license key"}
-          >
-            {revealed ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-          </button>
-        </div>
-
-        <div className="flex gap-3">
-          <Button type="button" variant="secondary" className="h-11 gap-2" onClick={onCopy}>
+        {/* Key display */}
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-white/[0.08] bg-black/40 px-4 py-3">
+            <span className="truncate font-mono text-sm text-slate-100">{displayed}</span>
+            <button
+              type="button"
+              className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg border border-white/[0.08] bg-white/[0.04] text-slate-400 transition-all hover:bg-white/[0.08] hover:text-slate-200"
+              onClick={() => setRevealed((v) => !v)}
+              aria-label={revealed ? "Hide key" : "Reveal key"}
+            >
+              {revealed ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </button>
+          </div>
+          <Button type="button" variant="secondary" className="h-11 shrink-0 gap-2" onClick={onCopy}>
             <Copy className="h-4 w-4" />
             Copy
           </Button>
         </div>
-      </div>
 
-      <p className="mt-4 text-xs text-slate-500">
-        This license key is separate from your Trading212 API key. Your Trading212 API key should only ever be entered
-        in the Desktop App.
-      </p>
-    </Card>
+        <p className="mt-4 text-xs text-slate-700">
+          Separate from your Trading212 API key. Your Trading212 API key should only be entered in the Desktop App.
+        </p>
+      </div>
+    </div>
   );
 }
 
@@ -166,15 +165,12 @@ export function DashboardShell({
   const proFeatures = canUseProFeatures(subscription);
   const ui = subscriptionUi(subscription, planTier);
   const canUsePortal = Boolean(stripePortalEnabled && subscription?.stripe_customer_id);
-  const canCancelSubscription = Boolean(
-    canUsePortal && canCancelStripeSubscription(subscription),
-  );
+  const canCancelSubscription = Boolean(canUsePortal && canCancelStripeSubscription(subscription));
   const showUpgrade = !proFeatures && stripeCheckoutEnabled;
   const showBillingBlock = Boolean(
-    showUpgrade ||
-      canUsePortal ||
-      (!stripeCheckoutEnabled && !proFeatures) ||
-      (proFeatures && stripePortalEnabled && !subscription?.stripe_customer_id),
+    showUpgrade || canUsePortal ||
+    (!stripeCheckoutEnabled && !proFeatures) ||
+    (proFeatures && stripePortalEnabled && !subscription?.stripe_customer_id),
   );
 
   return (
@@ -183,251 +179,244 @@ export function DashboardShell({
         <DashboardUrlToasts />
       </Suspense>
 
-      {schemaSetupMessage ? (
+      {schemaSetupMessage && (
         <Alert className="mb-6 border-amber-500/30 bg-amber-500/10 text-amber-100">
           <span className="font-semibold">Setup required:</span> {schemaSetupMessage}
         </Alert>
-      ) : null}
+      )}
 
-      <div className="mb-7 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+      {/* ── Top header ── */}
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="text-2xl font-semibold tracking-tight text-slate-50">
-              Welcome back, <span className="text-emerald-400">{userEmail ?? "you@example.com"}</span>
+              Welcome back,{" "}
+              <span className="text-gradient-brand">{userEmail ?? "you@example.com"}</span>
             </h1>
             {planTier === "pro" ? (
               <Badge className="border-emerald-500/45 bg-emerald-500/15 text-emerald-200">Pro</Badge>
             ) : (
-              <Badge className="border-slate-600/80 bg-white/5 text-slate-300">Free</Badge>
+              <Badge className="border-slate-700/80 bg-white/[0.04] text-slate-400">Free</Badge>
             )}
           </div>
-          <p className="mt-1 text-sm text-slate-400">
+          <p className="mt-1 text-sm text-slate-500">
             Manage your subscription and license key. Trading execution runs locally in the Desktop App.
           </p>
         </div>
-
         <form action="/logout" method="post">
-          <Button type="submit" variant="secondary" className="h-11 gap-2">
-            <LogOut className="h-4 w-4" />
-            Log out
+          <Button type="submit" variant="secondary" className="h-10 gap-2">
+            <LogOut className="h-4 w-4" /> Log out
           </Button>
         </form>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      {/* ── Status chips ── */}
+      <div className="mb-8 flex flex-wrap gap-2.5">
+        <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
+          <Activity className="h-3.5 w-3.5 text-slate-500" />
+          <span className="text-xs text-slate-500">Status:</span>
+          <span className={`text-xs font-semibold ${ui.badgeActive ? "text-emerald-400" : "text-slate-400"}`}>
+            {ui.badgeLabel}
+          </span>
+          {ui.badgeActive && (
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            </span>
+          )}
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
+          <Shield className="h-3.5 w-3.5 text-slate-500" />
+          <span className="text-xs text-slate-500">Plan:</span>
+          <span className="text-xs font-semibold text-slate-300">
+            {planTier === "pro" ? "Pro Automation" : "Paper / Free"}
+          </span>
+        </div>
+        {subscription?.current_period_end && planTier === "pro" && (
+          <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
+            <span className="text-xs text-slate-500">Renews:</span>
+            <span className="font-mono text-xs text-slate-400">{formatDate(subscription.current_period_end)}</span>
+          </div>
+        )}
+      </div>
+
+      {/* ── Main grid ── */}
+      <div className="grid gap-5 lg:grid-cols-2">
+
+        {/* Subscription status */}
         <Card variant="solid" className="p-6">
-          <div className="flex items-start justify-between gap-4">
+          <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-base font-semibold text-slate-50">Subscription Status</h2>
-              <p className="mt-1 text-sm text-slate-400">{ui.detail}</p>
+              <p className="font-semibold text-slate-50">Subscription Status</p>
+              <p className="mt-1 text-sm text-slate-500">{ui.detail}</p>
             </div>
-            <Badge
-              className={
-                ui.badgeActive
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                  : "border-white/10 bg-white/5 text-slate-300"
-              }
-            >
+            <Badge className={ui.badgeActive
+              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+              : "border-white/[0.08] bg-white/[0.04] text-slate-400"}>
               {ui.badgeLabel}
             </Badge>
           </div>
 
-          <div className="mt-5 grid gap-3 sm:grid-cols-2">
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500">Plan</div>
-              <div className="mt-1 text-sm font-medium text-slate-100">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div className="rounded-2xl border border-white/[0.07] bg-black/20 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Plan</p>
+              <p className="mt-1.5 text-sm font-semibold text-slate-200">
                 {planTier === "pro" ? "Pro Automation" : "Paper / Free"}
-              </div>
+              </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-black/20 px-4 py-3">
-              <div className="text-xs uppercase tracking-wide text-slate-500">Current period end</div>
-              <div className="mt-1 text-sm text-slate-100">
-                {formatDateForUi(subscription?.current_period_end ?? null)}
-              </div>
-              {subscription?.status === "canceled" && subscription?.current_period_end ? (
-                <p className="mt-2 text-xs text-slate-500">
-                  From Stripe billing (not used for access while subscription is canceled).
-                </p>
-              ) : null}
+            <div className="rounded-2xl border border-white/[0.07] bg-black/20 px-4 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Period end</p>
+              <p className="mt-1.5 font-mono text-sm text-slate-200">
+                {formatDate(subscription?.current_period_end ?? null)}
+              </p>
             </div>
           </div>
 
-          {showBillingBlock ? (
-            <div className="mt-6 border-t border-white/10 pt-5">
-              <div className="mb-3 flex items-center gap-2 text-slate-300">
-                <CreditCard className="h-4 w-4 text-emerald-400" />
-                <span className="text-sm font-medium text-slate-200">Billing &amp; plan</span>
+          {showBillingBlock && (
+            <div className="mt-5 border-t border-white/[0.07] pt-5">
+              <div className="mb-3 flex items-center gap-2">
+                <CreditCard className="h-4 w-4 text-emerald-400/70" />
+                <span className="text-sm font-medium text-slate-300">Billing &amp; plan</span>
               </div>
-              <p className="mb-4 text-xs text-slate-500">
-                Payments are processed by Stripe. In this portal, <span className="text-slate-400">canceled</span> means
-                Pro features and license keys are turned off immediately; dates above are for your records.
+              <p className="mb-4 text-xs leading-relaxed text-slate-600">
+                Payments via Stripe. Cancellation immediately turns off Pro features and license keys.
               </p>
-
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                {showUpgrade ? (
+                {showUpgrade && (
                   <form action="/api/stripe/checkout" method="post">
-                    <Button type="submit" className="h-11 w-full sm:w-auto">
-                      Upgrade to Pro
+                    <Button type="submit" className="h-10 gap-2 w-full sm:w-auto">
+                      Upgrade to Pro <ArrowRight className="h-4 w-4" />
                     </Button>
                   </form>
-                ) : null}
-
-                {!stripeCheckoutEnabled && !proFeatures ? (
-                  <p className="text-sm text-amber-200/90">
-                    Billing is not configured on this environment (missing Stripe keys or price).
-                  </p>
-                ) : null}
-
-                {canUsePortal ? (
+                )}
+                {!stripeCheckoutEnabled && !proFeatures && (
+                  <p className="text-sm text-amber-300/80">Billing not configured (missing Stripe keys).</p>
+                )}
+                {canUsePortal && (
                   <form action="/api/stripe/portal" method="post">
-                    <Button type="submit" variant="secondary" className="h-11 w-full sm:w-auto">
-                      Manage billing
-                    </Button>
+                    <Button type="submit" variant="secondary" className="h-10 w-full sm:w-auto">Manage billing</Button>
                   </form>
-                ) : proFeatures && stripePortalEnabled && !subscription?.stripe_customer_id ? (
-                  <p className="text-sm text-slate-400">
-                    Billing portal will be available after checkout creates your customer.
-                  </p>
-                ) : null}
-
-                {canCancelSubscription ? (
+                )}
+                {proFeatures && stripePortalEnabled && !subscription?.stripe_customer_id && (
+                  <p className="text-sm text-slate-500">Billing portal available after checkout creates your customer.</p>
+                )}
+                {canCancelSubscription && (
                   <form action="/api/stripe/portal/cancel" method="post">
-                    <Button
-                      type="submit"
-                      variant="secondary"
-                      className="h-11 w-full border-rose-500/35 text-rose-100 hover:bg-rose-500/10 sm:w-auto"
-                    >
+                    <Button type="submit" variant="secondary" className="h-10 w-full border-rose-500/30 text-rose-300/90 hover:bg-rose-500/10 sm:w-auto">
                       Cancel subscription
                     </Button>
                   </form>
-                ) : null}
+                )}
               </div>
             </div>
-          ) : null}
+          )}
         </Card>
 
+        {/* Desktop executor */}
         <Card variant="accent" className="relative overflow-hidden p-6">
-          <div className="pointer-events-none absolute -right-28 -top-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
-          <div className="pointer-events-none absolute -left-28 -bottom-24 h-72 w-72 rounded-full bg-emerald-500/10 blur-3xl" />
-
+          <div className="pointer-events-none absolute -right-20 -top-20 h-56 w-56 rounded-full bg-emerald-500/12 blur-3xl" />
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-emerald-400/30 to-transparent" />
           <div className="relative">
-            <h2 className="text-base font-semibold text-slate-50">Desktop Execution Engine</h2>
-            <p className="mt-1 text-sm text-slate-300/90">
-              Download the Windows client to connect your Trading212 account securely. Keys are encrypted locally.
+            <div className="mb-1 flex items-center gap-2">
+              <Zap className="h-4 w-4 text-emerald-400" strokeWidth={1.75} />
+              <p className="font-semibold text-slate-50">Desktop Execution Engine</p>
+            </div>
+            <p className="mb-6 mt-1 text-sm text-slate-400">
+              Download the Windows client to connect your Trading212 account. API keys are encrypted and stored locally.
             </p>
-
-            <div className="mt-6 space-y-3">
-              <ButtonLink href="/download" className="h-11 w-full gap-2 bg-emerald-500 text-slate-950 hover:bg-[#00E676]">
-                <Download className="h-4 w-4" />
-                Download App (.exe)
+            <div className="space-y-3">
+              <ButtonLink href="/download" className="h-11 w-full gap-2">
+                <Download className="h-4 w-4" /> Download App (.exe)
               </ButtonLink>
-              {!proFeatures ? (
-                <p className="text-sm text-slate-400">
-                  Free plan: paper trade on your Trading212 practice account. Pro unlocks real-money automation.
-                </p>
-              ) : null}
+              {!proFeatures && (
+                <p className="text-xs text-slate-500">Free: paper trade on your practice account. Pro unlocks real-money automation.</p>
+              )}
             </div>
           </div>
         </Card>
 
+        {/* License key area */}
         {proFeatures && licenseKey ? (
           <LicenseKeyManager licenseKey={licenseKey} />
         ) : proFeatures && !licenseKey ? (
           <Card variant="solid" className="p-6">
-            <h2 className="text-base font-semibold text-slate-50">License Key</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Generate a key for the desktop app. You can regenerate it anytime while your subscription is active.
-            </p>
-            <form action="/api/license/regenerate" method="post" className="mt-5">
-              <Button type="submit" className="h-11">
-                Generate license key
-              </Button>
+            <div className="mb-1 flex items-center gap-2">
+              <Key className="h-4 w-4 text-emerald-400/70" strokeWidth={1.75} />
+              <p className="font-semibold text-slate-50">License Key</p>
+            </div>
+            <p className="mb-5 mt-1 text-sm text-slate-500">Generate a key for the desktop app. Regenerate at any time while subscribed.</p>
+            <form action="/api/license/regenerate" method="post">
+              <Button type="submit" className="h-11">Generate license key</Button>
             </form>
           </Card>
         ) : !proFeatures && licenseKey ? (
           <Card variant="solid" className="p-6">
-            <h2 className="text-base font-semibold text-slate-50">License Key</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Your subscription is not eligible for Pro. Any previous key has been invalidated. Subscribe again to
-              receive a new license.
-            </p>
+            <p className="font-semibold text-slate-50">License Key</p>
+            <p className="mt-1 mb-5 text-sm text-slate-500">Subscription not eligible for Pro. Previous key invalidated. Resubscribe to get a new one.</p>
             {showUpgrade ? (
-              <form action="/api/stripe/checkout" method="post" className="mt-5">
-                <Button type="submit" variant="secondary" className="h-11">
-                  Upgrade to Pro
-                </Button>
+              <form action="/api/stripe/checkout" method="post">
+                <Button type="submit" variant="secondary" className="h-11">Upgrade to Pro</Button>
               </form>
             ) : (
-              <ButtonLink href="/pricing" variant="secondary" className="mt-5 inline-flex h-11 items-center">
-                View pricing
-              </ButtonLink>
+              <ButtonLink href="/pricing" variant="secondary" className="inline-flex h-11 items-center">View pricing</ButtonLink>
             )}
           </Card>
         ) : (
           <Card variant="solid" className="p-6">
-            <h2 className="text-base font-semibold text-slate-50">Desktop app</h2>
-            <p className="mt-1 text-sm text-slate-400">
-              Download the desktop app and paper trade on your Trading212 practice account — no license
-              key or subscription required. Upgrade to Pro when you want real-money automation.
-            </p>
-            <ButtonLink href="/download" variant="secondary" className="mt-5 inline-flex h-11 items-center">
-              Download desktop app
-            </ButtonLink>
-            {showUpgrade ? (
+            <p className="font-semibold text-slate-50">Desktop App</p>
+            <p className="mt-1 mb-5 text-sm text-slate-500">Download and paper trade on your Trading212 practice account — no license key needed. Upgrade to Pro for real-money automation.</p>
+            <ButtonLink href="/download" variant="secondary" className="inline-flex h-11 items-center">Download desktop app</ButtonLink>
+            {showUpgrade && (
               <form action="/api/stripe/checkout" method="post" className="mt-3">
-                <Button type="submit" variant="secondary" className="h-11">
-                  Upgrade to Pro
-                </Button>
+                <Button type="submit" variant="secondary" className="h-11">Upgrade to Pro</Button>
               </form>
-            ) : null}
+            )}
           </Card>
         )}
 
+        {/* Resources */}
         <Card variant="solid" className="p-6">
-          <h2 className="text-base font-semibold text-slate-50">Resources</h2>
-          <p className="mt-1 text-sm text-slate-400">Pricing and how the portal fits with the desktop executor.</p>
-          <div className="mt-5 flex flex-col gap-3 sm:flex-row">
-            <ButtonLink href="/pricing" variant="secondary" className="h-11 w-full sm:w-auto">
-              View pricing
-            </ButtonLink>
-            <ButtonLink href="/product" variant="ghost" className="h-11 w-full sm:w-auto">
-              Architecture
-            </ButtonLink>
+          <p className="font-semibold text-slate-50">Resources</p>
+          <p className="mt-1 mb-5 text-sm text-slate-500">Learn how the portal and desktop executor fit together.</p>
+          <div className="flex flex-col gap-3 sm:flex-row">
+            <ButtonLink href="/pricing" variant="secondary" className="h-11 w-full sm:w-auto">View pricing</ButtonLink>
+            <ButtonLink href="/product" variant="ghost" className="h-11 w-full sm:w-auto">Architecture</ButtonLink>
           </div>
         </Card>
 
-        <Card variant="solid" className="p-6 lg:col-span-2">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-            <div>
-              <h2 className="text-base font-semibold text-slate-50">Quick Setup Guide</h2>
-              <p className="mt-1 text-sm text-slate-400">
-                From signup to local execution: portal for account and billing, desktop for broker keys.
-              </p>
-            </div>
+        {/* Quick setup */}
+        <div className="relative overflow-hidden rounded-3xl border border-white/[0.07] bg-[#07070b] p-6 lg:col-span-2">
+          <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
+
+          <div className="mb-6">
+            <p className="font-semibold text-slate-50">Quick Setup Guide</p>
+            <p className="mt-1 text-sm text-slate-500">From signup to local execution in under 10 minutes.</p>
           </div>
 
-          <ol className="mt-5 space-y-3 text-sm text-slate-200">
-            <li>
-              <span className="font-medium text-slate-50">1.</span> Download and install the Desktop Engine.
-            </li>
-            <li>
-              <span className="font-medium text-slate-50">2.</span> Generate an API Key inside your Trading212 settings.
-            </li>
-            <li>
-              <span className="font-medium text-slate-50">3.</span> Open the Desktop App, paste your Trading212 API Key
-              (kept local) AND your License Key (from this dashboard).
-            </li>
-            <li>
-              <span className="font-medium text-slate-50">4.</span> Keep the app running to receive live algorithmic
-              signals.
-            </li>
+          <ol className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {[
+              { n: "1", text: "Download and install the Desktop Engine." },
+              { n: "2", text: "Generate an API Key inside your Trading212 account settings." },
+              { n: "3", text: "Open the Desktop App — paste your Trading212 API Key (local only) and your License Key (from this dashboard)." },
+              { n: "4", text: "Keep the app running to receive live algorithmic signals and auto-execute trades." },
+            ].map((step) => (
+              <div key={step.n} className="rounded-2xl border border-white/[0.06] bg-white/[0.02] p-4">
+                <div className="mb-3 flex h-7 w-7 items-center justify-center rounded-full border border-emerald-500/25 bg-emerald-500/10">
+                  <span className="font-mono text-xs font-bold text-emerald-400">{step.n}</span>
+                </div>
+                <p className="text-sm leading-relaxed text-slate-300">{step.text}</p>
+              </div>
+            ))}
           </ol>
 
-          <Alert className="mt-6">
-            <span className="font-semibold">Security Notice:</span> We will never ask for your Trading212 API key on this
-            website. Your funds remain 100% in your control.
-          </Alert>
-        </Card>
+          <div className="mt-5 flex items-start gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.05] p-4">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-400/70" />
+            <p className="text-sm text-slate-400">
+              <span className="font-semibold text-emerald-300">Security notice: </span>
+              We will never ask for your Trading212 API key on this website. Your funds remain 100% in your control.
+            </p>
+          </div>
+        </div>
       </div>
     </main>
   );
