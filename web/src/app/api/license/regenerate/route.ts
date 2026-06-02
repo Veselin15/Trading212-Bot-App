@@ -27,7 +27,7 @@ export async function POST() {
   const [{ data: subRow }, { data: profRow }] = await Promise.all([
     supabase
       .from("subscriptions")
-      .select("status,current_period_end,stripe_customer_id,stripe_subscription_id")
+      .select("status,current_period_end,stripe_customer_id,stripe_subscription_id,plan")
       .eq("user_id", userRes.user.id)
       .order("created_at", { ascending: false })
       .limit(1)

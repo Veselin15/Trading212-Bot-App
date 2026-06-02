@@ -1,28 +1,27 @@
-import { createSupabaseServerClient } from "@/lib/supabase/server";
-import { getMySubscription, canUseProFeatures } from "@/lib/subscription";
+import { getMyProfile } from "@/lib/profile";
+import { getMySubscription } from "@/lib/subscription";
+import { computeEffectiveTier, type EffectiveTier } from "@/lib/tier";
 import { isStripeCheckoutConfigured } from "@/lib/stripe-env";
 
-import { PricingPageClient, type ProTierCta } from "./PricingPageClient";
+import { PricingPageClient, type PricingCta } from "./PricingPageClient";
 
 export default async function PricingPage() {
-  const supabase = await createSupabaseServerClient();
-  const { data } = await supabase.auth.getUser();
-
-  let proTier: ProTierCta = {
+  let cta: PricingCta = {
     loggedIn: false,
     checkoutEnabled: false,
-    subscriptionActive: false,
+    currentTier: null,
   };
 
-  if (data.user) {
-    const { subscription } = await getMySubscription();
-    const subscriptionActive = canUseProFeatures(subscription);
-    proTier = {
+  const { user, subscription } = await getMySubscription();
+  if (user) {
+    const profile = await getMyProfile();
+    const tier: EffectiveTier = computeEffectiveTier(subscription, profile);
+    cta = {
       loggedIn: true,
-      checkoutEnabled: isStripeCheckoutConfigured() && !subscriptionActive,
-      subscriptionActive,
+      checkoutEnabled: isStripeCheckoutConfigured(),
+      currentTier: tier,
     };
   }
 
-  return <PricingPageClient proTier={proTier} />;
+  return <PricingPageClient cta={cta} />;
 }

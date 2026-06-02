@@ -1,13 +1,32 @@
 import { NextResponse } from "next/server";
 
-import { requiredEnv } from "@/lib/env";
+import type { PaidPlan } from "@/lib/subscription-model";
+import { priceIdForPlan } from "@/lib/plans";
 import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
+async function resolvePlan(request: Request): Promise<PaidPlan> {
+  // Plan comes from the submitted form (`plan=starter|pro`); defaults to Pro.
+  try {
+    const form = await request.clone().formData();
+    const raw = String(form.get("plan") ?? "").toLowerCase();
+    if (raw === "starter") return "starter";
+  } catch {
+    // No form body (e.g. legacy callers) — fall through to Pro.
+  }
+  return "pro";
+}
+
 export async function POST(request: Request) {
-  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_PRICE_ID) {
+  if (!process.env.STRIPE_SECRET_KEY) {
     return NextResponse.json({ error: "Stripe not configured" }, { status: 503 });
+  }
+
+  const plan = await resolvePlan(request);
+  const priceId = priceIdForPlan(plan);
+  if (!priceId) {
+    return NextResponse.json({ error: `Stripe price for ${plan} plan not configured` }, { status: 503 });
   }
 
   const supabase = await createSupabaseServerClient();
@@ -61,8 +80,8 @@ export async function POST(request: Request) {
     mode: "subscription",
     customer: customerId,
     client_reference_id: userRes.user.id,
-    metadata: { supabase_user_id: userRes.user.id },
-    line_items: [{ price: requiredEnv("STRIPE_PRICE_ID"), quantity: 1 }],
+    metadata: { supabase_user_id: userRes.user.id, plan },
+    line_items: [{ price: priceId, quantity: 1 }],
     allow_promotion_codes: true,
     success_url: `${siteUrl}/dashboard?checkout=success`,
     cancel_url: `${siteUrl}/dashboard?checkout=cancel`,

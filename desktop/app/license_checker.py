@@ -10,12 +10,13 @@ from .ws_client import _http_base
 
 
 # Possible outcomes from the validation endpoint.
-#   pro     – paid subscription; live trading unlocked
+#   pro     – Pro subscription; live trading + full signal feed
+#   starter – Starter subscription; live trading + core signals (capped positions)
 #   trial   – inside the 14-day free trial; paper trading only
 #   expired – trial ended / subscription lapsed; locked until upgrade
 #   free    – legacy value (treated like a locked/no-access state)
 #   invalid – key not recognized / malformed
-TierType = Literal["pro", "trial", "expired", "free", "invalid"]
+TierType = Literal["pro", "starter", "trial", "expired", "free", "invalid"]
 
 
 @dataclass

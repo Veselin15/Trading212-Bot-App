@@ -29,15 +29,18 @@ async def resolve_license_tier(
     Resolve the effective subscription tier for a portal license key.
 
     Returns ``(tier, license_row, message)`` where *tier* is one of:
-      ``pro``     – active paid subscription; live trading unlocked.
-      ``trial``   – inside the 14-day free trial; paper trading + signals only.
+      ``pro``     – active Pro subscription; live trading + full signal feed.
+      ``starter`` – active Starter subscription; live trading + core signals only.
+      ``trial``   – inside the 14-day free trial; paper trading + full feed.
       ``expired`` – trial ended (or subscription lapsed) and no active plan.
       ``invalid`` – key not found / revoked / malformed.
 
     Effective tier mirrors ``public.effective_tier`` in SQL:
-        active subscription           -> pro
-        else trial_ends_at in future  -> trial
-        else                          -> expired
+        active subscription, plan=pro      -> pro
+        active subscription, plan=starter  -> starter
+        active subscription, plan=null     -> pro      (legacy single-price)
+        else trial_ends_at in future       -> trial
+        else                               -> expired
     """
     now = now or datetime.now(tz=UTC)
 
@@ -62,17 +65,30 @@ async def resolve_license_tier(
     if not user_id:
         return "invalid", None, "License key has no associated account."
 
-    # 1) Active paid subscription -> PRO.
+    # 1) Active paid subscription -> PRO or STARTER (by plan).
     sub_rows = await sb.get(
         client,
-        "subscriptions?select=status,current_period_end"
+        "subscriptions?select=status,current_period_end,plan"
         f"&user_id=eq.{user_id}&order=created_at.desc&limit=1",
     )
     sub = sub_rows[0] if sub_rows else None
     if sub and str(sub.get("status") or "") == "active":
         cpe = _parse_ts(sub.get("current_period_end"))
         if cpe is None or cpe > now:
-            return "pro", lic, "Pro subscription validated. Live trading unlocked."
+            plan = str(sub.get("plan") or "").strip().lower()
+            if plan == "starter":
+                return (
+                    "starter",
+                    lic,
+                    "Starter subscription validated. Live trading on core signals "
+                    "(up to 3 open positions).",
+                )
+            return (
+                "pro",
+                lic,
+                "Pro subscription validated. Live trading on the full signal feed "
+                "(up to 10 open positions).",
+            )
 
     # 2) Unexpired trial -> TRIAL.
     prof_rows = await sb.get(

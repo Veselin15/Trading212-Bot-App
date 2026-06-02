@@ -7,6 +7,8 @@ from datetime import UTC, datetime
 
 from fastapi import WebSocket
 
+from app.services.tiers import signal_level_for_tier
+
 
 @dataclass
 class Connection:
@@ -16,6 +18,11 @@ class Connection:
     ip: str
     websocket: WebSocket
     last_pong_at: datetime
+
+    @property
+    def signal_level(self) -> int:
+        """Highest signal level this connection is entitled to receive."""
+        return signal_level_for_tier(self.tier)
 
 
 class WsManager:
@@ -43,11 +50,19 @@ class WsManager:
             if conn:
                 conn.last_pong_at = datetime.now(tz=UTC)
 
-    async def broadcast(self, message: dict) -> int:
+    async def broadcast(self, message: dict, *, min_signal_level: int = 0) -> int:
+        """Send ``message`` to connections whose ``signal_level`` >= ``min_signal_level``.
+
+        ``min_signal_level=0`` (the default) reaches everyone — used for snapshots and
+        control frames. Tier-gated signals pass a higher level so that lower tiers
+        (e.g. Starter) never receive Pro-only signals.
+        """
         async with self._lock:
             conns = list(self._connections.values())
         sent = 0
         for conn in conns:
+            if min_signal_level and conn.signal_level < min_signal_level:
+                continue
             try:
                 await conn.websocket.send_json(message)
                 sent += 1

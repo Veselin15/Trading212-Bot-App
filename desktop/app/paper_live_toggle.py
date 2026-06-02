@@ -62,12 +62,12 @@ class PaperLiveToggle(QWidget):
         )
         self._paper_btn.clicked.connect(self._on_paper_clicked)  # type: ignore[arg-type]
 
-        self._live_btn = QPushButton("Real money (Pro)")
+        self._live_btn = QPushButton("Real money")
         self._live_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._live_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
         self._live_btn.setMinimumHeight(28)
         self._live_btn.setToolTip(
-            "Live mode — the bot places real orders with your actual money. Requires a Pro license."
+            "Live mode — the bot places real orders with your actual money. Requires a Starter or Pro license."
         )
         self._live_btn.clicked.connect(self._on_live_clicked)  # type: ignore[arg-type]
 

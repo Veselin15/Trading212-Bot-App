@@ -1,6 +1,9 @@
-/** Server-only: whether Checkout can run (env present). */
+/** Server-only: whether Checkout can run for at least one plan (env present). */
 export function isStripeCheckoutConfigured(): boolean {
-  return Boolean(process.env.STRIPE_SECRET_KEY && process.env.STRIPE_PRICE_ID);
+  const hasPrice = Boolean(
+    process.env.STRIPE_PRICE_ID_PRO || process.env.STRIPE_PRICE_ID || process.env.STRIPE_PRICE_ID_STARTER,
+  );
+  return Boolean(process.env.STRIPE_SECRET_KEY && hasPrice);
 }
 
 /** Server-only: Billing Portal session can be created. */

@@ -73,6 +73,11 @@ from .ws_client import ExecWsClient, WsConfig, _smoke_health_url
 
 LICENSE_RECHECK_INTERVAL_MS = 10 * 60 * 1000
 
+# Tiers that unlock real-money (live) trading. Mirrors backend app/services/tiers.py.
+_LIVE_TIERS = frozenset({"starter", "pro"})
+# Max concurrent open positions the executor will hold, per tier.
+_TIER_MAX_POSITIONS = {"trial": 2, "starter": 3, "pro": 10}
+
 
 class MainWindow(QMainWindow):
     def __init__(self, *, base_dir: Path | None = None) -> None:
@@ -167,7 +172,7 @@ class MainWindow(QMainWindow):
         self.trading_mode = PaperLiveToggle()
         self.trading_mode.setToolTip(
             "Demo mode: place orders on your Trading212 practice account.\n"
-            "Real trades: place orders on your real-money account (Pro subscription required)."
+            "Real trades: place orders on your real-money account (Starter or Pro subscription required)."
         )
         self.trading_mode.set_pro_unlocked(False)
         self.trading_mode.live_enable_requested.connect(self._on_live_enable_requested)  # type: ignore[arg-type]
@@ -605,8 +610,16 @@ class MainWindow(QMainWindow):
 
     # ── license tier enforcement ──────────────────────────────────────────────
 
+    def _live_allowed(self) -> bool:
+        """Whether the current tier may place real-money (live) orders."""
+        return self._license_tier in _LIVE_TIERS
+
+    def _max_open_positions(self) -> int:
+        """Concurrent open-position cap for the current tier (0 if locked out)."""
+        return _TIER_MAX_POSITIONS.get(self._license_tier, 0)
+
     def _update_tier_ui(self, tier: str) -> None:
-        """Apply UI state for the validated tier: pro / trial / expired / free / invalid."""
+        """Apply UI state for the validated tier: pro / starter / trial / expired / free / invalid."""
         self._license_tier = tier
         if tier == "pro":
             self.trading_mode.set_pro_unlocked(True)
@@ -614,8 +627,22 @@ class MainWindow(QMainWindow):
                 "Demo mode: place orders on your Trading212 practice account.\n"
                 "Real trades: place orders using your saved real-money keys (tier re-checked on the server)."
             )
-            self.tier_status_label.setText("Pro license active — real-money trading is unlocked.")
+            self.tier_status_label.setText(
+                "Pro license active — real-money trading unlocked on the full signal feed "
+                f"(up to {_TIER_MAX_POSITIONS['pro']} open positions)."
+            )
             self.tier_status_label.setProperty("tierKind", "pro")
+        elif tier == "starter":
+            self.trading_mode.set_pro_unlocked(True)
+            self.trading_mode.setToolTip(
+                "Demo mode: place orders on your Trading212 practice account.\n"
+                "Real trades: place orders using your saved real-money keys (Starter: core signals)."
+            )
+            self.tier_status_label.setText(
+                "Starter license active — real-money trading on core signals "
+                f"(up to {_TIER_MAX_POSITIONS['starter']} open positions). Upgrade to Pro for the full feed."
+            )
+            self.tier_status_label.setProperty("tierKind", "starter")
         elif tier == "trial":
             self.trading_mode.set_pro_unlocked(False)
             self.trading_mode.setToolTip(
@@ -654,12 +681,12 @@ class MainWindow(QMainWindow):
                 "License key not recognized — double-check it, or copy it again from swifttrade.app."
             )
             self.tier_status_label.setProperty("tierKind", "pending")
-        # Show/hide real-money section based on tier
+        # Show/hide real-money section based on tier (Starter + Pro may trade live)
         if hasattr(self, "_live_key_lock_msg"):
-            is_pro = (tier == "pro")
-            self._live_key_lock_msg.setVisible(not is_pro)
-            self._live_key_fields.setVisible(is_pro)
-            self._live_key_box.setProperty("locked", "" if is_pro else "true")
+            is_live = tier in _LIVE_TIERS
+            self._live_key_lock_msg.setVisible(not is_live)
+            self._live_key_fields.setVisible(is_live)
+            self._live_key_box.setProperty("locked", "" if is_live else "true")
             self._live_key_box.style().unpolish(self._live_key_box)
             self._live_key_box.style().polish(self._live_key_box)
         self.tier_status_label.style().unpolish(self.tier_status_label)
@@ -688,7 +715,7 @@ class MainWindow(QMainWindow):
                         "warn",
                         f"Periodic license check: tier changed from {prev_tier!r} to {result.tier!r}. {result.message}",
                     )
-                elif not result.valid and prev_tier in ("pro", "trial", "free"):
+                elif not result.valid and prev_tier in ("pro", "starter", "trial", "free"):
                     self._append_event(
                         "error",
                         f"Periodic license check failed (was {prev_tier!r}) — {result.message}",
@@ -709,13 +736,14 @@ class MainWindow(QMainWindow):
                 self._append_event("warn", "A license check is already running — please wait.")
                 self._set_sb("")
                 return
-            if result.tier == "pro":
+            if result.tier in ("pro", "starter"):
                 self._append_event("ok", result.message)
                 self._append_event(
                     "info",
                     "Real-money keys: save under Step 2, then use Real trades in the top bar when ready.",
                 )
-                self._set_sb("Pro license validated — real trades unlocked.")
+                plan = "Pro" if result.tier == "pro" else "Starter"
+                self._set_sb(f"{plan} license validated — real trades unlocked.")
             elif result.tier == "trial":
                 self._append_event("ok", result.message)
                 self._set_sb("Free trial active — paper trading only.")
@@ -811,12 +839,12 @@ class MainWindow(QMainWindow):
 
     def _update_broker_keys_hint(self) -> None:
         """Explain how top-bar Paper/Live maps to T212; enable test buttons when idle."""
-        is_pro = self._license_tier == "pro"
+        is_live = self._live_allowed()
         busy = self._t212_test_busy
         self.test_t212_practice_btn.setEnabled(not busy)
-        self.test_t212_live_btn.setEnabled(is_pro and not busy)
-        self.save_live_keys_btn.setEnabled(is_pro)
-        if is_pro and self.trading_mode.is_live():
+        self.test_t212_live_btn.setEnabled(is_live and not busy)
+        self.save_live_keys_btn.setEnabled(is_live)
+        if is_live and self.trading_mode.is_live():
             self._broker_keys_hint.setText("Real trades ON — using live account keys.")
             self._broker_keys_hint.setStyleSheet(
                 f"color: {_DANGER}; font-size: 8.8pt; font-weight: 600; background: transparent; padding: 0; margin: 0;"
@@ -827,8 +855,8 @@ class MainWindow(QMainWindow):
             self._broker_keys_hint.hide()
 
     def _t212_base_url(self) -> str:
-        """Live Trading212 host only when Pro and top bar is Live; otherwise demo."""
-        if self._license_tier == "pro" and self.trading_mode.is_live():
+        """Live Trading212 host only when a live tier and top bar is Live; otherwise demo."""
+        if self._live_allowed() and self.trading_mode.is_live():
             return T212_API_LIVE_BASE
         return T212_API_DEMO_BASE
 
@@ -961,7 +989,7 @@ class MainWindow(QMainWindow):
         checklist = getattr(self, "setup_checklist", None)
         if checklist is None:
             return
-        license_validated = self._license_tier in ("pro", "trial")
+        license_validated = self._license_tier in ("pro", "starter", "trial")
         has_broker_keys = self._has_saved_broker_keys()
         connected = self._server_connected
         checklist.update_state(
@@ -982,7 +1010,7 @@ class MainWindow(QMainWindow):
             step2.set_state("done", expand=False)
             step3.set_state("done", expand=False)
         elif not has_broker_keys:
-            if self.license_key.text().strip() and self._license_tier not in ("pro",):
+            if self.license_key.text().strip() and not self._live_allowed():
                 step1.set_state("active")
             else:
                 step1.set_state("done", expand=False)
@@ -1071,7 +1099,7 @@ class MainWindow(QMainWindow):
                 self.nav_status.set_kind("online_demo")
             return
 
-        license_ok = self._license_tier in ("pro", "trial")
+        license_ok = self._license_tier in ("pro", "starter", "trial")
         has_keys = self._has_saved_broker_keys()
 
         if license_ok and has_keys:
@@ -1206,7 +1234,7 @@ class MainWindow(QMainWindow):
             self._append_event("info", "Paper mode — no license key; demo trading only.")
 
     def _on_ws_tier(self, tier: str) -> None:
-        if tier in ("pro", "trial", "expired", "free"):
+        if tier in ("pro", "starter", "trial", "expired", "free"):
             self._update_tier_ui(tier)
 
     @asyncSlot()
@@ -1263,8 +1291,8 @@ class MainWindow(QMainWindow):
         with a 401 but accepted by live.trading212.com, it is a real-money key.
         Clears the saved key and warns the user so they can get the correct one.
         """
-        if self._license_tier == "pro":
-            return  # Pro users can organise keys however they like
+        if self._live_allowed():
+            return  # Live tiers (Starter/Pro) can organise keys however they like
         try:
             async with T212Client(
                 keys=T212Keys(api_key=api, secret_key=sec),
@@ -1326,12 +1354,12 @@ class MainWindow(QMainWindow):
         )
 
     def on_save_live_keys_clicked(self) -> None:
-        if self._license_tier != "pro":
+        if not self._live_allowed():
             QMessageBox.warning(
                 self,
-                "Pro license required",
-                "Saving real-money API keys requires an active Pro subscription.\n\n"
-                "Upgrade to Pro at swifttrade.io, then return here to add your live Trading212 keys.",
+                "Paid plan required",
+                "Saving real-money API keys requires an active Starter or Pro subscription.\n\n"
+                "Upgrade at swifttrade.app, then return here to add your live Trading212 keys.",
             )
             return
         cur = self._store.load()
@@ -1371,7 +1399,7 @@ class MainWindow(QMainWindow):
                 if (
                     probe_invest_key_on_demo_401
                     and "401" in err_str
-                    and self._license_tier != "pro"
+                    and not self._live_allowed()
                     and base_url == T212_API_DEMO_BASE
                 ):
                     is_live_key = False
@@ -1442,11 +1470,11 @@ class MainWindow(QMainWindow):
 
     @asyncSlot()
     async def on_test_t212_live_clicked(self) -> None:
-        if self._license_tier != "pro":
+        if not self._live_allowed():
             QMessageBox.information(
                 self,
-                "Pro required",
-                "Testing the real-money API requires an active Pro license.",
+                "Paid plan required",
+                "Testing the real-money API requires an active Starter or Pro license.",
             )
             return
         api = self.live_t212_api_key.text().strip()
@@ -1592,16 +1620,16 @@ class MainWindow(QMainWindow):
         if self._notify_on_signal:
             self._append_event("info", f"Signal received: {line}")
 
-        if self.trading_mode.is_live() and self._license_tier != "pro":
+        if self.trading_mode.is_live() and not self._live_allowed():
             self._append_event(
                 "error",
-                "Live execution blocked — Pro subscription required. Switching to demo account.",
+                "Live execution blocked — a Starter or Pro subscription is required. Switching to demo account.",
             )
             self.trading_mode.set_live(False)
 
         pair = self._stored_active_t212_keys()
         if not pair or not pair[0]:
-            if self.trading_mode.is_live() and self._license_tier == "pro":
+            if self.trading_mode.is_live() and self._live_allowed():
                 self._append_event("error", "T212 keys missing for the active profile — save keys and try again.")
             else:
                 self._append_event(
@@ -1610,7 +1638,7 @@ class MainWindow(QMainWindow):
                 )
             return
 
-        if self.trading_mode.is_live() and self._license_tier == "pro":
+        if self.trading_mode.is_live() and self._live_allowed():
             profile = "live"
         else:
             profile = "demo"
@@ -1670,6 +1698,35 @@ class MainWindow(QMainWindow):
                     stop_loss_pct = self._default_stop_loss_pct
                 is_debug = bool(payload.get("debug"))
                 qty = self._order_quantity
+
+                # Tier position cap: hold at most N concurrent positions (Starter 3 / Pro 10 /
+                # Trial 2). Adding to an already-held symbol is always allowed.
+                cap = self._max_open_positions()
+                if cap > 0:
+                    try:
+                        positions = await client.get_positions()
+                    except Exception:
+                        positions = []
+                    open_tickers: set[str] = set()
+                    for row in positions:
+                        if not isinstance(row, dict):
+                            continue
+                        t = str(row.get("ticker") or "").strip()
+                        if not t and isinstance(row.get("instrument"), dict):
+                            t = str(row["instrument"].get("ticker") or "").strip()
+                        if t:
+                            open_tickers.add(t.upper())
+                    try:
+                        mapped = (await client.resolve_ticker(sym_str)).upper()
+                    except Exception:
+                        mapped = sym_str.upper()
+                    if len(open_tickers) >= cap and mapped not in open_tickers:
+                        self._append_event(
+                            "warn",
+                            f"Position cap reached ({len(open_tickers)}/{cap} for {self._license_tier} tier) — "
+                            f"{sym_str} skipped. Upgrade for more concurrent positions.",
+                        )
+                        return
 
                 price = await client.get_price_from_positions(sym_str)
                 if price is None:

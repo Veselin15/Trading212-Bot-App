@@ -13,6 +13,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from app.integrations.supabase_rest import SupabaseRest, supabase_config_smoke_dict
 from app.services.license_tier import resolve_license_tier
+from app.services.tiers import capabilities_for
 from app.ws.manager import Connection, WsManager
 
 
@@ -119,7 +120,16 @@ async def ws_exec(ws: WebSocket) -> None:
     await ws_manager.upsert(conn)
 
     try:
-        await ws.send_json({"type": "WELCOME", "tier": tier})
+        caps = capabilities_for(tier)
+        await ws.send_json({
+            "type": "WELCOME",
+            "tier": tier,
+            "capabilities": {
+                "live_trading": caps.live_trading,
+                "full_signal_feed": caps.signal_level >= 2,
+                "max_open_positions": caps.max_open_positions,
+            },
+        })
         while True:
             msg = await ws.receive_json()
             if not isinstance(msg, dict):

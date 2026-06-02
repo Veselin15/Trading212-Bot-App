@@ -1,9 +1,21 @@
+export type PaidPlan = "starter" | "pro";
+
 export type SubscriptionRow = {
   status: string;
   current_period_end: string | null;
   stripe_customer_id: string | null;
   stripe_subscription_id: string | null;
+  plan?: string | null;
 };
+
+/**
+ * Resolve the paid plan of an *active* subscription.
+ * A null `plan` (legacy single-price installs) is treated as PRO.
+ */
+export function activePaidPlan(row: SubscriptionRow | null): PaidPlan | null {
+  if (!canUseProFeatures(row)) return null;
+  return row?.plan === "starter" ? "starter" : "pro";
+}
 
 /** True while `current_period_end` is in the future (informational / past_due grace only). */
 export function subscriptionPeriodStillOpen(row: SubscriptionRow | null): boolean {

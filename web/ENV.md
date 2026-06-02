@@ -6,9 +6,12 @@ Accounts and billing live in **Supabase** (`auth.users`, `public.profiles`, `pub
 
 A new account gets a **14-day free trial** (no card): the `handle_new_user` trigger creates a `public.profiles` row with `subscription_tier = 'TRIAL'` and `trial_ends_at = now() + 14 days`. The effective tier is computed at read time (`public.effective_tier`, mirrored in the web `lib/tier.ts` and the backend `resolve_license_tier`):
 
-- **PRO** — active Stripe subscription (single recurring `STRIPE_PRICE_ID`). Live execution unlocked.
-- **TRIAL** — inside the trial window. Paper trading + signals only.
+- **PRO** — active Stripe subscription on `STRIPE_PRICE_ID_PRO` (€49). Live execution on the **full** signal feed, up to 10 concurrent positions.
+- **STARTER** — active Stripe subscription on `STRIPE_PRICE_ID_STARTER` (€19). Live execution on **core** signals only, up to 3 concurrent positions.
+- **TRIAL** — inside the trial window. Full signal feed but paper trading only (2 positions).
 - **EXPIRED** — trial ended (or subscription lapsed). Desktop app, signals, and license are locked until upgrade.
+
+The price-id → plan mapping lives in `web/src/lib/plans.ts`; the webhook denormalizes the resolved plan into `subscriptions.plan`. The Starter↔Pro feature split is enforced server-side: the FastAPI backend tags each ML signal `min_tier` by confidence rank and the WebSocket layer withholds Pro-only signals from Starter connections.
 
 There is **one paid tier**. Upgrading clears `trial_ends_at`, so a later cancellation drops the user to EXPIRED (not back into a stale trial).
 
@@ -21,7 +24,9 @@ There is **one paid tier**. Upgrading clears `trial_ends_at`, so a later cancell
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
-- `STRIPE_PRICE_ID` (the recurring subscription price id)
+- `STRIPE_PRICE_ID_STARTER` (€19/mo recurring price id)
+- `STRIPE_PRICE_ID_PRO` (€49/mo recurring price id)
+- `STRIPE_PRICE_ID` (legacy fallback — used as the Pro price if `STRIPE_PRICE_ID_PRO` is unset)
 
 ## Required (Supabase service role, server-only)
 

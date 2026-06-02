@@ -25,6 +25,7 @@ import {
   isPastDueWithGrace,
 } from "@/lib/subscription-model";
 import type { EffectiveTier } from "@/lib/tier";
+import { TIER_CAPABILITIES, isPaidTier } from "@/lib/tier";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -44,15 +45,13 @@ function maskKey(value: string) {
 }
 
 function subscriptionUi(sub: SubscriptionRow | null, effectiveTier: EffectiveTier, trialDaysLeft: number | null) {
-  const isPro = effectiveTier === "PRO";
-
-  if (!isPro) {
+  if (!isPaidTier(effectiveTier)) {
     if (effectiveTier === "TRIAL") {
       const days = trialDaysLeft ?? 0;
       return {
         badgeLabel: "Trial",
         badgeActive: true,
-        detail: `Free trial — ${days} day${days === 1 ? "" : "s"} left. Paper trading only; upgrade to unlock live execution.`,
+        detail: `Free trial — ${days} day${days === 1 ? "" : "s"} left. Paper trading only; upgrade to a live plan to trade real money.`,
       };
     }
     // EXPIRED
@@ -75,18 +74,43 @@ function subscriptionUi(sub: SubscriptionRow | null, effectiveTier: EffectiveTie
     return { badgeLabel: "Expired", badgeActive: false, detail: "Your free trial has ended. Upgrade to resume." };
   }
 
-  // PRO
+  // STARTER / PRO
+  const planName = effectiveTier === "PRO" ? "Pro" : "Starter";
   if (sub && isPastDueWithGrace(sub)) {
     return {
       badgeLabel: "Past due",
       badgeActive: true,
-      detail: "Update payment in Manage billing. Pro access remains until the period end.",
+      detail: `Update payment in Manage billing. ${planName} access remains until the period end.`,
     };
   }
-  if (sub && isActiveSubscription(sub) && sub.status === "trialing") {
-    return { badgeLabel: "Active", badgeActive: true, detail: "Pro · trial access is active." };
-  }
-  return { badgeLabel: "Active", badgeActive: true, detail: "Pro plan · active." };
+  const feed = effectiveTier === "PRO" ? "full signal feed" : "core signals";
+  return {
+    badgeLabel: "Active",
+    badgeActive: true,
+    detail: `${planName} plan · active — live trading on ${feed}.`,
+  };
+}
+
+/** Checkout button that selects a specific plan via a hidden form field. */
+function PlanCheckoutButton({
+  plan,
+  label,
+  variant,
+  className,
+}: {
+  plan: "starter" | "pro";
+  label: string;
+  variant?: "primary" | "secondary";
+  className?: string;
+}) {
+  return (
+    <form action="/api/stripe/checkout" method="post" className={className}>
+      <input type="hidden" name="plan" value={plan} />
+      <Button type="submit" variant={variant} className="h-10 gap-2 w-full sm:w-auto">
+        {label} <ArrowRight className="h-4 w-4" />
+      </Button>
+    </form>
+  );
 }
 
 function LicenseKeyManager({ licenseKey }: { licenseKey: string }) {
@@ -179,19 +203,26 @@ export function DashboardShell({
   stripePortalEnabled,
   schemaSetupMessage,
 }: DashboardShellProps) {
-  const proFeatures = effectiveTier === "PRO";
+  const isPro = effectiveTier === "PRO";
+  const isStarter = effectiveTier === "STARTER";
+  const isPaid = isPro || isStarter;
   const isTrial = effectiveTier === "TRIAL";
   const isExpired = effectiveTier === "EXPIRED";
-  const canUseLicense = !isExpired; // TRIAL + PRO may hold a license key
-  const planLabel = proFeatures ? "Pro Automation" : isTrial ? "Trial (paper)" : "Expired";
+  const canUseLicense = !isExpired; // TRIAL + STARTER + PRO may hold a license key
+  const caps = TIER_CAPABILITIES[effectiveTier];
+  const planLabel =
+    isPro ? "Pro Automation" : isStarter ? "Starter (live)" : isTrial ? "Trial (paper)" : "Expired";
   const ui = subscriptionUi(subscription, effectiveTier, trialDaysLeft);
   const canUsePortal = Boolean(stripePortalEnabled && subscription?.stripe_customer_id);
   const canCancelSubscription = Boolean(canUsePortal && canCancelStripeSubscription(subscription));
-  const showUpgrade = !proFeatures && stripeCheckoutEnabled;
+  // Trial/Expired can buy either plan; Starter can upgrade to Pro; Pro is maxed out.
+  const showStarterCheckout = stripeCheckoutEnabled && (isTrial || isExpired);
+  const showProCheckout = stripeCheckoutEnabled && (isTrial || isExpired || isStarter);
+  const showUpgrade = showStarterCheckout || showProCheckout;
   const showBillingBlock = Boolean(
     showUpgrade || canUsePortal ||
-    (!stripeCheckoutEnabled && !proFeatures) ||
-    (proFeatures && stripePortalEnabled && !subscription?.stripe_customer_id),
+    (!stripeCheckoutEnabled && !isPro) ||
+    (isPaid && stripePortalEnabled && !subscription?.stripe_customer_id),
   );
 
   return (
@@ -214,16 +245,27 @@ export function DashboardShell({
               <span className="font-semibold text-emerald-300">
                 {(trialDaysLeft ?? 0) === 1 ? "1 day" : `${trialDaysLeft ?? 0} days`} left in your free trial.
               </span>{" "}
-              Paper-trade the algorithm now — upgrade to unlock live execution.
+              You have the full signal feed in paper mode — pick a live plan to trade real money.
             </p>
           </div>
-          {showUpgrade && (
-            <form action="/api/stripe/checkout" method="post" className="shrink-0">
-              <Button type="submit" className="h-10 gap-2 w-full sm:w-auto">
-                Upgrade to Live Execution <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-          )}
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            {showStarterCheckout && <PlanCheckoutButton plan="starter" label="Starter €19" variant="secondary" />}
+            {showProCheckout && <PlanCheckoutButton plan="pro" label="Pro €49" />}
+          </div>
+        </div>
+      )}
+
+      {isStarter && showProCheckout && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Zap className="h-4 w-4 shrink-0 text-emerald-400" />
+            <p className="text-sm text-slate-200">
+              <span className="font-semibold text-emerald-300">You&apos;re on Starter.</span>{" "}
+              Upgrade to Pro for the full signal feed and up to {TIER_CAPABILITIES.PRO.maxOpenPositions} concurrent positions
+              (Starter is capped at {TIER_CAPABILITIES.STARTER.maxOpenPositions}).
+            </p>
+          </div>
+          <PlanCheckoutButton plan="pro" label="Upgrade to Pro €49" className="shrink-0" />
         </div>
       )}
 
@@ -233,16 +275,13 @@ export function DashboardShell({
             <Shield className="h-4 w-4 shrink-0 text-rose-400" />
             <p className="text-sm text-slate-200">
               <span className="font-semibold text-rose-300">Your free trial has ended.</span>{" "}
-              The algorithm is paused. Upgrade to resume paper and live trading.
+              The algorithm is paused. Pick a plan to resume trading.
             </p>
           </div>
-          {showUpgrade && (
-            <form action="/api/stripe/checkout" method="post" className="shrink-0">
-              <Button type="submit" className="h-10 gap-2 w-full sm:w-auto">
-                Upgrade now <ArrowRight className="h-4 w-4" />
-              </Button>
-            </form>
-          )}
+          <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+            {showStarterCheckout && <PlanCheckoutButton plan="starter" label="Starter €19" variant="secondary" />}
+            {showProCheckout && <PlanCheckoutButton plan="pro" label="Pro €49" />}
+          </div>
         </div>
       )}
 
@@ -254,8 +293,10 @@ export function DashboardShell({
               Welcome back,{" "}
               <span className="text-gradient-brand">{userEmail ?? "you@example.com"}</span>
             </h1>
-            {proFeatures ? (
+            {isPro ? (
               <Badge className="border-emerald-500/45 bg-emerald-500/15 text-emerald-200">Pro</Badge>
+            ) : isStarter ? (
+              <Badge className="border-sky-500/45 bg-sky-500/15 text-sky-200">Starter</Badge>
             ) : isTrial ? (
               <Badge className="border-emerald-500/35 bg-emerald-500/10 text-emerald-300">Trial</Badge>
             ) : (
@@ -293,10 +334,23 @@ export function DashboardShell({
           <span className="text-xs text-slate-500">Plan:</span>
           <span className="text-xs font-semibold text-slate-300">{planLabel}</span>
         </div>
-        {subscription?.current_period_end && proFeatures && (
+        {subscription?.current_period_end && isPaid && (
           <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
             <span className="text-xs text-slate-500">Renews:</span>
             <span className="font-mono text-xs text-slate-400">{formatDate(subscription.current_period_end)}</span>
+          </div>
+        )}
+        <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
+          <Zap className="h-3.5 w-3.5 text-slate-500" />
+          <span className="text-xs text-slate-500">Signals:</span>
+          <span className="text-xs font-semibold text-slate-300">
+            {caps.fullSignalFeed ? "Full feed" : isExpired ? "Paused" : "Core only"}
+          </span>
+        </div>
+        {!isExpired && (
+          <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
+            <span className="text-xs text-slate-500">Max positions:</span>
+            <span className="font-mono text-xs text-slate-400">{caps.maxOpenPositions}</span>
           </div>
         )}
       </div>
@@ -338,17 +392,16 @@ export function DashboardShell({
                 <span className="text-sm font-medium text-slate-300">Billing &amp; plan</span>
               </div>
               <p className="mb-4 text-xs leading-relaxed text-slate-600">
-                Payments via Stripe. Cancellation immediately turns off Pro features and license keys.
+                Payments via Stripe. Cancellation immediately turns off live trading and license keys.
               </p>
               <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap">
-                {showUpgrade && (
-                  <form action="/api/stripe/checkout" method="post">
-                    <Button type="submit" className="h-10 gap-2 w-full sm:w-auto">
-                      Upgrade to Pro <ArrowRight className="h-4 w-4" />
-                    </Button>
-                  </form>
+                {showStarterCheckout && (
+                  <PlanCheckoutButton plan="starter" label="Get Starter €19" variant="secondary" />
                 )}
-                {!stripeCheckoutEnabled && !proFeatures && (
+                {showProCheckout && (
+                  <PlanCheckoutButton plan="pro" label={isStarter ? "Upgrade to Pro €49" : "Get Pro €49"} />
+                )}
+                {!stripeCheckoutEnabled && !isPro && (
                   <p className="text-sm text-amber-300/80">Billing not configured (missing Stripe keys).</p>
                 )}
                 {canUsePortal && (
@@ -356,7 +409,7 @@ export function DashboardShell({
                     <Button type="submit" variant="secondary" className="h-10 w-full sm:w-auto">Manage billing</Button>
                   </form>
                 )}
-                {proFeatures && stripePortalEnabled && !subscription?.stripe_customer_id && (
+                {isPaid && stripePortalEnabled && !subscription?.stripe_customer_id && (
                   <p className="text-sm text-slate-500">Billing portal available after checkout creates your customer.</p>
                 )}
                 {canCancelSubscription && (
@@ -388,7 +441,13 @@ export function DashboardShell({
                 <Download className="h-4 w-4" /> Download App (.exe)
               </ButtonLink>
               {isTrial && (
-                <p className="text-xs text-slate-500">Trial: paper-trade the algorithm on your practice account. Upgrade to unlock real-money automation.</p>
+                <p className="text-xs text-slate-500">Trial: full signal feed in paper mode on your practice account. Pick a live plan to trade real money.</p>
+              )}
+              {isStarter && (
+                <p className="text-xs text-slate-500">Starter: live execution on core signals, up to {caps.maxOpenPositions} concurrent positions. Upgrade to Pro for the full feed.</p>
+              )}
+              {isPro && (
+                <p className="text-xs text-slate-500">Pro: live execution on the full signal feed, up to {caps.maxOpenPositions} concurrent positions.</p>
               )}
               {isExpired && (
                 <p className="text-xs text-rose-300/80">Trial ended — upgrade to resume paper and live trading.</p>

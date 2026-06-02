@@ -116,7 +116,9 @@ class ExecWsClient:
                             if self._on_tier:
                                 self._on_tier(tier)
                             if tier == "pro":
-                                self._on_event("Handshake OK — Pro tier (live trading unlocked).")
+                                self._on_event("Handshake OK — Pro tier (live trading, full signal feed).")
+                            elif tier == "starter":
+                                self._on_event("Handshake OK — Starter tier (live trading, core signals).")
                             elif tier == "trial":
                                 self._on_event("Handshake OK — Free trial (paper trading only).")
                             else:

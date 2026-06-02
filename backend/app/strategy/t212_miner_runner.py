@@ -47,6 +47,10 @@ _SCHEDULE_MINUTES = int(os.getenv("BOT_SCHEDULE_MINUTES", "5").strip() or "5")
 _SIGNAL_BUFFER_S  = int(os.getenv("BOT_SIGNAL_BUFFER_S", "20"))
 _MAX_JITTER_S     = float(os.getenv("BOT_JITTER_S", "3.0"))
 
+# Tier gating: the top-N highest-confidence signals each cycle are "core" (delivered
+# to Starter + Pro + Trial). Any additional signals are the Pro-only "extended" feed.
+_STARTER_CORE_SIGNALS = int(os.getenv("STARTER_CORE_SIGNALS", "2").strip() or "2")
+
 
 def _now_utc() -> datetime:
     return datetime.now(tz=UTC)
@@ -78,6 +82,7 @@ def _build_entry_signal(
     stop_loss: float,
     confidence: float,
     atr: float,
+    min_tier: str = "starter",
 ) -> dict[str, Any]:
     stop_loss_pct   = abs(entry_price - stop_loss)   / entry_price * 100
     take_profit_pct = abs(take_profit - entry_price) / entry_price * 100
@@ -89,6 +94,8 @@ def _build_entry_signal(
         "symbol":    symbol,
         "confidence": round(confidence, 4),
         "atr":       round(atr, 6),
+        # Tier gate: "starter" = core feed (all tiers), "pro" = extended feed (Pro/Trial only).
+        "min_tier":  min_tier,
         "risk_params": {
             "stop_loss_pct":   round(stop_loss_pct,   4),
             "take_profit_pct": round(take_profit_pct, 4),
@@ -240,6 +247,10 @@ def _run_signal_cycle(
         if signal_obj is None:
             continue
 
+        # Highest-confidence picks are "core" (Starter+Pro+Trial); the rest are the
+        # Pro-only "extended" feed. signals are produced in descending-confidence order.
+        min_tier = "starter" if len(signals) < _STARTER_CORE_SIGNALS else "pro"
+
         sig = _build_entry_signal(
             symbol=sym,
             bar_ts=bar_ts,
@@ -249,6 +260,7 @@ def _run_signal_cycle(
             stop_loss=float(signal_obj.stop_loss),
             confidence=score,
             atr=float(signal_obj.atr),
+            min_tier=min_tier,
         )
         signals.append(sig)
 

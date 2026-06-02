@@ -41,17 +41,19 @@ export async function ensureProfileForUser(admin: AdminClient, userId: string): 
     .insert({ user_id: userId, subscription_tier: "TRIAL", trial_ends_at: trialEndIso() });
 }
 
+export type ProfileTier = "STARTER" | "PRO" | "EXPIRED";
+
 /**
- * Set the denormalized tier hint. Upgrading to PRO clears `trial_ends_at` so a later
- * cancellation drops the user to EXPIRED (not back into a still-future trial window).
+ * Set the denormalized tier hint. Upgrading to a paid tier clears `trial_ends_at` so a
+ * later cancellation drops the user to EXPIRED (not back into a still-future trial window).
  */
 export async function setProfileTier(
   admin: AdminClient,
   userId: string,
-  tier: "PRO" | "EXPIRED",
+  tier: ProfileTier,
 ): Promise<void> {
   const patch: Record<string, unknown> =
-    tier === "PRO" ? { subscription_tier: "PRO", trial_ends_at: null } : { subscription_tier: "EXPIRED" };
+    tier === "EXPIRED" ? { subscription_tier: "EXPIRED" } : { subscription_tier: tier, trial_ends_at: null };
 
   const { data: existing } = await admin
     .from("profiles")
@@ -66,20 +68,36 @@ export async function setProfileTier(
   }
 }
 
-/** Map a Stripe subscription status onto the profile tier hint, by Stripe customer. */
+/** Resolve the paid profile tier (STARTER/PRO) from the user's latest subscription plan. */
+async function paidTierFromDbPlan(admin: AdminClient, userId: string): Promise<ProfileTier> {
+  const { data } = await admin
+    .from("subscriptions")
+    .select("plan")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  return data?.plan === "starter" ? "STARTER" : "PRO";
+}
+
+/**
+ * Map a Stripe subscription status onto the profile tier hint, by Stripe customer.
+ * For active/trialing the concrete tier (STARTER vs PRO) is read from the just-synced
+ * `subscriptions.plan`, so this must run *after* the subscription row is updated.
+ */
 export async function applyProfileTierForStripeCustomer(
   admin: AdminClient,
   stripeCustomerId: string,
   status: string,
 ): Promise<void> {
   const s = status.toLowerCase();
-  let tier: "PRO" | "EXPIRED" | null = null;
-  if (s === "active" || s === "trialing") tier = "PRO";
-  else if (["canceled", "unpaid", "incomplete_expired", "incomplete", "paused"].includes(s)) tier = "EXPIRED";
-  // `past_due` is left untouched during the payment-recovery grace window.
-  if (!tier) return;
-
   const userId = await getUserIdForStripeCustomer(admin, stripeCustomerId);
   if (!userId) return;
-  await setProfileTier(admin, userId, tier);
+
+  if (s === "active" || s === "trialing") {
+    await setProfileTier(admin, userId, await paidTierFromDbPlan(admin, userId));
+  } else if (["canceled", "unpaid", "incomplete_expired", "incomplete", "paused"].includes(s)) {
+    await setProfileTier(admin, userId, "EXPIRED");
+  }
+  // `past_due` is left untouched during the payment-recovery grace window.
 }

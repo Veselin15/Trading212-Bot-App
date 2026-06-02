@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { SectionLabel } from "@/components/ui/SectionLabel";
+import type { EffectiveTier } from "@/lib/tier";
 
 function AnimatedEuro({ amount }: { amount: number }) {
   const [count, setCount] = useState(0);
@@ -26,37 +27,65 @@ function AnimatedEuro({ amount }: { amount: number }) {
   return <span>€{count}</span>;
 }
 
-export type ProTierCta = {
+export type PricingCta = {
   loggedIn: boolean;
   checkoutEnabled: boolean;
-  subscriptionActive: boolean;
+  currentTier: EffectiveTier | null;
 };
 
-function ProCtaButton({ proTier }: { proTier: ProTierCta }) {
-  if (!proTier.loggedIn) return <ButtonLink href="/login" className="w-full">Upgrade to Pro</ButtonLink>;
-  if (proTier.subscriptionActive) return <ButtonLink href="/dashboard" variant="secondary" className="w-full">Manage subscription</ButtonLink>;
-  if (proTier.checkoutEnabled) return (
-    <form action="/api/stripe/checkout" method="post" className="w-full">
-      <Button type="submit" className="w-full">Upgrade to Pro</Button>
-    </form>
-  );
+/** CTA for a specific paid plan, aware of what the user already has. */
+function PlanCta({ plan, cta }: { plan: "starter" | "pro"; cta: PricingCta }) {
+  const label = plan === "starter" ? "Get Starter" : "Get Pro";
+
+  if (!cta.loggedIn) {
+    return <ButtonLink href="/login" className="w-full">{label}</ButtonLink>;
+  }
+  // Already on this exact (or higher) tier.
+  if (cta.currentTier === "PRO" || (plan === "starter" && cta.currentTier === "STARTER")) {
+    return <ButtonLink href="/dashboard" variant="secondary" className="w-full">Manage subscription</ButtonLink>;
+  }
+  const isUpgrade = plan === "pro" && cta.currentTier === "STARTER";
+  if (cta.checkoutEnabled) {
+    return (
+      <form action="/api/stripe/checkout" method="post" className="w-full">
+        <input type="hidden" name="plan" value={plan} />
+        <Button type="submit" className="w-full">{isUpgrade ? "Upgrade to Pro" : label}</Button>
+      </form>
+    );
+  }
   return <ButtonLink href="/dashboard" variant="secondary" className="w-full">Go to dashboard</ButtonLink>;
 }
 
-const FREE_FEATURES = ["Live signals feed", "Paper trading on your practice account", "Full algorithm access", "No credit card required"] as const;
-const PRO_FEATURES = ["Live trading signals", "Desktop app download", "License key activation", "Priority support", "Risk management tools"] as const;
-const ENT_FEATURES = ["Custom signal strategies", "Multiple accounts", "Dedicated support", "SLA guarantees", "Custom integration"] as const;
-
-const COMPARE_ROWS = [
-  { label: "Signal access",         free: "Read-only / historical",  pro: "Live realtime",    ent: "Custom" },
-  { label: "Desktop app",           free: "Paper mode only",          pro: "Full execution",   ent: "Custom" },
-  { label: "License key",           free: "–",                        pro: "✓",                ent: "Multi-key" },
-  { label: "API key storage",       free: "Local (PC)",               pro: "Local (PC)",       ent: "Local (PC)" },
-  { label: "Signal latency",        free: "–",                        pro: "< 200ms",          ent: "< 200ms" },
-  { label: "Support",               free: "Community",                pro: "Priority",         ent: "Dedicated + SLA" },
+const TRIAL_FEATURES = [
+  "Full signal feed (paper mode)",
+  "Paper trading on your practice account",
+  "Desktop app + license key",
+  "No credit card required",
+] as const;
+const STARTER_FEATURES = [
+  "Live (real-money) auto-execution",
+  "Core signals — our highest-confidence picks",
+  "Up to 3 concurrent positions",
+  "Email support",
+] as const;
+const PRO_FEATURES = [
+  "Live (real-money) auto-execution",
+  "Full signal feed — every opportunity",
+  "Up to 10 concurrent positions",
+  "Priority support",
 ] as const;
 
-export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
+const COMPARE_ROWS = [
+  { label: "Price",                    trial: "Free · 14 days", starter: "€19/mo",        pro: "€49/mo" },
+  { label: "Live real-money trading",  trial: "–",              starter: "✓",             pro: "✓" },
+  { label: "Paper trading",            trial: "✓",              starter: "✓",             pro: "✓" },
+  { label: "Signal feed",              trial: "Full (paper)",   starter: "Core only",     pro: "Full feed" },
+  { label: "Concurrent positions",     trial: "2 (paper)",      starter: "3",             pro: "10" },
+  { label: "Desktop app + license",    trial: "✓",              starter: "✓",             pro: "✓" },
+  { label: "Support",                  trial: "Community",      starter: "Email",         pro: "Priority" },
+] as const;
+
+export function PricingPageClient({ cta }: { cta: PricingCta }) {
   return (
     <main>
       {/* ── Hero ── */}
@@ -70,10 +99,11 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
           <RevealOnScroll className="mx-auto max-w-2xl text-center">
             <SectionLabel className="mb-4 justify-center">Pricing</SectionLabel>
             <h1 className="mb-4 text-balance text-4xl font-semibold tracking-tight text-white sm:text-5xl">
-              Transparent, no-surprise pricing
+              Start free. Go live when you&apos;re ready.
             </h1>
             <p className="text-base leading-relaxed text-slate-400 sm:text-lg">
-              Powered by Stripe and Supabase. Start with a 14-day free trial — upgrade to Pro for live execution. Cancel anytime.
+              Try the full algorithm in paper mode for 14 days — no card. Then pick Starter for our highest-conviction
+              core signals, or Pro for the complete signal feed and more concurrent positions. Cancel anytime.
             </p>
           </RevealOnScroll>
         </Container>
@@ -85,18 +115,18 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
         <RevealOnScroll>
           <div className="mb-16 grid items-stretch gap-5 md:grid-cols-3">
 
-            {/* Free */}
+            {/* Free trial */}
             <div className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#07070b] p-7">
               <div className="mb-6">
                 <p className="mb-1 text-lg font-bold text-white">14-Day Free Trial</p>
-                <p className="text-sm text-slate-500">Full paper-trading access. No card required.</p>
+                <p className="text-sm text-slate-500">Evaluate the full algorithm. No card required.</p>
               </div>
               <div className="mb-6 flex items-end gap-1">
                 <span className="font-mono text-4xl font-semibold text-white">€0</span>
                 <span className="mb-1 text-sm text-slate-500">for 14 days</span>
               </div>
               <ul className="mb-8 flex-1 space-y-3">
-                {FREE_FEATURES.map((f) => (
+                {TRIAL_FEATURES.map((f) => (
                   <li key={f} className="flex items-start gap-2.5">
                     <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
                     <span className="text-sm text-slate-400">{f}</span>
@@ -104,6 +134,31 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
                 ))}
               </ul>
               <ButtonLink href="/login" variant="secondary" className="w-full">Start free trial</ButtonLink>
+            </div>
+
+            {/* Starter */}
+            <div className="flex flex-col rounded-2xl border border-sky-500/[0.18] bg-[#07070b] p-7">
+              <div className="mb-6">
+                <p className="mb-1 text-lg font-bold text-white">Starter</p>
+                <p className="text-sm text-slate-500">Go live on our highest-conviction signals</p>
+              </div>
+              <div className="mb-6 flex items-end gap-1">
+                <span className="font-mono text-4xl font-semibold text-white">
+                  <AnimatedEuro amount={19} />
+                </span>
+                <span className="mb-1 text-sm text-slate-500">/mo</span>
+              </div>
+              <ul className="mb-8 flex-1 space-y-3">
+                {STARTER_FEATURES.map((f) => (
+                  <li key={f} className="flex items-start gap-2.5">
+                    <div className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-sky-500/20">
+                      <Check className="h-2.5 w-2.5 text-sky-300" strokeWidth={3} />
+                    </div>
+                    <span className="text-sm text-slate-300">{f}</span>
+                  </li>
+                ))}
+              </ul>
+              <PlanCta plan="starter" cta={cta} />
             </div>
 
             {/* Pro — featured */}
@@ -114,8 +169,8 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
 
                 <div className="mb-6 flex items-start justify-between gap-3">
                   <div>
-                    <p className="mb-1 text-lg font-bold text-white">Pro Automation</p>
-                    <p className="text-sm text-slate-400">Full live automation with desktop execution</p>
+                    <p className="mb-1 text-lg font-bold text-white">Pro</p>
+                    <p className="text-sm text-slate-400">The complete signal feed, full firepower</p>
                   </div>
                   <Badge className="shrink-0 border-emerald-500/40 bg-emerald-500/15 text-emerald-200">Popular</Badge>
                 </div>
@@ -138,36 +193,11 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
                   ))}
                 </ul>
 
-                <ProCtaButton proTier={proTier} />
+                <PlanCta plan="pro" cta={cta} />
                 <p className="mt-4 text-center text-xs text-slate-600">
                   Trading212 API key stored only in desktop app
                 </p>
               </div>
-            </div>
-
-            {/* Enterprise */}
-            <div className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#07070b] p-7">
-              <div className="mb-6">
-                <p className="mb-1 text-lg font-bold text-white">Enterprise</p>
-                <p className="text-sm text-slate-500">Custom solutions for institutions</p>
-              </div>
-              <div className="mb-6">
-                <span className="font-mono text-4xl font-semibold text-emerald-400">Custom</span>
-              </div>
-              <ul className="mb-8 flex-1 space-y-3">
-                {ENT_FEATURES.map((f) => (
-                  <li key={f} className="flex items-start gap-2.5">
-                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-slate-600" />
-                    <span className="text-sm text-slate-400">{f}</span>
-                  </li>
-                ))}
-              </ul>
-              <a
-                href="mailto:enterprise@trading212bot.example"
-                className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-white/[0.1] bg-white/[0.04] px-5 text-sm font-semibold text-slate-100 transition-all hover:border-white/[0.16] hover:bg-white/[0.08]"
-              >
-                Contact us <ArrowRight className="h-4 w-4" />
-              </a>
             </div>
           </div>
         </RevealOnScroll>
@@ -197,18 +227,18 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
                 <thead>
                   <tr className="border-b border-white/[0.07] bg-white/[0.02]">
                     <th className="px-5 py-3.5 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Feature</th>
-                    <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Free</th>
+                    <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Trial</th>
+                    <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-sky-300">Starter</th>
                     <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-emerald-400">Pro</th>
-                    <th className="px-5 py-3.5 text-center text-xs font-semibold uppercase tracking-wide text-slate-500">Enterprise</th>
                   </tr>
                 </thead>
                 <tbody>
                   {COMPARE_ROWS.map((row, i) => (
                     <tr key={row.label} className={`border-b border-white/[0.05] transition-colors hover:bg-white/[0.02] ${i === COMPARE_ROWS.length - 1 ? "border-0" : ""}`}>
                       <td className="px-5 py-3.5 font-medium text-slate-300">{row.label}</td>
-                      <td className="px-5 py-3.5 text-center text-slate-500">{row.free}</td>
+                      <td className="px-5 py-3.5 text-center text-slate-500">{row.trial}</td>
+                      <td className="px-5 py-3.5 text-center text-sky-300/90">{row.starter}</td>
                       <td className="px-5 py-3.5 text-center font-semibold text-emerald-400">{row.pro}</td>
-                      <td className="px-5 py-3.5 text-center text-slate-500">{row.ent}</td>
                     </tr>
                   ))}
                 </tbody>

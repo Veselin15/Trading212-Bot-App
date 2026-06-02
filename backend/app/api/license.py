@@ -16,9 +16,9 @@ async def validate_license(key: str) -> dict:
     """
     Validate a license key and return its effective subscription tier.
 
-    Response: {"valid": bool, "tier": "pro" | "trial" | "expired" | "invalid", "message": str}
+    Response: {"valid": bool, "tier": "pro" | "starter" | "trial" | "expired" | "invalid", "message": str}
 
-    `valid` is True for `pro` and `trial` (the app may run); False for
+    `valid` is True for `pro`, `starter` and `trial` (the app may run); False for
     `expired` (trial ended) and `invalid` (bad/revoked key).
 
     Read-only — does NOT update last_ip_address or any row data.
@@ -56,6 +56,6 @@ async def validate_license(key: str) -> dict:
             "message": f"Validation error: {exc}",
         }
 
-    # pro/trial → app may run; expired/invalid → blocked.
-    valid = tier in ("pro", "trial")
+    # pro/starter/trial → app may run; expired/invalid → blocked.
+    valid = tier in ("pro", "starter", "trial")
     return {"valid": valid, "tier": tier, "message": message}

@@ -299,6 +299,7 @@ QLabel#TierStatusLabel {{
     padding: 6px 0 0 0;
 }}
 QLabel#TierStatusLabel[tierKind="pro"] {{ color: {_SUCCESS}; font-weight: 600; }}
+QLabel#TierStatusLabel[tierKind="starter"] {{ color: #38bdf8; font-weight: 600; }}
 QLabel#TierStatusLabel[tierKind="trial"] {{ color: {_SUCCESS}; }}
 QLabel#TierStatusLabel[tierKind="free"] {{ color: {_WARN}; }}
 QLabel#TierStatusLabel[tierKind="expired"] {{ color: {_DANGER}; font-weight: 600; }}

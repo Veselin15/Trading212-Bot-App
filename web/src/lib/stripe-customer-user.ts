@@ -2,6 +2,7 @@ import type Stripe from "stripe";
 
 import type { AdminClient } from "@/lib/billing-license-sync";
 import { getUserIdForStripeCustomer } from "@/lib/billing-license-sync";
+import { planFromStripeSubscription } from "@/lib/plans";
 import { getStripeSubscriptionPeriodEndUnix } from "@/lib/stripe-subscription-period";
 import { getStripeClient } from "@/lib/stripe";
 
@@ -74,6 +75,7 @@ export function subscriptionPatchFromStripeSubscription(sub: Stripe.Subscription
   return {
     stripe_subscription_id: sub.id,
     status,
+    plan: planFromStripeSubscription(sub),
     ...(current_period_end ? { current_period_end } : {}),
   };
 }
