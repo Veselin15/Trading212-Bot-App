@@ -4,21 +4,22 @@ import { useState } from "react";
 
 const ITEMS = [
   {
+    label: "🇪🇺 EU stocks only",
+    detail:
+      "Every signal targets EU-listed equities on exchanges like Xetra, Euronext, and others. No US stocks — no W-8BEN form, no 15–30% US dividend withholding tax to navigate.",
+  },
+  {
+    label: "Zero withholding friction",
+    detail:
+      "EU-listed shares typically carry little to no dividend withholding for EU residents. The bot is designed from the ground up to keep this friction close to zero. Tax rules depend on your country — not tax advice.",
+  },
+  {
     label: "Standard Invest account",
-    detail: "Works with the same account you already use — no new broker onboarding.",
+    detail: "Works with the standard Trading212 Invest account you already have — no margin, no options, no new broker onboarding.",
   },
   {
     label: "Long-only strategy",
-    detail: "Designed for buy-and-hold style investing, not leveraged or short positions.",
-  },
-  {
-    label: "No specialised trading account",
-    detail: "No margin account, no options chain — keep complexity off your plate.",
-  },
-  {
-    label: "EU Börse focus",
-    detail:
-      "The bot is built mainly around European exchanges (e.g. Xetra and other EU listings). Holdings are picked so dividend withholding and similar frictions stay very low — often close to none versus typical US-heavy portfolios. Tax rules depend on your residency; not tax advice.",
+    detail: "Designed for buy-and-hold style investing, not leveraged or short positions. Suitable for everyday EU investors.",
   },
 ] as const;
 

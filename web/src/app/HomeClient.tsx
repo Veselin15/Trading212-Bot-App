@@ -32,24 +32,31 @@ const HOW_IT_WORKS = [
   {
     n: "01",
     title: "Create your portal account",
-    desc: "Sign up to access the portal, manage your subscription, and receive your desktop license key.",
+    desc: "Sign up to access the portal, manage your subscription, and receive your desktop license key. Works with your existing Trading212 Invest account.",
     tag: "Free · 2 min",
   },
   {
     n: "02",
     title: "Install the Windows desktop executor",
-    desc: "Download the app and activate with your license key. Your Trading212 API key stays on your PC — never transmitted.",
+    desc: "Download the app and activate with your license key. Your Trading212 API key stays on your PC — never transmitted to our servers.",
     tag: "Windows · Local",
   },
   {
     n: "03",
-    title: "Receive signals & execute locally",
-    desc: "Signals publish via Supabase Realtime; the desktop app subscribes and places orders directly from your machine.",
-    tag: "< 200ms",
+    title: "Trade EU stocks, skip the withholding",
+    desc: "Signals target EU-listed equities only. The executor places orders directly from your machine — no US stocks, no W-8BEN friction, no 15–30% US dividend withholding.",
+    tag: "EU-listed only",
   },
 ];
 
 const FEATURES = [
+  {
+    icon: Filter,
+    title: "EU-listed universe only",
+    desc: "Every signal targets stocks listed on EU exchanges — Xetra, Euronext, and others. No US stocks means no W-8BEN paperwork and no 15–30% US dividend withholding for EU residents.",
+    tone: "gold" as const,
+    tag: "🇪🇺 EU-first",
+  },
   {
     icon: ShieldCheck,
     title: "API keys never leave your PC",
@@ -71,13 +78,6 @@ const FEATURES = [
     tone: "sky" as const,
     tag: "Architecture",
   },
-  {
-    icon: Filter,
-    title: "Strategy + risk controls",
-    desc: "Long-only approach with protective logic enforced by the executor. Capital preservation is treated as a first-class goal.",
-    tone: "gold" as const,
-    tag: "Risk mgmt",
-  },
 ];
 
 const PERFORMANCE_METRICS = [
@@ -87,7 +87,7 @@ const PERFORMANCE_METRICS = [
   { label: "Signal Latency", value: "< 200ms", sub: "Realtime push", positive: true },
 ];
 
-const TRUST_PILLS = ["Keys stay local", "Supabase Realtime", "Windows executor", "EU-listed universe"];
+const TRUST_PILLS = ["EU stocks only", "No US withholding tax", "Keys stay local", "Supabase Realtime", "Windows executor"];
 
 const TONE_STYLES = {
   emerald: {
@@ -251,15 +251,14 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
 
               <div className="space-y-5">
                 <h1 className="text-balance text-4xl font-semibold leading-[1.07] tracking-tight sm:text-5xl lg:text-[3.5rem]">
-                  <span className="text-gradient-hero">Automated investing on</span>{" "}
+                  <span className="text-gradient-hero">EU investing on</span>{" "}
                   <span className="text-gradient-shimmer">Trading212</span>
                   <br className="hidden lg:block" />
-                  <span className="text-gradient-hero"> — without a pro setup</span>
+                  <span className="text-gradient-hero"> — built for EU investors</span>
                 </h1>
 
                 <p className="max-w-md text-base leading-relaxed text-slate-400 sm:text-[1.05rem]">
-                  Signals and subscription live in the portal. Execution stays on your PC — your Trading212 API key
-                  never touches this website.
+                  The only bot targeting EU-listed stocks exclusively — no US withholding friction. Signals live in the portal; execution stays on your PC, API key never leaves your machine.
                 </p>
               </div>
 
@@ -327,12 +326,11 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                 <div className="max-w-lg">
                   <SectionLabel>How it works</SectionLabel>
                   <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                    Three steps to automated investing
+                    Three steps to EU-automated investing
                   </h2>
                 </div>
                 <p className="max-w-sm text-sm leading-relaxed text-slate-400 md:text-right">
-                  The portal manages your account. The desktop app is the only component that stores your
-                  Trading212 API key.
+                  The portal manages your account. The desktop app is the only component that stores your Trading212 API key — and trades only EU-listed stocks.
                 </p>
               </div>
 
@@ -416,8 +414,11 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
             <div className="mb-12 max-w-2xl">
               <SectionLabel>Platform capabilities</SectionLabel>
               <h2 className="text-balance text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                Built for security-conscious traders
+                Built for EU investors — from the ground up
               </h2>
+              <p className="mt-3 text-base leading-relaxed text-slate-400">
+                Every design decision targets the EU market: EU-listed stocks, minimal dividend withholding, and a local executor so your broker credentials never leave your machine.
+              </p>
             </div>
 
             <motion.div

@@ -27,18 +27,17 @@ export function HeroFirstSection() {
         viewport={{ once: true, amount: 0.25 }}
         transition={{ duration: 0.38, ease: easeOutSnappy }}
       >
-        <div className="inline-flex cursor-default items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-1 text-xs text-slate-300 shadow-sm backdrop-blur transition-all duration-300 hover:border-emerald-500/30 hover:bg-white/[0.08]">
-          <span className="font-medium text-slate-50">Trading212 Bot</span>
-          <span className="text-slate-400">long-only · invest</span>
+        <div className="inline-flex cursor-default items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-slate-300 shadow-sm backdrop-blur transition-all duration-300 hover:border-emerald-500/50 hover:bg-emerald-500/[0.15]">
+          <span className="font-medium text-emerald-200">🇪🇺 Built for the EU market</span>
+          <span className="text-slate-400">EU stocks only · Trading212</span>
         </div>
 
         <h1 className="mt-4 text-balance text-4xl font-semibold tracking-tight sm:text-5xl">
-          Automated investing on Trading212 — without a pro setup
+          The only Trading212 bot built exclusively for EU investors
         </h1>
 
         <p className="mt-5 max-w-xl text-pretty text-base leading-7 text-slate-300">
-          Signals and subscription live in the portal. Execution stays on your PC — your Trading212 API key never touches
-          this site.
+          100% EU-listed stocks. No US withholding friction. Automated signals delivered to your PC — your Trading212 API key stays local, never leaves your machine.
         </p>
 
         <HeroSpotlightCard>
@@ -48,13 +47,13 @@ export function HeroFirstSection() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-200/90 sm:text-sm">
-                For everyday investors
+                Made for EU residents on Trading212
               </p>
               <p className="mt-2 text-balance text-lg font-semibold leading-snug text-slate-50 sm:text-xl sm:leading-snug">
-                Your normal Trading212 Invest account is enough — no margin, no shorting.
+                Invest in EU-listed stocks — avoid US dividend withholding tax entirely.
               </p>
               <p className="mt-3 text-pretty text-sm leading-6 text-slate-200 sm:text-base sm:leading-7">
-                Long-only, EU-listed focus, minimal withholding friction — tap a pill for detail.
+                The bot trades only EU-listed equities (Xetra, Euronext, etc.), keeping dividend friction close to zero for EU residents — no W-8BEN complexity, no 15–30% US withholding. Tap a pill for details.
               </p>
               <FeaturePills />
             </div>

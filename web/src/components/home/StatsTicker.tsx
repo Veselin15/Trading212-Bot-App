@@ -1,10 +1,12 @@
 "use client";
 
 const STATS = [
+  { label: "Market", value: "EU only 🇪🇺", positive: true },
   { label: "CAGR", value: "+32.5%", positive: true },
   { label: "Max Drawdown", value: "−9.4%", positive: false },
   { label: "Sharpe Ratio", value: "1.83", positive: true },
   { label: "Win Rate", value: "58.3%", positive: true },
+  { label: "US Withholding", value: "0%", positive: true },
   { label: "Profit Factor", value: "1.72×", positive: true },
   { label: "Signal Latency", value: "< 200ms", positive: true },
   { label: "Uptime", value: "99.9%", positive: true },
