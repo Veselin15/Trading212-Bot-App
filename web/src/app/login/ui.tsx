@@ -105,8 +105,12 @@ export function LoginForm({ oauthError }: { oauthError?: string | null }) {
         ) : null}
 
         <Button type="submit" disabled={busy} className="mt-3">
-          {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Create account"}
+          {busy ? "Please wait…" : mode === "signin" ? "Sign in" : "Start 14-day free trial"}
         </Button>
+
+        {mode === "signup" && (
+          <p className="text-center text-xs text-slate-500">14 days free · paper trade the algorithm · no card required</p>
+        )}
 
         <Button
           type="button"

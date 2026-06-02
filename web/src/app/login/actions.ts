@@ -2,6 +2,8 @@
 
 import { redirect } from "next/navigation";
 
+import { sendDripEmail } from "@/lib/email/drip";
+import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AuthActionResult = {
@@ -51,6 +53,19 @@ export async function signUp(formData: FormData): Promise<AuthActionResult | voi
   });
 
   if (error) return { error: error.message };
+
+  // Fire the Day-1 welcome email (no-op until Resend is configured). Best-effort.
+  if (data.user?.id) {
+    try {
+      await sendDripEmail(createSupabaseAdminClient(), {
+        userId: data.user.id,
+        email,
+        kind: "welcome",
+      });
+    } catch {
+      // never block signup on email delivery
+    }
+  }
 
   // Supabase returns a session immediately when email confirmation is disabled.
   if (data.session) {

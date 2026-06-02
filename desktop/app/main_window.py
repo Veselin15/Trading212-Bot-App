@@ -190,7 +190,7 @@ class MainWindow(QMainWindow):
         )
         self.validate_btn.clicked.connect(self.on_validate_clicked)  # type: ignore[arg-type]
 
-        self.tier_status_label = QLabel("Free plan — you can skip this step and go straight to step 2.")
+        self.tier_status_label = QLabel("Paste your license key from swifttrade.app to start your free 14-day trial.")
         self.tier_status_label.setObjectName("TierStatusLabel")
         self.tier_status_label.setWordWrap(True)
 
@@ -606,7 +606,7 @@ class MainWindow(QMainWindow):
     # ── license tier enforcement ──────────────────────────────────────────────
 
     def _update_tier_ui(self, tier: str) -> None:
-        """Apply UI state for the validated tier: pro / free / invalid."""
+        """Apply UI state for the validated tier: pro / trial / expired / free / invalid."""
         self._license_tier = tier
         if tier == "pro":
             self.trading_mode.set_pro_unlocked(True)
@@ -616,24 +616,52 @@ class MainWindow(QMainWindow):
             )
             self.tier_status_label.setText("Pro license active — real-money trading is unlocked.")
             self.tier_status_label.setProperty("tierKind", "pro")
-        elif tier == "free":
+        elif tier == "trial":
             self.trading_mode.set_pro_unlocked(False)
             self.trading_mode.setToolTip(
-                "Demo mode: paper trade on your Trading212 practice account.\n"
-                "Pro subscription required for real-money trades."
+                "Free trial: paper trade on your Trading212 practice account.\n"
+                "Upgrade to Pro to unlock real-money trades."
             )
-            if self.license_key.text().strip():
-                self.tier_status_label.setText("Free plan — demo mode only. Upgrade to Pro for real-money trading.")
-            else:
-                self.tier_status_label.setText("Free plan — you can skip this step and go straight to step 2.")
+            self.tier_status_label.setText(
+                "Free trial active — paper trading only. Upgrade to Pro for real-money trading."
+            )
+            self.tier_status_label.setProperty("tierKind", "trial")
+        elif tier == "expired":
+            self.trading_mode.set_pro_unlocked(False)
+            self.trading_mode.setToolTip(
+                "Your free trial has ended. Upgrade at swifttrade.app to resume trading."
+            )
+            self.tier_status_label.setText(
+                "Free trial expired — trading is paused. Upgrade at swifttrade.app to resume."
+            )
+            self.tier_status_label.setProperty("tierKind", "expired")
+        elif tier == "free":
+            # Legacy value — no standalone free tier anymore; prompt for a license.
+            self.trading_mode.set_pro_unlocked(False)
+            self.trading_mode.setToolTip(
+                "Paste your license key from swifttrade.app to start your free 14-day trial."
+            )
+            self.tier_status_label.setText(
+                "Paste your license key from swifttrade.app — sign up for a free 14-day trial to get one."
+            )
             self.tier_status_label.setProperty("tierKind", "free")
         else:
             self.trading_mode.set_pro_unlocked(False)
             self.trading_mode.setToolTip(
-                "Fix or remove your license key. Paper trading works without a key."
+                "License key not recognized. Copy it again from your dashboard at swifttrade.app."
             )
-            self.tier_status_label.setText("License key not recognized — double-check it, or clear the field to use the free plan.")
+            self.tier_status_label.setText(
+                "License key not recognized — double-check it, or copy it again from swifttrade.app."
+            )
             self.tier_status_label.setProperty("tierKind", "pending")
+        # Show/hide real-money section based on tier
+        if hasattr(self, "_live_key_lock_msg"):
+            is_pro = (tier == "pro")
+            self._live_key_lock_msg.setVisible(not is_pro)
+            self._live_key_fields.setVisible(is_pro)
+            self._live_key_box.setProperty("locked", "" if is_pro else "true")
+            self._live_key_box.style().unpolish(self._live_key_box)
+            self._live_key_box.style().polish(self._live_key_box)
         self.tier_status_label.style().unpolish(self.tier_status_label)
         self.tier_status_label.style().polish(self.tier_status_label)
         self._update_broker_keys_hint()
@@ -660,7 +688,7 @@ class MainWindow(QMainWindow):
                         "warn",
                         f"Periodic license check: tier changed from {prev_tier!r} to {result.tier!r}. {result.message}",
                     )
-                elif not result.valid and prev_tier in ("pro", "free"):
+                elif not result.valid and prev_tier in ("pro", "trial", "free"):
                     self._append_event(
                         "error",
                         f"Periodic license check failed (was {prev_tier!r}) — {result.message}",
@@ -688,9 +716,15 @@ class MainWindow(QMainWindow):
                     "Real-money keys: save under Step 2, then use Real trades in the top bar when ready.",
                 )
                 self._set_sb("Pro license validated — real trades unlocked.")
+            elif result.tier == "trial":
+                self._append_event("ok", result.message)
+                self._set_sb("Free trial active — paper trading only.")
+            elif result.tier == "expired":
+                self._append_event("warn", result.message)
+                self._set_sb("Free trial expired — upgrade at swifttrade.app to resume.")
             elif result.tier == "free":
                 self._append_event("warn", result.message)
-                self._set_sb("Free license — real trades disabled.")
+                self._set_sb("No active plan — start a free trial at swifttrade.app.")
             else:
                 self._append_event("error", result.message)
                 self._set_sb("License validation failed.")
@@ -781,6 +815,7 @@ class MainWindow(QMainWindow):
         busy = self._t212_test_busy
         self.test_t212_practice_btn.setEnabled(not busy)
         self.test_t212_live_btn.setEnabled(is_pro and not busy)
+        self.save_live_keys_btn.setEnabled(is_pro)
         if is_pro and self.trading_mode.is_live():
             self._broker_keys_hint.setText("Real trades ON — using live account keys.")
             self._broker_keys_hint.setStyleSheet(
@@ -926,7 +961,7 @@ class MainWindow(QMainWindow):
         checklist = getattr(self, "setup_checklist", None)
         if checklist is None:
             return
-        license_validated = self._license_tier in ("pro", "free")
+        license_validated = self._license_tier in ("pro", "trial")
         has_broker_keys = self._has_saved_broker_keys()
         connected = self._server_connected
         checklist.update_state(
@@ -1036,7 +1071,7 @@ class MainWindow(QMainWindow):
                 self.nav_status.set_kind("online_demo")
             return
 
-        license_ok = self._license_tier in ("pro", "free")
+        license_ok = self._license_tier in ("pro", "trial")
         has_keys = self._has_saved_broker_keys()
 
         if license_ok and has_keys:
@@ -1140,6 +1175,25 @@ class MainWindow(QMainWindow):
             on_tier=self._on_ws_tier,
         )
         self._ws_task = asyncio.create_task(self._ws_client.run_forever())
+
+        def _ws_task_done(task: asyncio.Task) -> None:
+            """Re-arm the Connect button whenever the WS task exits for any reason."""
+            self.connect_btn.setEnabled(True)
+            self.disconnect_btn.setEnabled(False)
+            self._refresh_setup_checklist()
+            if task.cancelled():
+                return
+            exc = task.exception()
+            if exc is not None:
+                self._append_event(
+                    "error",
+                    f"Connection loop crashed ({type(exc).__name__}: {exc}). "
+                    "Click Connect to retry.",
+                )
+                self._on_ws_status("OFFLINE")
+
+        self._ws_task.add_done_callback(_ws_task_done)
+
         self.connect_btn.setEnabled(False)
         self.disconnect_btn.setEnabled(True)
         if hasattr(self, "setup_connect_btn"):
@@ -1152,7 +1206,7 @@ class MainWindow(QMainWindow):
             self._append_event("info", "Paper mode — no license key; demo trading only.")
 
     def _on_ws_tier(self, tier: str) -> None:
-        if tier in ("pro", "free"):
+        if tier in ("pro", "trial", "expired", "free"):
             self._update_tier_ui(tier)
 
     @asyncSlot()
@@ -1195,8 +1249,91 @@ class MainWindow(QMainWindow):
         self._refresh_t212_status()
         self._refresh_setup_checklist()
         self._set_sb("Demo keys saved.")
+        # Silently verify the saved key is actually a demo key, not a live key
+        asyncio.create_task(
+            self._validate_practice_key_type(
+                api=payload.practice_api_key,
+                sec=payload.practice_secret_key,
+            )
+        )
+
+    async def _validate_practice_key_type(self, *, api: str, sec: str | None) -> None:
+        """
+        Background check: if the demo-slot key is rejected by demo.trading212.com
+        with a 401 but accepted by live.trading212.com, it is a real-money key.
+        Clears the saved key and warns the user so they can get the correct one.
+        """
+        if self._license_tier == "pro":
+            return  # Pro users can organise keys however they like
+        try:
+            async with T212Client(
+                keys=T212Keys(api_key=api, secret_key=sec),
+                base_url=T212_API_DEMO_BASE,
+            ) as c:
+                await c.get_free_funds()
+            return  # Accepted by the demo host — correct key type
+        except T212APIError as exc:
+            if "401" not in str(exc):
+                return  # Some other error (network, 429…) — not a key-type problem
+        except Exception:
+            return  # Network unreachable, etc. — don't block the user
+
+        # Demo returned 401; probe the live host with the same credentials
+        is_live_key = False
+        try:
+            async with T212Client(
+                keys=T212Keys(api_key=api, secret_key=sec),
+                base_url=T212_API_LIVE_BASE,
+            ) as lc:
+                await lc.get_free_funds()
+                is_live_key = True
+        except Exception:
+            pass
+
+        if not is_live_key:
+            return  # Just an invalid/expired key — normal error path will handle it
+
+        # Confirmed: a real-money Invest key was saved in the demo slot — clear it
+        cur = self._store.load()
+        if cur:
+            self._store.save(SecretPayload(
+                practice_api_key="",
+                practice_secret_key=None,
+                live_api_key=cur.live_api_key,
+                live_secret_key=cur.live_secret_key,
+            ))
+        self.practice_t212_api_key.clear()
+        self.practice_t212_secret_key.clear()
+        self._refresh_t212_status()
+        self._refresh_setup_checklist()
+
+        self._append_event(
+            "error",
+            "Real-money key detected in demo slot \u2014 key cleared. "
+            "Please generate a Practice account key: Trading212 \u2192 Settings \u2192 API.",
+        )
+        QMessageBox.critical(
+            self,
+            "Wrong API key type detected",
+            "The key you saved belongs to a real-money Trading212 Invest account.\n\n"
+            "Without a Pro license you can only trade on the Practice (demo) account.\n\n"
+            "To get the correct key:\n"
+            "  \u2022 Open the Trading212 app \u2192 Settings \u2192 API\n"
+            "  \u2022 Make sure you are on the Practice account\n"
+            "  \u2022 Generate a new API key and copy it\n"
+            "  \u2022 Come back here and paste it in the Demo API key field\n\n"
+            "Your entry has been cleared for safety.",
+        )
 
     def on_save_live_keys_clicked(self) -> None:
+        if self._license_tier != "pro":
+            QMessageBox.warning(
+                self,
+                "Pro license required",
+                "Saving real-money API keys requires an active Pro subscription.\n\n"
+                "Upgrade to Pro at swifttrade.io, then return here to add your live Trading212 keys.",
+            )
+            return
         cur = self._store.load()
         payload = SecretPayload(
             practice_api_key=(cur.practice_api_key if cur else ""),

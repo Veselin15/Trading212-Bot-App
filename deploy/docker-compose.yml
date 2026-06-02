@@ -28,6 +28,39 @@ services:
       retries: 3
       start_period: 40s
 
+  # ── Autonomous live trader (Mode 2) ────────────────────────────────────────
+  # Runs the ML strategy directly on the server and places orders on Trading212
+  # WITHOUT needing the desktop app connected.
+  #
+  # ⚠️  DO NOT enable this while RUN_STRATEGY=true AND the desktop app is
+  #     connected — both would trade the same signals, causing double orders.
+  #
+  # Start with demo first:
+  #   T212_BASE_URL=https://demo.trading212.com
+  # Switch to live when satisfied:
+  #   T212_BASE_URL=https://live.trading212.com
+  #
+  # Enable with:  docker compose --profile trader up -d
+  # Disable with: docker compose --profile trader down
+  live_trader:
+    image: ${SWIFTTRADE_BACKEND_IMAGE:-veski4a06/swifttrade-backend:latest}
+    container_name: swifttrade_live_trader
+    restart: always
+    profiles: ["trader"]
+    working_dir: /app/Server-App
+    command: ["python", "-m", "t212_miner_bot.live_trader"]
+    env_file:
+      - .env
+    environment:
+      PYTHONPATH: /app/Server-App
+      T212_API_KEY: ${T212_API_KEY:-}
+      T212_BASE_URL: ${T212_BASE_URL:-https://demo.trading212.com}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      BOT_COLORS: "0"
+    volumes:
+      - swifttrade_bot_state:/app/Server-App/t212_miner_bot
+
   # Optional: self-host the Next.js portal on the same machine.
   # Prefer Cloudflare Pages for swifttrade.app if the server CPU is tight.
   web:

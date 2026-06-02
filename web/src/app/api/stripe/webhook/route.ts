@@ -10,6 +10,7 @@ import {
   resolveSupabaseUserIdForStripeCustomer,
   subscriptionPatchFromStripeSubscription,
 } from "@/lib/stripe-customer-user";
+import { applyProfileTierForStripeCustomer } from "@/lib/profile";
 import { requiredEnv } from "@/lib/env";
 import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
 
         await upsertByCustomer(customer, patch, metaUid);
         await applyLicenseEffectForStripeCustomer(admin, customer, "ensure");
+        await applyProfileTierForStripeCustomer(admin, customer, String(patch.status ?? "active"));
         break;
       }
 
@@ -112,6 +114,7 @@ export async function POST(request: Request) {
 
         const effect = licenseEffectFromSubscriptionRow(String(sub.status || "inactive"), currentPeriodEnd);
         await applyLicenseEffectForStripeCustomer(admin, customerId, effect);
+        await applyProfileTierForStripeCustomer(admin, customerId, String(sub.status || "inactive"));
         break;
       }
 
@@ -144,6 +147,7 @@ export async function POST(request: Request) {
           ...(current_period_end ? { current_period_end } : {}),
         });
         await applyLicenseEffectForStripeCustomer(admin, customerId, "ensure");
+        await applyProfileTierForStripeCustomer(admin, customerId, "active");
         break;
       }
 

@@ -30,14 +30,13 @@ _log = logging.getLogger("uvicorn.error")
 # ---------------------------------------------------------------------------
 
 def _add_new_bot_to_syspath() -> None:
-    """Add AI-Trading/ to sys.path so new_trading212bot is importable."""
+    """Add Server-App/ to sys.path so t212_miner_bot is importable."""
     here = Path(__file__).resolve()
-    # Trading212-Bot-App is 4 levels up from this file
+    # In the container: /app/backend/app/strategy/<file> → parents[3] = /app
     repo_root = here.parents[3]
-    # new_trading212bot lives in the sibling AI-Trading/ directory
-    ai_trading = repo_root.parent / "AI-Trading"
-    if str(ai_trading) not in sys.path:
-        sys.path.insert(0, str(ai_trading))
+    server_app = repo_root / "Server-App"
+    if str(server_app) not in sys.path:
+        sys.path.insert(0, str(server_app))
 
 
 # ---------------------------------------------------------------------------
@@ -112,7 +111,7 @@ def _run_signal_cycle(
     """
     import numpy as np
 
-    from new_trading212bot.config import (
+    from t212_miner_bot.config import (
         SYMBOL_THRESHOLDS,
         EXEC_TP_ATR_MULT,
         EXEC_SL_ATR_MULT,
@@ -120,7 +119,7 @@ def _run_signal_cycle(
         SECTOR_CLAMPING_ENABLED,
         SYMBOL_SECTOR,
     )
-    from new_trading212bot.features import (
+    from t212_miner_bot.features import (
         compute_all_features,
         get_feature_columns,
         compute_sector_relative_strength,
@@ -132,7 +131,7 @@ def _run_signal_cycle(
     all_5m:  dict = {}
 
     # Import fetch_bars lazily (imports yfinance which may be slow)
-    from new_trading212bot.live_trader import _fetch_bars
+    from t212_miner_bot.live_trader import _fetch_bars
 
     _log.debug("Fetching bars for %d symbols…", len(symbols))
     for sym in symbols:
@@ -270,12 +269,12 @@ async def run_t212_miner_strategy_forever() -> None:
     _add_new_bot_to_syspath()
 
     try:
-        from new_trading212bot.config import EU_SYMBOLS
-        from new_trading212bot.ensemble_model import EnsembleModel
-        from new_trading212bot.production import PRODUCTION_BLOCKLIST, build_strategy
+        from t212_miner_bot.config import EU_SYMBOLS
+        from t212_miner_bot.ensemble_model import EnsembleModel
+        from t212_miner_bot.production import PRODUCTION_BLOCKLIST, build_strategy
     except ImportError as exc:
         _log.error(
-            "new_trading212bot import failed – is AI-Trading/ present? (%s). "
+            "t212_miner_bot import failed – is Server-App/ present in the container? (%s). "
             "Strategy runner will not start.",
             exc,
         )
@@ -292,14 +291,14 @@ async def run_t212_miner_strategy_forever() -> None:
 
     if not models:
         _log.warning(
-            "new_trading212bot: no trained models found under AI-Trading/new_trading212bot/models/. "
+            "t212_miner_bot: no trained models found under Server-App/t212_miner_bot/models/. "
             "Run run_pipeline.py to train models. Strategy runner idle."
         )
         return
 
     strategy = build_strategy()
     _log.info(
-        "new_trading212bot strategy runner started: %d / %d models loaded.",
+        "t212_miner_bot strategy runner started: %d / %d models loaded.",
         len(models), len(available),
     )
 

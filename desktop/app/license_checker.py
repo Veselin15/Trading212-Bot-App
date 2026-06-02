@@ -9,8 +9,13 @@ import aiohttp
 from .ws_client import _http_base
 
 
-# The three possible outcomes from the validation endpoint.
-TierType = Literal["pro", "free", "invalid"]
+# Possible outcomes from the validation endpoint.
+#   pro     – paid subscription; live trading unlocked
+#   trial   – inside the 14-day free trial; paper trading only
+#   expired – trial ended / subscription lapsed; locked until upgrade
+#   free    – legacy value (treated like a locked/no-access state)
+#   invalid – key not recognized / malformed
+TierType = Literal["pro", "trial", "expired", "free", "invalid"]
 
 
 @dataclass

@@ -1,6 +1,16 @@
 # Web portal environment variables
 
-Accounts and billing live in **Supabase** (`auth.users`, `public.subscriptions`, `public.licenses`). See [`supabase/README.md`](../supabase/README.md). Local Docker Postgres is for the Python backend only.
+Accounts and billing live in **Supabase** (`auth.users`, `public.profiles`, `public.subscriptions`, `public.licenses`). See [`supabase/README.md`](../supabase/README.md). Local Docker Postgres is for the Python backend only.
+
+## Tier model (TRIAL → PRO → EXPIRED)
+
+A new account gets a **14-day free trial** (no card): the `handle_new_user` trigger creates a `public.profiles` row with `subscription_tier = 'TRIAL'` and `trial_ends_at = now() + 14 days`. The effective tier is computed at read time (`public.effective_tier`, mirrored in the web `lib/tier.ts` and the backend `resolve_license_tier`):
+
+- **PRO** — active Stripe subscription (single recurring `STRIPE_PRICE_ID`). Live execution unlocked.
+- **TRIAL** — inside the trial window. Paper trading + signals only.
+- **EXPIRED** — trial ended (or subscription lapsed). Desktop app, signals, and license are locked until upgrade.
+
+There is **one paid tier**. Upgrading clears `trial_ends_at`, so a later cancellation drops the user to EXPIRED (not back into a stale trial).
 
 ## Required (Supabase)
 
@@ -27,6 +37,16 @@ Accounts and billing live in **Supabase** (`auth.users`, `public.subscriptions`,
 - `DESKTOP_CHANGELOG_URL` (optional link to release notes)
 - `DESKTOP_SIGNAL_SERVER_URL` (display-only — the wss:// address baked into the EXE, shown on /download so users know which server their app connects to)
 - `DESKTOP_VIRUSTOTAL_URL` (optional VirusTotal link shown on /download)
+
+## Optional (trial email drip — Phase 5)
+
+The drip is a **no-op** until these are set; nothing breaks without them.
+
+- `RESEND_API_KEY` — Resend API key (verified sending domain required)
+- `EMAIL_FROM` — e.g. `SwiftTrade <noreply@swifttrade.app>`
+- `CRON_SECRET` — shared secret for the daily drip endpoint
+
+`/api/cron/trial-emails` is **not** self-scheduling. Point a daily scheduler (Cloudflare Cron Trigger, Vercel Cron, or a GitHub Action) at it with header `x-cron-secret: <CRON_SECRET>`. It sends Day-7, Day-13, and post-expiry emails; the Day-1 welcome fires on signup. All sends are idempotent (one per stage per user, tracked on `public.profiles`).
 
 ## Stripe webhooks
 

@@ -638,11 +638,11 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                     Simple, transparent pricing
                   </Badge>
                   <h2 className="text-balance mb-4 text-3xl font-semibold tracking-tight text-white md:text-5xl">
-                    Start free. Go live when ready.
+                    Start your 14-day free trial. Go live when ready.
                   </h2>
                   <p className="mx-auto mb-10 max-w-lg text-base leading-relaxed text-slate-400">
-                    Explore the portal on the free plan. Upgrade to Pro for the live signal feed, a desktop license, and
-                    executor downloads.
+                    Paper-trade the algorithm free for 14 days — no card required. Upgrade to Pro for live real-money
+                    execution, anytime.
                   </p>
                   <HomePricingCtas mode={ctaMode} />
                 </div>

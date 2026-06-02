@@ -1,8 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { getMyLicenseKey } from "@/lib/license";
-import { revokeLicensesIfSubscriptionTerminal } from "@/lib/billing-license-sync";
-import { getMySubscription, canUseProFeatures } from "@/lib/subscription";
+import { ensureSubscriberLicense, revokeLicensesIfSubscriptionTerminal } from "@/lib/billing-license-sync";
+import { ensureProfileForUser, getMyProfile } from "@/lib/profile";
+import { getMySubscription } from "@/lib/subscription";
+import { computeEffectiveTier, trialDaysLeft } from "@/lib/tier";
 import { isStripeCheckoutConfigured, isStripePortalConfigured } from "@/lib/stripe-env";
 import { refreshSubscriptionRowFromStripe } from "@/lib/stripe-subscription-refresh";
 import { getSupabaseSchemaSetupMessage } from "@/lib/supabase/schema-health";
@@ -17,9 +19,10 @@ export default async function DashboardPage() {
 
   if (!data.user) redirect("/login");
 
+  const admin = createSupabaseAdminClient();
+  await ensureProfileForUser(admin, data.user.id);
   await refreshSubscriptionRowFromStripe(data.user.id, { email: data.user.email });
 
-  const admin = createSupabaseAdminClient();
   const { data: statusRow } = await admin
     .from("subscriptions")
     .select("status")
@@ -31,18 +34,27 @@ export default async function DashboardPage() {
     await revokeLicensesIfSubscriptionTerminal(admin, data.user.id, String(statusRow.status));
   }
 
-  const [{ subscription }, licenseKey, schemaSetupMessage] = await Promise.all([
+  const [{ subscription }, profile, schemaSetupMessage] = await Promise.all([
     getMySubscription(),
-    getMyLicenseKey(),
+    getMyProfile(),
     getSupabaseSchemaSetupMessage(),
   ]);
+
+  const effectiveTier = computeEffectiveTier(subscription, profile);
+
+  // Trial and paid users get a working license key so they can run the desktop app.
+  if (effectiveTier !== "EXPIRED") {
+    await ensureSubscriberLicense(admin, data.user.id);
+  }
+  const licenseKey = await getMyLicenseKey();
 
   return (
     <DashboardShell
       userEmail={data.user.email ?? null}
       subscription={subscription}
       licenseKey={licenseKey}
-      planTier={canUseProFeatures(subscription) ? "pro" : "free"}
+      effectiveTier={effectiveTier}
+      trialDaysLeft={trialDaysLeft(profile)}
       stripeCheckoutEnabled={isStripeCheckoutConfigured()}
       stripePortalEnabled={isStripePortalConfigured()}
       schemaSetupMessage={schemaSetupMessage}

@@ -7,6 +7,7 @@ export async function getSupabaseSchemaSetupMessage(): Promise<string | null> {
   const checks = await Promise.all([
     admin.from("subscriptions").select("id", { head: true, count: "exact" }),
     admin.from("licenses").select("id", { head: true, count: "exact" }),
+    admin.from("profiles").select("user_id", { head: true, count: "exact" }),
   ]);
 
   const missing = checks.some((r) => r.error && /relation|schema cache|does not exist/i.test(r.error.message));

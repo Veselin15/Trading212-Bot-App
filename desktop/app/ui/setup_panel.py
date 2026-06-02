@@ -7,6 +7,7 @@ from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
     QFrame,
     QHBoxLayout,
+    QLabel,
     QPushButton,
     QScrollArea,
     QVBoxLayout,
@@ -60,28 +61,87 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     # ── Step 2: Broker keys ─────────────────────────────────────────
     win._setup_step2 = SetupStepCard(
         2,
-        "Connect to Trading212",
-        "Start with a practice (demo) account — no real money involved.",
+        "Trading212 API Keys",
+        "Two separate accounts in Trading212 — each needs its own API key.",
     )
     s2 = win._setup_step2.body_layout()
-    s2.addWidget(
-        instruction_steps([
-            "Open the Trading212 app on your phone. Go to Settings → API → Generate a demo/practice key.",
-            "Copy that key and paste it into the Demo API key field below, then click Save demo keys.",
-        ])
-    )
-    s2.addWidget(hint("Your keys are stored securely on this computer only — they are never sent to SwiftTrade."))
+    s2.addWidget(hint(
+        "Your keys are stored encrypted on this computer only. They are never sent to SwiftTrade servers."
+    ))
     s2.addWidget(win._broker_keys_hint)
 
+    # ─── Helper: build an account section header row ──────────────
+    def _make_section_header(
+        badge_text: str,
+        badge_kind: str,
+        title: str,
+        url: str,
+        *,
+        pro_badge: bool = False,
+    ) -> QFrame:
+        header = QFrame()
+        header.setObjectName("AccountSectionHeader")
+        row = QHBoxLayout(header)
+        row.setContentsMargins(14, 10, 14, 10)
+        row.setSpacing(8)
+
+        badge = QLabel(badge_text)
+        badge.setObjectName("AccountBadge")
+        badge.setProperty("badgeKind", badge_kind)
+        badge.style().unpolish(badge)
+        badge.style().polish(badge)
+        row.addWidget(badge)
+
+        title_lbl = QLabel(title)
+        title_lbl.setObjectName("AccountSectionTitle")
+        row.addWidget(title_lbl)
+
+        dot = QLabel("·")
+        dot.setObjectName("AccountUrl")
+        row.addWidget(dot)
+
+        url_lbl = QLabel(url)
+        url_lbl.setObjectName("AccountUrl")
+        row.addWidget(url_lbl)
+
+        row.addStretch(1)
+
+        if pro_badge:
+            pro = QLabel("PRO")
+            pro.setObjectName("AccountBadge")
+            pro.setProperty("badgeKind", "pro")
+            pro.style().unpolish(pro)
+            pro.style().polish(pro)
+            row.addWidget(pro)
+
+        return header
+
+    # ─── Practice (Demo) Account ─────────────────────────────────
     demo_box = QFrame()
     demo_box.setObjectName("DemoKeyBox")
-    demo_layout = QVBoxLayout(demo_box)
-    demo_layout.setContentsMargins(16, 14, 16, 14)
-    demo_layout.setSpacing(10)
-    demo_layout.addWidget(field_label("Demo API key"))
-    demo_layout.addWidget(win.practice_t212_api_key)
-    demo_layout.addWidget(field_label("API secret (leave blank if you don't have one)"))
-    demo_layout.addWidget(win.practice_t212_secret_key)
+    demo_outer = QVBoxLayout(demo_box)
+    demo_outer.setContentsMargins(0, 0, 0, 0)
+    demo_outer.setSpacing(0)
+    demo_outer.addWidget(_make_section_header("DEMO", "demo", "Practice account", "demo.trading212.com"))
+
+    demo_body_w = QWidget()
+    demo_body = QVBoxLayout(demo_body_w)
+    demo_body.setContentsMargins(16, 12, 16, 14)
+    demo_body.setSpacing(10)
+    demo_body.addWidget(instruction_steps([
+        "In the Trading212 app, make sure you are on the Practice account (not Invest/ISA)."
+        "  Go to Settings \u2192 API \u2192 Generate key.",
+        "Copy the key and paste it below, then click Save.",
+    ]))
+    demo_body.addWidget(field_label("API key"))
+    demo_body.addWidget(win.practice_t212_api_key)
+    _demo_warn = hint("Practice account key only \u2014 do NOT paste a real-money (Invest) key here.")
+    _demo_warn.setStyleSheet(
+        "color: #f59e0b; font-size: 7.5pt; background: transparent; padding: 0; margin: 0;"
+    )
+    demo_body.addWidget(_demo_warn)
+    demo_body.addWidget(field_label("API secret (optional \u2014 leave blank if none)"))
+    demo_body.addWidget(win.practice_t212_secret_key)
     pr_row = QHBoxLayout()
     pr_row.setSpacing(10)
     win.save_practice_keys_btn.setMinimumWidth(140)
@@ -89,45 +149,64 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     pr_row.addWidget(win.save_practice_keys_btn)
     pr_row.addWidget(win.test_t212_practice_btn)
     pr_row.addStretch(1)
-    demo_layout.addLayout(pr_row)
+    demo_body.addLayout(pr_row)
+    demo_outer.addWidget(demo_body_w)
     s2.addWidget(demo_box)
 
-    win._real_money_toggle = QPushButton("▸  Add real-money keys (Pro license required)")
-    win._real_money_toggle.setObjectName("GhostBtn")
-    win._real_money_toggle.setToolTip("Only needed if you want the bot to trade with actual money. Requires a Pro license.")
-    win._real_money_toggle.setCheckable(True)
-    win._real_money_toggle.setChecked(False)
-    s2.addWidget(win._real_money_toggle, alignment=Qt.AlignmentFlag.AlignLeft)
+    # ─── Real-Money (Live) Account ───────────────────────────────
+    win._live_key_box = QFrame()
+    win._live_key_box.setObjectName("LiveKeyBox")
+    win._live_key_box.setProperty("locked", "true")
+    live_outer = QVBoxLayout(win._live_key_box)
+    live_outer.setContentsMargins(0, 0, 0, 0)
+    live_outer.setSpacing(0)
+    live_outer.addWidget(
+        _make_section_header("LIVE", "live", "Real-money account", "live.trading212.com", pro_badge=True)
+    )
 
-    win._real_money_panel = QWidget()
-    rm = QVBoxLayout(win._real_money_panel)
-    rm.setContentsMargins(0, 0, 0, 0)
-    rm.setSpacing(10)
-    win._real_money_panel.setVisible(False)
-    rm.addWidget(field_label("Real-money API key"))
-    rm.addWidget(win.live_t212_api_key)
-    rm.addWidget(field_label("API secret (leave blank if you don't have one)"))
-    rm.addWidget(win.live_t212_secret_key)
+    # Lock message — shown when tier is free
+    win._live_key_lock_msg = QWidget()
+    lock_layout = QVBoxLayout(win._live_key_lock_msg)
+    lock_layout.setContentsMargins(16, 14, 16, 14)
+    lock_lbl = QLabel(
+        "Real-money trading requires an active Pro subscription.\n\n"
+        "Upgrade at swifttrade.io — once your Pro license is confirmed in Step 1, "
+        "this section unlocks automatically."
+    )
+    lock_lbl.setObjectName("LiveKeyLockMsg")
+    lock_lbl.setWordWrap(True)
+    lock_layout.addWidget(lock_lbl)
+    live_outer.addWidget(win._live_key_lock_msg)
+
+    # Fields — shown when tier is pro
+    win._live_key_fields = QWidget()
+    live_fields = QVBoxLayout(win._live_key_fields)
+    live_fields.setContentsMargins(16, 12, 16, 14)
+    live_fields.setSpacing(10)
+    live_fields.addWidget(instruction_steps([
+        "In the Trading212 app, switch to your real Invest or ISA account."
+        "  Go to Settings \u2192 API \u2192 Generate key.",
+        "Copy the key and paste it below, then click Save.",
+    ]))
+    live_fields.addWidget(field_label("API key"))
+    live_fields.addWidget(win.live_t212_api_key)
+    live_fields.addWidget(field_label("API secret (optional \u2014 leave blank if none)"))
+    live_fields.addWidget(win.live_t212_secret_key)
     lv_row = QHBoxLayout()
     lv_row.setSpacing(10)
     lv_row.addWidget(win.save_live_keys_btn)
     lv_row.addWidget(win.test_t212_live_btn)
     lv_row.addStretch(1)
-    rm.addLayout(lv_row)
-    s2.addWidget(win._real_money_panel)
+    live_fields.addLayout(lv_row)
+    win._live_key_fields.setVisible(False)
+    live_outer.addWidget(win._live_key_fields)
+    s2.addWidget(win._live_key_box)
 
     reveal_row = QHBoxLayout()
     reveal_row.addWidget(win.show_t212_secrets)
     reveal_row.addStretch(1)
     s2.addLayout(reveal_row)
 
-    def _toggle_real_money(checked: bool) -> None:
-        win._real_money_panel.setVisible(checked)
-        win._real_money_toggle.setText(
-            "▾  Real-money keys (Pro)" if checked else "▸  Add real-money keys (Pro)"
-        )
-
-    win._real_money_toggle.toggled.connect(_toggle_real_money)  # type: ignore[arg-type]
     layout.addWidget(win._setup_step2)
 
     # ── Step 3: Connect ─────────────────────────────────────────────

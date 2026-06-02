@@ -299,7 +299,9 @@ QLabel#TierStatusLabel {{
     padding: 6px 0 0 0;
 }}
 QLabel#TierStatusLabel[tierKind="pro"] {{ color: {_SUCCESS}; font-weight: 600; }}
+QLabel#TierStatusLabel[tierKind="trial"] {{ color: {_SUCCESS}; }}
 QLabel#TierStatusLabel[tierKind="free"] {{ color: {_WARN}; }}
+QLabel#TierStatusLabel[tierKind="expired"] {{ color: {_DANGER}; font-weight: 600; }}
 QLabel#TierStatusLabel[tierKind="pending"] {{ color: {_MUTED}; }}
 
 QFrame#SetupStepHeader {{
@@ -374,8 +376,66 @@ QFrame#SetupStepBody {{
 
 QFrame#DemoKeyBox {{
     background-color: {_BG};
-    border: 1px solid {_BORDER};
+    border: 1px solid {_SKY};
     border-radius: 10px;
+}}
+
+/* ── account section headers (inside Demo/Live boxes) ────────── */
+QFrame#AccountSectionHeader {{
+    background-color: transparent;
+    border: none;
+    border-bottom: 1px solid {_BORDER};
+}}
+
+QLabel#AccountBadge {{
+    background-color: {_SKY_DIM};
+    color: {_SKY};
+    border-radius: 5px;
+    font-size: 7pt;
+    font-weight: 800;
+    letter-spacing: 0.05em;
+    padding: 2px 6px;
+}}
+QLabel#AccountBadge[badgeKind="live"] {{
+    background-color: #450a0a;
+    color: {_DANGER};
+}}
+QLabel#AccountBadge[badgeKind="pro"] {{
+    background-color: #3b0764;
+    color: #d8b4fe;
+}}
+
+QLabel#AccountSectionTitle {{
+    color: {_TEXT};
+    font-size: 9.5pt;
+    font-weight: 700;
+    background: transparent;
+}}
+
+QLabel#AccountUrl {{
+    color: {_MUTED};
+    font-size: 8pt;
+    background: transparent;
+    font-family: "Cascadia Mono", "Consolas", monospace;
+}}
+
+/* ── live key box ────────────────────────────────────────────── */
+QFrame#LiveKeyBox {{
+    background-color: {_BG};
+    border: 1px solid {_DANGER};
+    border-radius: 10px;
+}}
+QFrame#LiveKeyBox[locked="true"] {{
+    border-color: {_BORDER};
+    background-color: #0c0c10;
+}}
+
+/* ── live key lock message ───────────────────────────────────── */
+QLabel#LiveKeyLockMsg {{
+    color: {_MUTED};
+    font-size: 9pt;
+    background: transparent;
+    line-height: 1.5;
 }}
 
 /* ── callouts & instructions ─────────────────────────────────────── */

@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 
-import { type SubscriptionRow, canUseProFeatures } from "@/lib/subscription-model";
+import { type SubscriptionRow } from "@/lib/subscription-model";
+import { type ProfileRow, computeEffectiveTier, tierCanUseLicense } from "@/lib/tier";
+import { ensureProfileForUser } from "@/lib/profile";
 import { refreshSubscriptionRowFromStripe } from "@/lib/stripe-subscription-refresh";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -19,23 +21,31 @@ export async function POST() {
 
   await refreshSubscriptionRowFromStripe(userRes.user.id, { email: userRes.user.email });
 
-  const { data: subRow } = await supabase
-    .from("subscriptions")
-    .select("status,current_period_end,stripe_customer_id,stripe_subscription_id")
-    .eq("user_id", userRes.user.id)
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
+  const admin = createSupabaseAdminClient();
+  await ensureProfileForUser(admin, userRes.user.id);
+
+  const [{ data: subRow }, { data: profRow }] = await Promise.all([
+    supabase
+      .from("subscriptions")
+      .select("status,current_period_end,stripe_customer_id,stripe_subscription_id")
+      .eq("user_id", userRes.user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
+    supabase.from("profiles").select("subscription_tier,trial_ends_at").eq("user_id", userRes.user.id).maybeSingle(),
+  ]);
 
   const sub = (subRow as SubscriptionRow | null) ?? null;
-  if (sub?.status === "canceled") {
-    return NextResponse.json({ error: "Subscription canceled — license cannot be issued or rotated." }, { status: 403 });
-  }
-  if (!canUseProFeatures(sub)) {
-    return NextResponse.json({ error: "Subscription not active" }, { status: 403 });
-  }
+  const profile = (profRow as ProfileRow | null) ?? null;
+  const tier = computeEffectiveTier(sub, profile);
 
-  const admin = createSupabaseAdminClient();
+  // TRIAL and PRO may hold a license key; EXPIRED may not.
+  if (!tierCanUseLicense(tier)) {
+    return NextResponse.json(
+      { error: "Your free trial has ended. Upgrade to issue a license key." },
+      { status: 403 },
+    );
+  }
   const { data: existing } = await admin
     .from("licenses")
     .select("id")

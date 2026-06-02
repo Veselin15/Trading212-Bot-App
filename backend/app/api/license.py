@@ -14,9 +14,12 @@ router = APIRouter(prefix="/api/license", tags=["license"])
 @router.get("/validate")
 async def validate_license(key: str) -> dict:
     """
-    Validate a license key and return its subscription tier.
+    Validate a license key and return its effective subscription tier.
 
-    Response: {"valid": bool, "tier": "pro" | "free" | "invalid", "message": str}
+    Response: {"valid": bool, "tier": "pro" | "trial" | "expired" | "invalid", "message": str}
+
+    `valid` is True for `pro` and `trial` (the app may run); False for
+    `expired` (trial ended) and `invalid` (bad/revoked key).
 
     Read-only — does NOT update last_ip_address or any row data.
     """
@@ -53,7 +56,6 @@ async def validate_license(key: str) -> dict:
             "message": f"Validation error: {exc}",
         }
 
-    if tier == "invalid":
-        return {"valid": False, "tier": "invalid", "message": message}
-
-    return {"valid": True, "tier": tier, "message": message}
+    # pro/trial → app may run; expired/invalid → blocked.
+    valid = tier in ("pro", "trial")
+    return {"valid": valid, "tier": tier, "message": message}

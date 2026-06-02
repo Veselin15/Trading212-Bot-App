@@ -21,19 +21,19 @@ export function PricingTiers() {
     >
       <motion.div variants={reduce ? fadeUpItemInstant : fadeUpItem}>
         <GlowHoverCard className="p-7">
-          <div className="text-sm font-medium text-slate-300">Paper / Free</div>
+          <div className="text-sm font-medium text-slate-300">14-Day Free Trial</div>
           <div className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">
-            <AnimatedEuro end={0} label="free-tier" />
+            <AnimatedEuro end={0} label="trial-tier" />
           </div>
-          <div className="mt-2 text-sm text-slate-300">Explore the flow and the portal experience.</div>
+          <div className="mt-2 text-sm text-slate-300">Full paper-trading access for 14 days. No card required.</div>
           <ul className="mt-6 space-y-2 text-sm text-slate-200">
-            <li>Portal access</li>
-            <li>Account + license management</li>
-            <li>Desktop download (gated)</li>
+            <li>Live signals feed</li>
+            <li>Paper trading on your practice account</li>
+            <li>Desktop app + license key</li>
           </ul>
           <div className="mt-7">
             <ButtonLink href="/login" variant="secondary" className="w-full sm:w-auto">
-              Start free
+              Start free trial
             </ButtonLink>
           </div>
         </GlowHoverCard>
@@ -52,11 +52,11 @@ export function PricingTiers() {
             <div className="mt-2 text-4xl font-semibold tracking-tight text-slate-50">
               <AnimatedEuro end={49} label="pro-tier" />
             </div>
-            <div className="mt-2 text-sm text-slate-300">Realtime signals + automated desktop execution.</div>
+            <div className="mt-2 text-sm text-slate-300">Everything in the trial, plus real-money automation.</div>
             <ul className="mt-6 space-y-2 text-sm text-slate-200">
-              <li>Signals feed (RLS gated)</li>
+              <li>Realtime signals feed</li>
+              <li>Live (real-money) auto-execution</li>
               <li>License key for the executor</li>
-              <li>Desktop download access</li>
             </ul>
             <div className="mt-7">
               <ButtonLink href="/login" className="w-full sm:w-auto">

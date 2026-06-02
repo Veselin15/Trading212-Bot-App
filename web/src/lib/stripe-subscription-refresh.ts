@@ -4,8 +4,8 @@ import {
   ensureSubscriberLicense,
   revokeLicensesIfSubscriptionTerminal,
 } from "@/lib/billing-license-sync";
+import { setProfileTier } from "@/lib/profile";
 import { getStripeClient } from "@/lib/stripe";
-import { getStripeSubscriptionPeriodEndUnix } from "@/lib/stripe-subscription-period";
 import {
   ensureSubscriptionRowForUser,
   subscriptionPatchFromStripeSubscription,
@@ -102,7 +102,12 @@ export async function refreshSubscriptionRowFromStripe(
   const raw = sub.status;
   if (raw === "active" || raw === "trialing") {
     await ensureSubscriberLicense(admin, userId);
+    await setProfileTier(admin, userId, "PRO");
   }
 
   await revokeLicensesIfSubscriptionTerminal(admin, userId, String(patch.status ?? raw));
+  const finalStatus = String(patch.status ?? raw).toLowerCase();
+  if (["canceled", "unpaid", "incomplete_expired", "incomplete", "paused"].includes(finalStatus)) {
+    await setProfileTier(admin, userId, "EXPIRED");
+  }
 }

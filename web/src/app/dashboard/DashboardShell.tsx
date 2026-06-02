@@ -21,10 +21,10 @@ import { toast } from "sonner";
 import type { SubscriptionRow } from "@/lib/subscription-model";
 import {
   canCancelStripeSubscription,
-  canUseProFeatures,
   isActiveSubscription,
   isPastDueWithGrace,
 } from "@/lib/subscription-model";
+import type { EffectiveTier } from "@/lib/tier";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { Button, ButtonLink } from "@/components/ui/Button";
@@ -43,35 +43,50 @@ function maskKey(value: string) {
   return "•".repeat(Math.min(28, Math.max(12, value.length)));
 }
 
-function subscriptionUi(sub: SubscriptionRow | null, planTier: "free" | "pro") {
-  if (!sub) return { badgeLabel: "Free", badgeActive: false, detail: "No paid plan yet." };
-  if (sub.status === "canceled") {
-    return {
-      badgeLabel: "Canceled",
-      badgeActive: false,
-      detail: sub.current_period_end
-        ? `Canceled. Pro access is off. Last period: ${formatDate(sub.current_period_end)}.`
-        : "Canceled. Pro access is off.",
-    };
+function subscriptionUi(sub: SubscriptionRow | null, effectiveTier: EffectiveTier, trialDaysLeft: number | null) {
+  const isPro = effectiveTier === "PRO";
+
+  if (!isPro) {
+    if (effectiveTier === "TRIAL") {
+      const days = trialDaysLeft ?? 0;
+      return {
+        badgeLabel: "Trial",
+        badgeActive: true,
+        detail: `Free trial — ${days} day${days === 1 ? "" : "s"} left. Paper trading only; upgrade to unlock live execution.`,
+      };
+    }
+    // EXPIRED
+    if (sub?.status === "canceled") {
+      return {
+        badgeLabel: "Expired",
+        badgeActive: false,
+        detail: sub.current_period_end
+          ? `Subscription canceled. Last period: ${formatDate(sub.current_period_end)}. Upgrade to resume.`
+          : "Subscription canceled. Upgrade to resume.",
+      };
+    }
+    if (sub?.status === "past_due") {
+      return {
+        badgeLabel: "Past due",
+        badgeActive: false,
+        detail: "Payment failed — update your card in Manage billing to restore access.",
+      };
+    }
+    return { badgeLabel: "Expired", badgeActive: false, detail: "Your free trial has ended. Upgrade to resume." };
   }
-  if (sub.status === "past_due") {
-    const grace = isPastDueWithGrace(sub);
+
+  // PRO
+  if (sub && isPastDueWithGrace(sub)) {
     return {
       badgeLabel: "Past due",
-      badgeActive: grace,
-      detail: grace
-        ? "Update payment in Manage billing. Limited access may remain until period end."
-        : "Subscription is not active.",
+      badgeActive: true,
+      detail: "Update payment in Manage billing. Pro access remains until the period end.",
     };
   }
-  if (isActiveSubscription(sub)) {
-    if (sub.status === "trialing") {
-      return { badgeLabel: "Trial", badgeActive: true, detail: planTier === "pro" ? "Pro · trial access is active." : "Trial active." };
-    }
-    return { badgeLabel: "Active", badgeActive: true, detail: planTier === "pro" ? "Pro plan · active." : "Paid subscription active." };
+  if (sub && isActiveSubscription(sub) && sub.status === "trialing") {
+    return { badgeLabel: "Active", badgeActive: true, detail: "Pro · trial access is active." };
   }
-  if (sub.status === "unpaid") return { badgeLabel: "Inactive", badgeActive: false, detail: "Subscription is not active." };
-  return { badgeLabel: sub.status.replace(/_/g, " "), badgeActive: false, detail: "Subscription is not active." };
+  return { badgeLabel: "Active", badgeActive: true, detail: "Pro plan · active." };
 }
 
 function LicenseKeyManager({ licenseKey }: { licenseKey: string }) {
@@ -147,7 +162,8 @@ export type DashboardShellProps = {
   userEmail: string | null;
   subscription: SubscriptionRow | null;
   licenseKey: string | null;
-  planTier: "free" | "pro";
+  effectiveTier: EffectiveTier;
+  trialDaysLeft: number | null;
   stripeCheckoutEnabled: boolean;
   stripePortalEnabled: boolean;
   schemaSetupMessage?: string | null;
@@ -157,13 +173,18 @@ export function DashboardShell({
   userEmail,
   subscription,
   licenseKey,
-  planTier,
+  effectiveTier,
+  trialDaysLeft,
   stripeCheckoutEnabled,
   stripePortalEnabled,
   schemaSetupMessage,
 }: DashboardShellProps) {
-  const proFeatures = canUseProFeatures(subscription);
-  const ui = subscriptionUi(subscription, planTier);
+  const proFeatures = effectiveTier === "PRO";
+  const isTrial = effectiveTier === "TRIAL";
+  const isExpired = effectiveTier === "EXPIRED";
+  const canUseLicense = !isExpired; // TRIAL + PRO may hold a license key
+  const planLabel = proFeatures ? "Pro Automation" : isTrial ? "Trial (paper)" : "Expired";
+  const ui = subscriptionUi(subscription, effectiveTier, trialDaysLeft);
   const canUsePortal = Boolean(stripePortalEnabled && subscription?.stripe_customer_id);
   const canCancelSubscription = Boolean(canUsePortal && canCancelStripeSubscription(subscription));
   const showUpgrade = !proFeatures && stripeCheckoutEnabled;
@@ -185,6 +206,46 @@ export function DashboardShell({
         </Alert>
       )}
 
+      {isTrial && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Activity className="h-4 w-4 shrink-0 text-emerald-400" />
+            <p className="text-sm text-slate-200">
+              <span className="font-semibold text-emerald-300">
+                {(trialDaysLeft ?? 0) === 1 ? "1 day" : `${trialDaysLeft ?? 0} days`} left in your free trial.
+              </span>{" "}
+              Paper-trade the algorithm now — upgrade to unlock live execution.
+            </p>
+          </div>
+          {showUpgrade && (
+            <form action="/api/stripe/checkout" method="post" className="shrink-0">
+              <Button type="submit" className="h-10 gap-2 w-full sm:w-auto">
+                Upgrade to Live Execution <ArrowRight className="h-4 w-4" />
+              </Button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {isExpired && (
+        <div className="mb-6 flex flex-col gap-3 rounded-2xl border border-rose-500/30 bg-rose-500/[0.07] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <Shield className="h-4 w-4 shrink-0 text-rose-400" />
+            <p className="text-sm text-slate-200">
+              <span className="font-semibold text-rose-300">Your free trial has ended.</span>{" "}
+              The algorithm is paused. Upgrade to resume paper and live trading.
+            </p>
+          </div>
+          {showUpgrade && (
+            <form action="/api/stripe/checkout" method="post" className="shrink-0">
+              <Button type="submit" className="h-10 gap-2 w-full sm:w-auto">
+                Upgrade now <ArrowRight className="h-4 w-4" />
+              </Button>
+            </form>
+          )}
+        </div>
+      )}
+
       {/* ── Top header ── */}
       <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div>
@@ -193,10 +254,12 @@ export function DashboardShell({
               Welcome back,{" "}
               <span className="text-gradient-brand">{userEmail ?? "you@example.com"}</span>
             </h1>
-            {planTier === "pro" ? (
+            {proFeatures ? (
               <Badge className="border-emerald-500/45 bg-emerald-500/15 text-emerald-200">Pro</Badge>
+            ) : isTrial ? (
+              <Badge className="border-emerald-500/35 bg-emerald-500/10 text-emerald-300">Trial</Badge>
             ) : (
-              <Badge className="border-slate-700/80 bg-white/[0.04] text-slate-400">Free</Badge>
+              <Badge className="border-rose-500/40 bg-rose-500/10 text-rose-300">Expired</Badge>
             )}
           </div>
           <p className="mt-1 text-sm text-slate-500">
@@ -228,11 +291,9 @@ export function DashboardShell({
         <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
           <Shield className="h-3.5 w-3.5 text-slate-500" />
           <span className="text-xs text-slate-500">Plan:</span>
-          <span className="text-xs font-semibold text-slate-300">
-            {planTier === "pro" ? "Pro Automation" : "Paper / Free"}
-          </span>
+          <span className="text-xs font-semibold text-slate-300">{planLabel}</span>
         </div>
-        {subscription?.current_period_end && planTier === "pro" && (
+        {subscription?.current_period_end && proFeatures && (
           <div className="flex items-center gap-2 rounded-full border border-white/[0.07] bg-white/[0.03] px-3.5 py-1.5">
             <span className="text-xs text-slate-500">Renews:</span>
             <span className="font-mono text-xs text-slate-400">{formatDate(subscription.current_period_end)}</span>
@@ -260,9 +321,7 @@ export function DashboardShell({
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="rounded-2xl border border-white/[0.07] bg-black/20 px-4 py-3">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Plan</p>
-              <p className="mt-1.5 text-sm font-semibold text-slate-200">
-                {planTier === "pro" ? "Pro Automation" : "Paper / Free"}
-              </p>
+              <p className="mt-1.5 text-sm font-semibold text-slate-200">{planLabel}</p>
             </div>
             <div className="rounded-2xl border border-white/[0.07] bg-black/20 px-4 py-3">
               <p className="text-xs font-medium uppercase tracking-wide text-slate-600">Period end</p>
@@ -328,48 +387,48 @@ export function DashboardShell({
               <ButtonLink href="/download" className="h-11 w-full gap-2">
                 <Download className="h-4 w-4" /> Download App (.exe)
               </ButtonLink>
-              {!proFeatures && (
-                <p className="text-xs text-slate-500">Free: paper trade on your practice account. Pro unlocks real-money automation.</p>
+              {isTrial && (
+                <p className="text-xs text-slate-500">Trial: paper-trade the algorithm on your practice account. Upgrade to unlock real-money automation.</p>
+              )}
+              {isExpired && (
+                <p className="text-xs text-rose-300/80">Trial ended — upgrade to resume paper and live trading.</p>
               )}
             </div>
           </div>
         </Card>
 
         {/* License key area */}
-        {proFeatures && licenseKey ? (
+        {canUseLicense && licenseKey ? (
           <LicenseKeyManager licenseKey={licenseKey} />
-        ) : proFeatures && !licenseKey ? (
+        ) : canUseLicense && !licenseKey ? (
           <Card variant="solid" className="p-6">
             <div className="mb-1 flex items-center gap-2">
               <Key className="h-4 w-4 text-emerald-400/70" strokeWidth={1.75} />
               <p className="font-semibold text-slate-50">License Key</p>
             </div>
-            <p className="mb-5 mt-1 text-sm text-slate-500">Generate a key for the desktop app. Regenerate at any time while subscribed.</p>
+            <p className="mb-5 mt-1 text-sm text-slate-500">
+              {isTrial
+                ? "Generate a key for the desktop app to paper-trade during your trial."
+                : "Generate a key for the desktop app. Regenerate at any time while subscribed."}
+            </p>
             <form action="/api/license/regenerate" method="post">
               <Button type="submit" className="h-11">Generate license key</Button>
             </form>
           </Card>
-        ) : !proFeatures && licenseKey ? (
+        ) : (
           <Card variant="solid" className="p-6">
             <p className="font-semibold text-slate-50">License Key</p>
-            <p className="mt-1 mb-5 text-sm text-slate-500">Subscription not eligible for Pro. Previous key invalidated. Resubscribe to get a new one.</p>
+            <p className="mt-1 mb-5 text-sm text-slate-500">
+              {licenseKey
+                ? "Your free trial has ended, so this key is inactive. Upgrade to reactivate the desktop app."
+                : "Your free trial has ended. Upgrade to issue a license key and resume the desktop app."}
+            </p>
             {showUpgrade ? (
               <form action="/api/stripe/checkout" method="post">
-                <Button type="submit" variant="secondary" className="h-11">Upgrade to Pro</Button>
+                <Button type="submit" variant="secondary" className="h-11">Upgrade now</Button>
               </form>
             ) : (
               <ButtonLink href="/pricing" variant="secondary" className="inline-flex h-11 items-center">View pricing</ButtonLink>
-            )}
-          </Card>
-        ) : (
-          <Card variant="solid" className="p-6">
-            <p className="font-semibold text-slate-50">Desktop App</p>
-            <p className="mt-1 mb-5 text-sm text-slate-500">Download and paper trade on your Trading212 practice account — no license key needed. Upgrade to Pro for real-money automation.</p>
-            <ButtonLink href="/download" variant="secondary" className="inline-flex h-11 items-center">Download desktop app</ButtonLink>
-            {showUpgrade && (
-              <form action="/api/stripe/checkout" method="post" className="mt-3">
-                <Button type="submit" variant="secondary" className="h-11">Upgrade to Pro</Button>
-              </form>
             )}
           </Card>
         )}

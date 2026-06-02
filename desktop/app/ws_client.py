@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sys
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 from urllib.parse import urlparse
@@ -111,13 +112,15 @@ class ExecWsClient:
                         msg = json.loads(raw)
                         mtype = msg.get("type")
                         if mtype == "WELCOME":
-                            tier = str(msg.get("tier") or "free")
+                            tier = str(msg.get("tier") or "trial")
                             if self._on_tier:
                                 self._on_tier(tier)
                             if tier == "pro":
                                 self._on_event("Handshake OK — Pro tier (live trading unlocked).")
+                            elif tier == "trial":
+                                self._on_event("Handshake OK — Free trial (paper trading only).")
                             else:
-                                self._on_event("Handshake OK — Paper tier (demo account only).")
+                                self._on_event("Handshake OK — paper trading only.")
                             continue
                         if mtype == "PING":
                             await ws.send(json.dumps({"type": "PONG"}))
@@ -146,13 +149,13 @@ class ExecWsClient:
                     self._on_event("Disconnected: bad handshake (unexpected message type sent).")
                 elif code == 4401:
                     self._on_event(
-                        "Disconnected: server rejected paper mode (code 4401). "
-                        "Leave the license field empty and restart the SwiftTrade backend, then reconnect."
+                        "Disconnected: a license key is required. Paste your key from swifttrade.app "
+                        "(start a free 14-day trial to get one), then reconnect."
                     )
                 elif code == 4403:
                     self._on_event(
-                        "Disconnected: subscription or license not active. "
-                        "Visit the SwiftTrade website to renew, then reconnect."
+                        "Disconnected: your free trial has ended (or the subscription lapsed). "
+                        "Upgrade at swifttrade.app to resume, then reconnect."
                     )
                 elif code == 4404:
                     self._on_event(

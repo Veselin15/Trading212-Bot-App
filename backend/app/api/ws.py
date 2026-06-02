@@ -51,60 +51,62 @@ async def ws_exec(ws: WebSocket) -> None:
         return
 
     license_key = _parse_license_key(hello.get("license_key"))
-    mode = str(hello.get("mode") or "").strip().lower()
-    if mode == "paper" or license_key is None:
-        license_key = None
     now = datetime.now(tz=UTC)
     ip = _client_ip(ws)
-    tier = "free"
+    tier = "expired"
     lic: dict | None = None
     connection_id: uuid.UUID
 
+    # A valid license key (trial or paid) is required — paper trading is part of
+    # the 14-day trial, so there is no anonymous/guest session.
     if license_key is None:
-        # Guest paper mode — no portal account or license required.
-        connection_id = uuid.uuid4()
-        _log.info("WS /ws/exec guest paper session (conn=%s ip=%s)", connection_id, ip or "?")
-    else:
-        root = ws.app
-        sb = getattr(root.state, "supabase_rest", None)
-        if sb is None:
-            sb = SupabaseRest.from_settings()
-        if sb is None:
-            info = supabase_config_smoke_dict()
-            diag = json.dumps(info, indent=2)
-            _log.error("WS /ws/exec closing 4420 (no Supabase credentials). Diagnostics (no secrets):\n%s", diag)
-            print(f"WS4420 pid={os.getpid()} see uvicorn.error log for JSON diagnostics", file=sys.stderr, flush=True)
-            any_file = any(c.get("exists") for c in info.get("candidates", []) if isinstance(c, dict))
-            reason = (
-                f"file_url_len={info.get('file_url_len')} file_key_len={info.get('file_key_len')} "
-                f"any_dotenv={any_file}"
-            )
-            if len(reason) > 118:
-                reason = reason[:115] + "..."
-            await ws.close(code=4420, reason=reason)
-            return
+        _log.info("WS /ws/exec rejected: no license key (ip=%s)", ip or "?")
+        await ws.close(code=4401, reason="License key required. Start your free trial at swifttrade.app")
+        return
 
-        try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
-                tier, lic, _message = await resolve_license_tier(sb, client, license_key, now=now)
-                if tier == "invalid":
-                    await ws.close(code=4404)
-                    return
+    root = ws.app
+    sb = getattr(root.state, "supabase_rest", None)
+    if sb is None:
+        sb = SupabaseRest.from_settings()
+    if sb is None:
+        info = supabase_config_smoke_dict()
+        diag = json.dumps(info, indent=2)
+        _log.error("WS /ws/exec closing 4420 (no Supabase credentials). Diagnostics (no secrets):\n%s", diag)
+        print(f"WS4420 pid={os.getpid()} see uvicorn.error log for JSON diagnostics", file=sys.stderr, flush=True)
+        any_file = any(c.get("exists") for c in info.get("candidates", []) if isinstance(c, dict))
+        reason = (
+            f"file_url_len={info.get('file_url_len')} file_key_len={info.get('file_key_len')} "
+            f"any_dotenv={any_file}"
+        )
+        if len(reason) > 118:
+            reason = reason[:115] + "..."
+        await ws.close(code=4420, reason=reason)
+        return
 
-                connection_id = uuid.UUID(str(lic["id"])) if lic else uuid.uuid4()
+    try:
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            tier, lic, _message = await resolve_license_tier(sb, client, license_key, now=now)
+            if tier == "invalid":
+                await ws.close(code=4404, reason="License key not recognized.")
+                return
+            if tier == "expired":
+                await ws.close(code=4403, reason="Trial expired. Upgrade at swifttrade.app to resume.")
+                return
 
-                if lic:
-                    await sb.patch(
-                        client,
-                        f"licenses?id=eq.{lic['id']}",
-                        {"last_ip_address": ip or None, "last_seen_at": now.isoformat()},
-                    )
-        except httpx.HTTPError:
-            await ws.close(code=1011)
-            return
-        except Exception:
-            await ws.close(code=1011)
-            return
+            connection_id = uuid.UUID(str(lic["id"])) if lic else uuid.uuid4()
+
+            if lic:
+                await sb.patch(
+                    client,
+                    f"licenses?id=eq.{lic['id']}",
+                    {"last_ip_address": ip or None, "last_seen_at": now.isoformat()},
+                )
+    except httpx.HTTPError:
+        await ws.close(code=1011)
+        return
+    except Exception:
+        await ws.close(code=1011)
+        return
 
     conn = Connection(
         connection_id=connection_id,

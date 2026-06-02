@@ -43,7 +43,7 @@ function ProCtaButton({ proTier }: { proTier: ProTierCta }) {
   return <ButtonLink href="/dashboard" variant="secondary" className="w-full">Go to dashboard</ButtonLink>;
 }
 
-const FREE_FEATURES = ["View signals (read-only)", "Paper trading simulation", "Historical performance data", "Community support"] as const;
+const FREE_FEATURES = ["Live signals feed", "Paper trading on your practice account", "Full algorithm access", "No credit card required"] as const;
 const PRO_FEATURES = ["Live trading signals", "Desktop app download", "License key activation", "Priority support", "Risk management tools"] as const;
 const ENT_FEATURES = ["Custom signal strategies", "Multiple accounts", "Dedicated support", "SLA guarantees", "Custom integration"] as const;
 
@@ -73,7 +73,7 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
               Transparent, no-surprise pricing
             </h1>
             <p className="text-base leading-relaxed text-slate-400 sm:text-lg">
-              Powered by Stripe and Supabase. Start free to explore — upgrade to Pro for live execution. Cancel anytime.
+              Powered by Stripe and Supabase. Start with a 14-day free trial — upgrade to Pro for live execution. Cancel anytime.
             </p>
           </RevealOnScroll>
         </Container>
@@ -88,12 +88,12 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
             {/* Free */}
             <div className="flex flex-col rounded-2xl border border-white/[0.08] bg-[#07070b] p-7">
               <div className="mb-6">
-                <p className="mb-1 text-lg font-bold text-white">Paper / Free</p>
-                <p className="text-sm text-slate-500">Explore the platform with paper trading</p>
+                <p className="mb-1 text-lg font-bold text-white">14-Day Free Trial</p>
+                <p className="text-sm text-slate-500">Full paper-trading access. No card required.</p>
               </div>
               <div className="mb-6 flex items-end gap-1">
                 <span className="font-mono text-4xl font-semibold text-white">€0</span>
-                <span className="mb-1 text-sm text-slate-500">/mo</span>
+                <span className="mb-1 text-sm text-slate-500">for 14 days</span>
               </div>
               <ul className="mb-8 flex-1 space-y-3">
                 {FREE_FEATURES.map((f) => (
@@ -103,7 +103,7 @@ export function PricingPageClient({ proTier }: { proTier: ProTierCta }) {
                   </li>
                 ))}
               </ul>
-              <ButtonLink href="/login" variant="secondary" className="w-full">Start free</ButtonLink>
+              <ButtonLink href="/login" variant="secondary" className="w-full">Start free trial</ButtonLink>
             </div>
 
             {/* Pro — featured */}

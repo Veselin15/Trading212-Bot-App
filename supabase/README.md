@@ -7,12 +7,13 @@ The **web portal** uses your hosted Supabase project for accounts, billing state
 | Data | Location |
 |------|----------|
 | User accounts (email, password, OAuth) | Supabase **`auth.users`** (managed Auth API) |
+| Tier + trial window (`subscription_tier`, `trial_ends_at`) | Supabase **`public.profiles`** |
 | Subscription status, Stripe IDs | Supabase **`public.subscriptions`** |
 | Desktop license keys | Supabase **`public.licenses`** |
-| Trading signals (Pro feed) | Supabase **`public.signals`** |
+| Trading signals (trial + Pro feed) | Supabase **`public.signals`** |
 | Bot positions / strategy state | Local **Postgres** via `docker compose` (backend only) |
 
-There is no separate `profiles` table: the account **is** the row in `auth.users`. The dashboard shows `user.email` from that record.
+`public.profiles` holds the 14-day trial window and tier hint, one row per `auth.users` id, auto-created on signup by the `handle_new_user` trigger. Effective tier (TRIAL → PRO → EXPIRED) is computed at read time from `trial_ends_at` + the active subscription; see `web/ENV.md`.
 
 ## Apply migrations (required once per project)
 
@@ -21,6 +22,7 @@ There is no separate `profiles` table: the account **is** the row in `auth.users
    - `20260428_000001_init_subscriptions_signals.sql`
    - `20260428_000002_init_licenses.sql`
    - `20260428_000003_add_license_enforcement_fields.sql`
+   - `20260602_000004_trial_tiers.sql` (profiles table, 14-day trial trigger, signal-access RLS)
 
 If tables are missing, the dashboard shows a setup warning.
 
