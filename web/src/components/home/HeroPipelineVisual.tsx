@@ -19,8 +19,6 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { EUMapIcon } from "@/components/EUMapIcon";
-
 const MAX_TILT = 4;
 const EASE_SNAPPY = [0.22, 1, 0.36, 1] as const;
 
@@ -393,24 +391,6 @@ export function HeroPipelineVisual() {
         }}
         aria-label="SwiftTrade system architecture"
       >
-        {/* EU watermark — makes “EU-only” obvious at first sight */}
-        <div className="pointer-events-none absolute inset-0 z-0">
-          <div className="absolute -right-8 top-12 opacity-[0.10] blur-[0.2px] sm:opacity-[0.12]">
-            <EUMapIcon
-              className="h-[260px] w-[260px] text-emerald-400/80 sm:h-[320px] sm:w-[320px]"
-              title="EU market focus"
-            />
-          </div>
-          <div
-            className="absolute inset-0"
-            style={{
-              background:
-                "radial-gradient(ellipse 70% 60% at 75% 40%, rgba(0,230,118,0.12), transparent 62%), radial-gradient(ellipse 80% 70% at 30% 55%, rgba(56,189,248,0.08), transparent 60%)",
-            }}
-            aria-hidden
-          />
-        </div>
-
         {/* Cursor sheen */}
         {enableTilt && (
           <motion.div

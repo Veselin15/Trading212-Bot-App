@@ -16,7 +16,7 @@ import {
 import { BacktestChart } from "@/components/BacktestChart";
 import { BacktestSummary } from "@/components/BacktestSummary";
 import { EUMapIcon } from "@/components/EUMapIcon";
-import { EUMapHeroVisual } from "@/components/home/EUMapHeroVisual";
+import { HeroPipelineVisual } from "@/components/home/HeroPipelineVisual";
 import { RevealOnScroll } from "@/components/home/RevealOnScroll";
 import { StatsTicker } from "@/components/home/StatsTicker";
 import { GlowHoverCard } from "@/components/motion/GlowHoverCard";
@@ -229,6 +229,25 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
     <div className="relative overflow-x-hidden">
       {/* ── Hero ── */}
       <section className="relative pb-20 pt-16 lg:pb-24 lg:pt-24">
+        {/* EU map ghost — sits behind everything in the hero, bleeds to the right */}
+        <div
+          className="pointer-events-none absolute bottom-0 right-0 top-0 w-[65%] overflow-hidden"
+          aria-hidden
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/eu-map.png"
+            alt=""
+            className="absolute right-[-14%] top-[4%] h-[88%] w-auto max-w-none object-contain"
+            style={{
+              opacity: 0.055,
+              filter: "saturate(0.4) brightness(1.6) blur(1.5px)",
+              maskImage: "radial-gradient(ellipse 72% 80% at 62% 44%, black 28%, transparent 78%)",
+              WebkitMaskImage: "radial-gradient(ellipse 72% 80% at 62% 44%, black 28%, transparent 78%)",
+            }}
+          />
+        </div>
+
         <div
           className="pointer-events-none absolute left-1/2 top-0 h-[560px] w-[min(100%,1000px)] -translate-x-1/2 rounded-full opacity-75 blur-3xl"
           style={{
@@ -313,7 +332,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
               transition={{ duration: 0.7, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
               className="relative flex justify-center lg:justify-end"
             >
-              <EUMapHeroVisual />
+              <HeroPipelineVisual />
             </motion.div>
           </div>
         </Container>
