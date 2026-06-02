@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from PySide6.QtWidgets import QHBoxLayout, QPushButton, QVBoxLayout, QWidget
 
-from .widgets import callout, section_title
+from .widgets import hint, section_title
 
 if TYPE_CHECKING:
     from ..main_window import MainWindow
@@ -20,7 +20,7 @@ def build_log_panel(win: MainWindow) -> QWidget:
     head = QHBoxLayout()
     head.setContentsMargins(0, 0, 0, 0)
     head.setSpacing(6)
-    head.addWidget(section_title("What happened"))
+    head.addWidget(section_title("Activity log"))
     head.addStretch(1)
 
     clear_btn = QPushButton("Clear")
@@ -31,12 +31,6 @@ def build_log_panel(win: MainWindow) -> QWidget:
     head.addWidget(clear_btn)
 
     layout.addLayout(head)
-    layout.addWidget(
-        callout(
-            "Messages about connecting, saving keys, and trading signals show up here. "
-            "Green = success, yellow = warning, red = problem.",
-            kind="info",
-        )
-    )
+    layout.addWidget(hint("A live record of every action the bot takes.  Green = success · Yellow = warning · Red = error"))
     layout.addWidget(win.event_log, 1)
     return w

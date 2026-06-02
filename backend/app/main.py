@@ -8,7 +8,7 @@ import os
 from fastapi import FastAPI
 
 # Bump when you ship a new release.  Desktop app reads this from /version.
-APP_VERSION = "1.0.0"
+APP_VERSION = "2.0.0"
 
 from app.api.license import router as license_router
 from app.api.ws import heartbeat_loop, router as ws_router
@@ -83,7 +83,9 @@ def create_app() -> FastAPI:
         app.state.supabase_rest = SupabaseRest.from_settings()
         asyncio.create_task(heartbeat_loop())
         if settings.run_strategy:
-            _log.warning("Strategy runner ENABLED (RUN_STRATEGY=true).")
+            _log.warning(
+                "Strategy runner ENABLED (RUN_STRATEGY=true) — new_trading212bot v2 ML engine."
+            )
             from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
 
             asyncio.create_task(run_t212_miner_strategy_forever())

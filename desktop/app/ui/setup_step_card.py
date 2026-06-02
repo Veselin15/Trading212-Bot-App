@@ -89,22 +89,22 @@ class SetupStepCard(QFrame):
 
         if state == "done":
             self._badge.setText("✓")
-            self._status.setText("Done")
+            self._status.setText("Complete")
             self._status.setProperty("statusKind", "done")
             self._header.setCursor(Qt.CursorShape.PointingHandCursor)
-            self._header.setToolTip("Click to show or hide this step")
+            self._header.setToolTip("Click to expand or collapse this step")
         elif state == "active":
             self._badge.setText(str(self._step_num))
-            self._status.setText("Your turn")
+            self._status.setText("Action needed")
             self._status.setProperty("statusKind", "active")
             self._header.setCursor(Qt.CursorShape.PointingHandCursor)
-            self._header.setToolTip("")
+            self._header.setToolTip("Click to expand or collapse")
         else:
             self._badge.setText(str(self._step_num))
-            self._status.setText("Later")
+            self._status.setText("Upcoming")
             self._status.setProperty("statusKind", "locked")
             self._header.setCursor(Qt.CursorShape.ArrowCursor)
-            self._header.setToolTip("Finish the step above first")
+            self._header.setToolTip("Complete the step above to unlock this one")
 
         if expand is not None:
             self._user_collapsed = not expand

@@ -37,10 +37,45 @@ class AppSettings:
     # Startup
     auto_connect_on_start: bool = False
     start_minimized: bool = False
+    start_with_windows: bool = False
     seen_welcome: bool = False
+
+    # Background / power
+    close_to_tray: bool = True      # hide to tray on window-close instead of quitting
+    keep_awake: bool = True         # prevent the PC from sleeping while connected
 
     # Layout
     splitter_sizes: list[int] = field(default_factory=lambda: [580, 440])
+
+    def reset_preferences(self, *, keep: AppSettings) -> AppSettings:
+        """Restore trading/log/connection prefs to factory defaults; keep setup-specific fields."""
+        fresh = AppSettings()
+        return AppSettings(
+            ws_url=keep.ws_url,
+            license_key=keep.license_key,
+            seen_welcome=keep.seen_welcome,
+            splitter_sizes=list(keep.splitter_sizes),
+            reconnect_interval_s=fresh.reconnect_interval_s,
+            max_reconnect_attempts=fresh.max_reconnect_attempts,
+            order_quantity=fresh.order_quantity,
+            max_daily_trades=fresh.max_daily_trades,
+            signal_cooldown_s=fresh.signal_cooldown_s,
+            default_stop_loss_pct=fresh.default_stop_loss_pct,
+            confirm_before_trade=fresh.confirm_before_trade,
+            skip_non_long_signals=fresh.skip_non_long_signals,
+            log_font_size=fresh.log_font_size,
+            log_max_lines=fresh.log_max_lines,
+            log_auto_scroll=fresh.log_auto_scroll,
+            log_show_timestamps=fresh.log_show_timestamps,
+            log_level_filter=fresh.log_level_filter,
+            notify_on_signal=fresh.notify_on_signal,
+            notify_on_connect=fresh.notify_on_connect,
+            auto_connect_on_start=fresh.auto_connect_on_start,
+            start_minimized=fresh.start_minimized,
+            start_with_windows=keep.start_with_windows,   # keep — touches OS state
+            close_to_tray=fresh.close_to_tray,
+            keep_awake=fresh.keep_awake,
+        )
 
 
 class SettingsStore:
@@ -82,7 +117,10 @@ class SettingsStore:
                 notify_on_connect=bool(obj.get("notify_on_connect", True)),
                 auto_connect_on_start=bool(obj.get("auto_connect_on_start", False)),
                 start_minimized=bool(obj.get("start_minimized", False)),
+                start_with_windows=bool(obj.get("start_with_windows", False)),
                 seen_welcome=bool(obj.get("seen_welcome", False)),
+                close_to_tray=bool(obj.get("close_to_tray", True)),
+                keep_awake=bool(obj.get("keep_awake", True)),
                 splitter_sizes=list(obj.get("splitter_sizes") or [580, 440]),
             )
         except Exception:

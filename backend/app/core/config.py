@@ -89,8 +89,8 @@ class Settings(BaseSettings):
     # Legacy SQLAlchemy Postgres (unused for licensing). Set false in production deploy.
     run_db_migrations: bool = True
 
-    # Strategy runner (Server-App/t212_miner_bot). Disable on low-spec prod boxes by default.
-    # When enabled, requires additional deps and data feed reliability.
+    # Strategy runner (AI-Trading/new_trading212bot). Disable on low-spec prod boxes by default.
+    # When enabled, requires xgboost/lgbm deps and trained model files.
     run_strategy: bool = False
 
 

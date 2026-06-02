@@ -18,12 +18,13 @@ def build_trades_tab(win: MainWindow) -> QWidget:
     layout.setSpacing(12)
     layout.addWidget(
         callout(
-            "Every signal from the bot appears here. In Demo mode nothing is bought or sold — "
-            "check What happened on the right for details.",
+            "Every trading recommendation (signal) from SwiftTrade AI is listed here as it arrives. "
+            "In Demo mode the bot logs what it would do but does not place real orders — "
+            "check the Activity log on the right for a full breakdown.",
             kind="info",
         )
     )
-    layout.addWidget(section_title("Signal queue"))
-    layout.addWidget(hint("Newest signals appear at the top."))
+    layout.addWidget(section_title("Incoming signals"))
+    layout.addWidget(hint("Each row is one AI recommendation. Newest signals appear at the top of the list."))
     layout.addWidget(win.exec_queue, 1)
     return w

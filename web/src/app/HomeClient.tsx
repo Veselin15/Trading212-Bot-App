@@ -81,9 +81,9 @@ const FEATURES = [
 ];
 
 const PERFORMANCE_METRICS = [
-  { label: "CAGR", value: "+31.4%", sub: "36-month backtest", positive: true },
-  { label: "Win Rate", value: "68.3%", sub: "Historical average", positive: true },
-  { label: "Sharpe Ratio", value: "1.84", sub: "Risk-adjusted return", positive: true },
+  { label: "CAGR", value: "+32.5%", sub: "5-yr sim · 12-mo OOS", positive: true },
+  { label: "Win Rate", value: "58.3%", sub: "312 trades (OOS)", positive: true },
+  { label: "Sharpe Ratio", value: "1.83", sub: "Risk-adjusted return", positive: true },
   { label: "Signal Latency", value: "< 200ms", sub: "Realtime push", positive: true },
 ];
 
@@ -108,9 +108,9 @@ const TONE_STYLES = {
 };
 
 const HERO_METRICS = [
-  { label: "CAGR", value: "+31.4%", positive: true },
-  { label: "Win Rate", value: "68.3%", positive: true },
-  { label: "Sharpe", value: "1.84", positive: true },
+  { label: "CAGR", value: "+32.5%", positive: true },
+  { label: "Win Rate", value: "58.3%", positive: true },
+  { label: "Sharpe", value: "1.83", positive: true },
 ];
 
 function HomeHeroCtas({ mode }: { mode: HomeCtaMode }) {
@@ -279,7 +279,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                   </div>
                 ))}
                 <div className="flex items-center gap-1.5 rounded-full border border-slate-800/80 bg-white/[0.02] px-3 py-1.5">
-                  <span className="text-xs text-slate-600">36-mo backtest</span>
+                  <span className="text-xs text-slate-600">12-mo OOS · 5-yr sim</span>
                 </div>
               </div>
 
@@ -379,7 +379,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
           <Container>
             <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
               <SectionLabel>Performance metrics</SectionLabel>
-              <span className="text-xs text-slate-700">36-month backtest · illustrative only</span>
+              <span className="text-xs text-slate-700">5-year simulation · 12-month OOS · illustrative only</span>
             </div>
 
             <div className="grid grid-cols-2 gap-4 md:grid-cols-4 md:gap-5">

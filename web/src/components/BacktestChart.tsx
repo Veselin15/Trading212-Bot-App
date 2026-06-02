@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   Area,
   AreaChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -12,31 +13,30 @@ import {
 } from "recharts";
 
 type EquityPoint = {
-  month: string; // e.g. "2024-01"
-  equity: number; // equity multiple (1.0 = starting capital)
+  month: string;
+  equity: number;
   ret_pct?: number;
-  exposure?: number;
-  breadth?: number;
+  drawdown?: number;
+  is_oos?: boolean;
 };
 
-type BacktestPayload = {
-  meta?: {
-    start_utc?: string;
-    end_utc?: string;
-    symbols?: string[];
-    slippage_bps?: number;
-  };
-  summary?: {
+type DashboardPayload = {
+  generated_at?: string;
+  hero?: {
     total_return_pct?: number;
     cagr_pct?: number;
     max_drawdown_pct?: number;
+    oos_months?: number;
   };
-  points: EquityPoint[];
+  equity_5yr: EquityPoint[];
+  // legacy fallback
+  points?: EquityPoint[];
 };
 
 type ChartPoint = {
   month: string;
-  value: number; // portfolio value in USD
+  value: number;
+  is_oos?: boolean;
 };
 
 function formatUSD(value: number) {
@@ -48,7 +48,6 @@ function formatUSD(value: number) {
 }
 
 function monthLabel(yyyyMm: string) {
-  // Expected input: YYYY-MM
   const [y, m] = yyyyMm.split("-").map((x) => Number(x));
   if (!y || !m) return yyyyMm;
   const d = new Date(y, m - 1, 1);
@@ -58,12 +57,13 @@ function monthLabel(yyyyMm: string) {
 function BacktestTooltip(props: unknown) {
   const { active, payload, label } = props as {
     active?: boolean;
-    payload?: Array<{ value?: unknown }>;
+    payload?: Array<{ value?: unknown; payload?: { is_oos?: boolean } }>;
     label?: string;
   };
   if (!active || !payload?.length) return null;
   const v = payload[0]?.value;
   if (typeof v !== "number") return null;
+  const isOos = payload[0]?.payload?.is_oos;
 
   return (
     <div
@@ -71,7 +71,14 @@ function BacktestTooltip(props: unknown) {
       style={{ willChange: "transform" }}
     >
       <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Month</div>
-      <div className="mt-1 text-sm font-medium text-slate-50">{label}</div>
+      <div className="mt-1 flex items-center gap-2 text-sm font-medium text-slate-50">
+        {label}
+        {isOos && (
+          <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[0.6rem] font-semibold text-emerald-400">
+            OOS
+          </span>
+        )}
+      </div>
       <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Portfolio Value</div>
       <div className="mt-1 text-sm font-medium text-emerald-300">{formatUSD(v)}</div>
     </div>
@@ -88,16 +95,15 @@ export function BacktestChart({
   const wrapRef = useRef<HTMLDivElement>(null);
   const inView = useInView(wrapRef, { once: true, amount: 0.22, margin: "0px 0px -10% 0px" });
   const reduceMotion = useReducedMotion();
-  const [payload, setPayload] = useState<BacktestPayload | null>(null);
+  const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
-    // IMPORTANT: This uses an aggregated monthly equity curve (no trade log exposed).
-    fetch("/backtest_report.json", { cache: "no-store" })
+    fetch("/strategy_dashboard.json", { cache: "no-store" })
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return (await r.json()) as BacktestPayload;
+        return (await r.json()) as DashboardPayload;
       })
       .then((p) => {
         if (!cancelled) setPayload(p);
@@ -110,13 +116,17 @@ export function BacktestChart({
     };
   }, []);
 
+  // Prefer equity_5yr, fall back to legacy points field
+  const rawPoints = payload?.equity_5yr ?? payload?.points ?? [];
+  const oosStartMonth = rawPoints.find((p) => p.is_oos)?.month ?? null;
+
   const data = useMemo<ChartPoint[]>(() => {
-    const points = payload?.points ?? [];
-    return points.map((p) => ({
+    return rawPoints.map((p) => ({
       month: monthLabel(p.month),
       value: Math.round(startingBalance * p.equity),
+      is_oos: p.is_oos,
     }));
-  }, [payload, startingBalance]);
+  }, [rawPoints, startingBalance]);
 
   const allowDrawAnimation = Boolean(!reduceMotion && inView && data.length > 0);
 
@@ -141,6 +151,9 @@ export function BacktestChart({
     );
   }
 
+  // Find x-axis index for OOS reference line
+  const oosLabelMonth = oosStartMonth ? monthLabel(oosStartMonth) : null;
+
   return (
     <div ref={wrapRef} className={className}>
       <div className="h-[260px] w-full">
@@ -154,7 +167,6 @@ export function BacktestChart({
               </linearGradient>
             </defs>
 
-            {/* No prominent grid lines (premium / minimal) */}
             <XAxis
               dataKey="month"
               tick={false}
@@ -169,6 +181,22 @@ export function BacktestChart({
               tickLine={false}
               domain={["dataMin - 600", "dataMax + 600"]}
             />
+
+            {oosLabelMonth && (
+              <ReferenceLine
+                x={oosLabelMonth}
+                stroke="rgba(16,185,129,0.5)"
+                strokeDasharray="4 3"
+                strokeWidth={1.5}
+                label={{
+                  value: "OOS →",
+                  position: "insideTopRight",
+                  fontSize: 10,
+                  fill: "#34d399",
+                  fontWeight: 600,
+                }}
+              />
+            )}
 
             <Tooltip
               animationDuration={160}
@@ -197,4 +225,3 @@ export function BacktestChart({
     </div>
   );
 }
-

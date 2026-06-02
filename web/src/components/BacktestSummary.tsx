@@ -4,32 +4,34 @@ import { useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CountUp from "react-countup";
 
-type EquityPoint = {
-  month: string;
-  equity: number;
+type HeroMetrics = {
+  total_return_pct?: number;
+  cagr_pct?: number;
+  max_drawdown_pct?: number;
+  win_rate_pct?: number;
+  sharpe_ratio?: number;
+  profit_factor?: number;
+  total_trades?: number;
+  oos_months?: number;
+  avg_hold_h?: number;
 };
 
-type BacktestPayload = {
-  meta?: {
-    start_utc?: string;
-    end_utc?: string;
-    symbols?: string[];
-  };
+type DashboardPayload = {
+  generated_at?: string;
+  hero?: HeroMetrics;
+  equity_5yr?: Array<{ month: string; equity: number; is_oos?: boolean }>;
+  // legacy fields
   summary?: {
     total_return_pct?: number;
     cagr_pct?: number;
     max_drawdown_pct?: number;
   };
-  points: EquityPoint[];
+  meta?: {
+    start_utc?: string;
+    end_utc?: string;
+    symbols?: string[];
+  };
 };
-
-function formatDateRange(startUtc?: string, endUtc?: string) {
-  if (!startUtc || !endUtc) return null;
-  const start = new Date(startUtc);
-  const end = new Date(endUtc);
-  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return null;
-  return `${start.toLocaleDateString("en-US", { year: "numeric", month: "short" })} → ${end.toLocaleDateString("en-US", { year: "numeric", month: "short" })}`;
-}
 
 function MetricCount({
   end,
@@ -69,17 +71,17 @@ function MetricCount({
 }
 
 export function BacktestSummary() {
-  const [payload, setPayload] = useState<BacktestPayload | null>(null);
+  const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [error, setError] = useState<string | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const inView = useInView(rootRef, { once: true, amount: 0.05, margin: "0px 0px 80px 0px" });
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/backtest_report.json", { cache: "no-store" })
+    fetch("/strategy_dashboard.json", { cache: "no-store" })
       .then(async (r) => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return (await r.json()) as BacktestPayload;
+        return (await r.json()) as DashboardPayload;
       })
       .then((p) => {
         if (!cancelled) setPayload(p);
@@ -93,18 +95,31 @@ export function BacktestSummary() {
   }, []);
 
   const summary = useMemo(() => {
-    if (!payload?.points?.length) return null;
+    if (!payload) return null;
 
-    const totalReturnPct = payload.summary?.total_return_pct;
-    const cagrPct = payload.summary?.cagr_pct;
-    const maxDrawdownPct = payload.summary?.max_drawdown_pct;
+    // Prefer new hero metrics; fall back to legacy summary field
+    const hero = payload.hero;
+    const legacy = payload.summary;
+
+    const totalReturnPct  = hero?.total_return_pct  ?? legacy?.total_return_pct;
+    const cagrPct         = hero?.cagr_pct          ?? legacy?.cagr_pct;
+    const maxDrawdownPct  = hero?.max_drawdown_pct   ?? legacy?.max_drawdown_pct;
+    const winRatePct      = hero?.win_rate_pct;
+    const sharpeRatio     = hero?.sharpe_ratio;
+    const totalTrades     = hero?.total_trades;
+    const oosMonths       = hero?.oos_months;
+
+    if (totalReturnPct === undefined && cagrPct === undefined) return null;
 
     return {
-      dateRange: formatDateRange(payload.meta?.start_utc, payload.meta?.end_utc),
-      symbols: payload.meta?.symbols ?? [],
       totalReturnPct,
       cagrPct,
       maxDrawdownPct,
+      winRatePct,
+      sharpeRatio,
+      totalTrades,
+      oosMonths,
+      generatedAt: payload.generated_at,
     };
   }, [payload]);
 
@@ -127,13 +142,20 @@ export function BacktestSummary() {
 
   return (
     <div ref={rootRef} className="mt-4 flex flex-col gap-3 sm:mt-5">
-      <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
-        <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</div>
-        <div className="mt-1 text-sm font-medium text-slate-50">{summary.dateRange ?? "—"}</div>
-        {summary.symbols.length ? (
-          <div className="mt-1 text-xs text-slate-400">Universe: {summary.symbols.join(", ")}</div>
-        ) : null}
-      </div>
+      {/* Period / version info */}
+      {(summary.oosMonths !== undefined || summary.generatedAt) && (
+        <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
+          <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</div>
+          <div className="mt-1 text-sm font-medium text-slate-50">
+            5-year simulation · {summary.oosMonths ?? "?"} months out-of-sample
+          </div>
+          {summary.generatedAt && (
+            <div className="mt-1 text-xs text-slate-500">
+              SwingStrategyV3 · AI Ensemble v4 · updated {summary.generatedAt}
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
@@ -145,7 +167,7 @@ export function BacktestSummary() {
               "—"
             )}
           </div>
-          <div className="mt-1 text-xs text-slate-400">Over the period above (model)</div>
+          <div className="mt-1 text-xs text-slate-400">Over the full simulation period</div>
         </div>
 
         <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
@@ -160,9 +182,39 @@ export function BacktestSummary() {
               "— / —"
             )}
           </div>
-          <div className="mt-1 text-xs text-slate-400">For the same historical window</div>
+          <div className="mt-1 text-xs text-slate-400">Annualised return / peak-to-trough</div>
         </div>
       </div>
+
+      {/* Extra metrics row when available */}
+      {(summary.winRatePct !== undefined || summary.sharpeRatio !== undefined || summary.totalTrades !== undefined) && (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {typeof summary.winRatePct === "number" && (
+            <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Win rate</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight text-slate-50">
+                <MetricCount end={summary.winRatePct} decimals={1} suffix="%" active={inView} />
+              </div>
+            </div>
+          )}
+          {typeof summary.sharpeRatio === "number" && (
+            <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Sharpe ratio</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight text-slate-50">
+                <MetricCount end={summary.sharpeRatio} decimals={2} active={inView} />
+              </div>
+            </div>
+          )}
+          {typeof summary.totalTrades === "number" && (
+            <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total trades</div>
+              <div className="mt-1 text-xl font-semibold tracking-tight text-slate-50">
+                <MetricCount end={summary.totalTrades} decimals={0} active={inView} />
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

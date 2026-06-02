@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
     QPushButton,
     QSizePolicy,
     QSplitter,
+    QSystemTrayIcon,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
@@ -37,6 +38,8 @@ from qasync import asyncSlot
 
 from .__version__ import __version__ as _APP_VERSION
 from .crypto_store import CryptoStore, SecretPayload
+from .sleep_guard import SleepGuard
+from . import startup_manager
 from .default_executor_url import DEFAULT_EXECUTOR_WS_URL
 from .license_checker import LicenseResult, check_license
 from .license_key_util import normalize_license_key
@@ -52,6 +55,7 @@ from .t212_client import (
 )
 from .ui.activity_panel import build_activity_tab
 from .ui.log_panel import build_log_panel
+from .ui.help_dialog import run_help_dialog
 from .ui.preferences_dialog import run_preferences_dialog
 from .ui.nav_status import NavStatusPill
 from .ui.setup_panel import build_setup_tab
@@ -85,6 +89,13 @@ class MainWindow(QMainWindow):
         self._settings_store = SettingsStore(self._base_dir)
         self._ws_task: asyncio.Task | None = None
         self._ws_client: ExecWsClient | None = None
+
+        # ── background / power ───────────────────────────────────────
+        self._sleep_guard = SleepGuard()
+        self._close_to_tray: bool = True
+        self._keep_awake: bool = True
+        self._tray: QSystemTrayIcon | None = None
+        self._quit_for_real: bool = False   # set True only by "Quit" tray action
 
         # ── trading / risk settings (populated from settings store) ──
         self._order_quantity: float = 1.0
@@ -125,23 +136,19 @@ class MainWindow(QMainWindow):
 
         # ── inputs ───────────────────────────────────────────────────
         self.license_key = QLineEdit()
-        self.license_key.setPlaceholderText("Optional — Pro license key from the SwiftTrade portal")
-        self.license_key.setToolTip(
-            "Only needed for real-money trading. Leave blank to use paper trading on your T212 demo account."
-        )
+        self.license_key.setPlaceholderText("Pro license key (optional)")
+        self.license_key.setToolTip("Leave empty for free demo trading.")
 
         self.ws_url = QLineEdit(DEFAULT_EXECUTOR_WS_URL)
-        self.ws_url.setToolTip(
-            "SwiftTrade signal server (WebSocket). Pre-filled for the standard cloud server; "
-            "change only if support gives you a different address."
-        )
+        self.ws_url.setPlaceholderText("wss://…")
+        self.ws_url.setToolTip("Leave default unless support says otherwise.")
 
         self.practice_t212_api_key = QLineEdit()
         self.practice_t212_api_key.setPlaceholderText("Paste your Trading212 demo API key here")
         self.practice_t212_api_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.practice_t212_secret_key = QLineEdit()
-        self.practice_t212_secret_key.setPlaceholderText("Optional — only if Trading212 gave you a secret")
+        self.practice_t212_secret_key.setPlaceholderText("Secret (optional)")
         self.practice_t212_secret_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.live_t212_api_key = QLineEdit()
@@ -149,12 +156,12 @@ class MainWindow(QMainWindow):
         self.live_t212_api_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         self.live_t212_secret_key = QLineEdit()
-        self.live_t212_secret_key.setPlaceholderText("Optional — only if Trading212 gave you a secret")
+        self.live_t212_secret_key.setPlaceholderText("Secret (optional)")
         self.live_t212_secret_key.setEchoMode(QLineEdit.EchoMode.Password)
 
         # ── checkboxes ───────────────────────────────────────────────
-        self.show_t212_secrets = QCheckBox("Reveal keys on screen")
-        self.show_t212_secrets.setToolTip("Show/hide API credentials. Turn off if others can see your screen.")
+        self.show_t212_secrets = QCheckBox("Show API keys in plain text")
+        self.show_t212_secrets.setToolTip("Temporarily displays your API keys as readable text. Turn this off if others can see your screen.")
         self.show_t212_secrets.toggled.connect(self._on_show_t212_secrets_toggled)  # type: ignore[arg-type]
 
         self.trading_mode = PaperLiveToggle()
@@ -166,9 +173,7 @@ class MainWindow(QMainWindow):
         self.trading_mode.live_enable_requested.connect(self._on_live_enable_requested)  # type: ignore[arg-type]
         self.trading_mode.mode_changed.connect(self._on_trading_mode_changed)  # type: ignore[arg-type]
 
-        self._setup_trading_mode_hint = QLabel(
-            "Top bar: Demo mode — orders go to your Trading212 practice account."
-        )
+        self._setup_trading_mode_hint = QLabel("Use Demo mode in the top bar until you're ready for real trades.")
         self._setup_trading_mode_hint.setObjectName("HintLabel")
         self._setup_trading_mode_hint.setWordWrap(True)
 
@@ -185,9 +190,7 @@ class MainWindow(QMainWindow):
         )
         self.validate_btn.clicked.connect(self.on_validate_clicked)  # type: ignore[arg-type]
 
-        self.tier_status_label = QLabel(
-            "Paper trading mode — no license needed. Add a Pro key only for real-money trades."
-        )
+        self.tier_status_label = QLabel("Free plan — you can skip this step and go straight to step 2.")
         self.tier_status_label.setObjectName("TierStatusLabel")
         self.tier_status_label.setWordWrap(True)
 
@@ -268,11 +271,11 @@ class MainWindow(QMainWindow):
         # ── tabs ─────────────────────────────────────────────────────
         self.tabs = QTabWidget()
         self.tabs.addTab(self._build_setup_tab(), "  Get started  ")
-        self.tabs.setTabToolTip(0, "License key, Trading212 API keys, and connection")
+        self.tabs.setTabToolTip(0, "Set up your license, Trading212 keys, and connect to the bot")
         self.tabs.addTab(self._build_activity_tab(), "  Live feed  ")
-        self.tabs.setTabToolTip(1, "Market hours, bot state, and recent signals")
+        self.tabs.setTabToolTip(1, "Real-time view of open markets, bot activity, and incoming signals")
         self.tabs.addTab(self._build_trades_tab(), "  Signals  ")
-        self.tabs.setTabToolTip(2, "Signal queue and execution status")
+        self.tabs.setTabToolTip(2, "Full list of every AI trading signal received since you connected")
         self.tabs.setDocumentMode(True)
 
         self._splitter = QSplitter(Qt.Horizontal)
@@ -288,7 +291,7 @@ class MainWindow(QMainWindow):
 
         content_wrap = QWidget()
         cw_layout = QVBoxLayout(content_wrap)
-        cw_layout.setContentsMargins(10, 8, 10, 6)
+        cw_layout.setContentsMargins(12, 10, 12, 8)
         cw_layout.setSpacing(0)
         cw_layout.addWidget(self._splitter, 1)
         root.addWidget(content_wrap, 1)
@@ -316,8 +319,11 @@ class MainWindow(QMainWindow):
                 self.license_key.clear()
         self._apply_log_settings(settings)
         self._apply_trading_settings(settings)
+        self._close_to_tray = settings.close_to_tray
+        self._keep_awake = settings.keep_awake
         self._update_broker_keys_hint()
         self.start_minimized = settings.start_minimized
+        self._build_tray_icon()
         if settings.splitter_sizes and len(settings.splitter_sizes) == 2:
             self._splitter.setSizes(settings.splitter_sizes)
         else:
@@ -348,6 +354,123 @@ class MainWindow(QMainWindow):
 
         if not settings.seen_welcome:
             QTimer.singleShot(400, self._show_welcome_and_dismiss)
+
+    # ── background / tray / sleep ─────────────────────────────────────────────
+
+    def _build_tray_icon(self) -> None:
+        """Create the system-tray icon and its context menu."""
+        if not QSystemTrayIcon.isSystemTrayAvailable():
+            return
+
+        icon = self.windowIcon()
+        if icon.isNull():
+            # Fallback: use a coloured dot rendered into a 32×32 pixmap
+            from PySide6.QtGui import QPainter, QBrush
+            from PySide6.QtCore import QRect
+            pm = QPixmap(32, 32)
+            pm.fill(Qt.GlobalColor.transparent)
+            painter = QPainter(pm)
+            painter.setRenderHint(QPainter.RenderHint.Antialiasing)
+            painter.setBrush(QBrush(QColor("#14b8a6")))
+            painter.setPen(Qt.PenStyle.NoPen)
+            painter.drawEllipse(QRect(2, 2, 28, 28))
+            painter.end()
+            icon = QIcon(pm)
+
+        self._tray = QSystemTrayIcon(icon, self)
+        self._tray.setToolTip("SwiftTrade — Not connected")
+
+        menu = QMenu()
+
+        show_act = QAction("Open SwiftTrade", self)
+        show_act.triggered.connect(self._tray_show_window)  # type: ignore[arg-type]
+        menu.addAction(show_act)
+
+        menu.addSeparator()
+
+        self._tray_connect_act = QAction("Connect", self)
+        self._tray_connect_act.triggered.connect(self.on_connect_clicked)  # type: ignore[arg-type]
+        menu.addAction(self._tray_connect_act)
+
+        self._tray_disconnect_act = QAction("Disconnect", self)
+        self._tray_disconnect_act.triggered.connect(self.on_disconnect_clicked)  # type: ignore[arg-type]
+        self._tray_disconnect_act.setEnabled(False)
+        menu.addAction(self._tray_disconnect_act)
+
+        menu.addSeparator()
+
+        quit_act = QAction("Quit SwiftTrade", self)
+        quit_act.triggered.connect(self._tray_quit)  # type: ignore[arg-type]
+        menu.addAction(quit_act)
+
+        self._tray.setContextMenu(menu)
+        self._tray.activated.connect(self._on_tray_activated)  # type: ignore[arg-type]
+        self._tray.show()
+
+    def _tray_show_window(self) -> None:
+        """Bring the main window back from the tray."""
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+
+    def _tray_quit(self) -> None:
+        """Exit from the tray context menu — actually quits the process."""
+        self._quit_for_real = True
+        self.close()
+
+    def _on_tray_activated(self, reason: QSystemTrayIcon.ActivationReason) -> None:
+        """Left-click / double-click on the tray icon toggles the window."""
+        if reason in (
+            QSystemTrayIcon.ActivationReason.Trigger,
+            QSystemTrayIcon.ActivationReason.DoubleClick,
+        ):
+            if self.isVisible():
+                self.hide()
+            else:
+                self._tray_show_window()
+
+    def closeEvent(self, event) -> None:  # type: ignore[override]
+        """Intercept the window-close so we can hide to tray instead of quitting."""
+        if not self._quit_for_real and self._close_to_tray and self._tray is not None:
+            event.ignore()
+            self.hide()
+            self._tray.showMessage(
+                "SwiftTrade is still running",
+                "The bot stays connected in the background.\n"
+                "Right-click the tray icon to open or quit.",
+                QSystemTrayIcon.MessageIcon.Information,
+                3000,
+            )
+        else:
+            # Real quit — release the sleep guard cleanly
+            self._sleep_guard.release()
+            event.accept()
+
+    def _update_sleep_guard(self) -> None:
+        """Acquire or release the sleep-prevention hold based on current state."""
+        should_hold = self._keep_awake and self._server_connected
+        if should_hold:
+            acquired = self._sleep_guard.acquire()
+            if acquired:
+                self._append_event("info", "Sleep prevention active — PC will stay awake while connected.")
+        else:
+            if self._sleep_guard.active:
+                self._sleep_guard.release()
+                self._append_event("info", "Sleep prevention released.")
+
+    def _update_tray_status(self) -> None:
+        """Sync tray tooltip and connect/disconnect actions with current state."""
+        if self._tray is None:
+            return
+        if self._server_connected:
+            mode = "Real money" if self.trading_mode.is_live() else "Demo"
+            self._tray.setToolTip(f"SwiftTrade — Connected ({mode} mode)")
+            self._tray_connect_act.setEnabled(False)
+            self._tray_disconnect_act.setEnabled(True)
+        else:
+            self._tray.setToolTip("SwiftTrade — Not connected")
+            self._tray_connect_act.setEnabled(True)
+            self._tray_disconnect_act.setEnabled(False)
 
     # ── helpers ──────────────────────────────────────────────────────────────
 
@@ -441,15 +564,15 @@ class MainWindow(QMainWindow):
 
         settings_btn = QPushButton("⚙")
         settings_btn.setObjectName("NavSettingsBtn")
-        settings_btn.setToolTip("Preferences")
+        settings_btn.setToolTip("Settings — order size, stop-loss, notifications and more")
         settings_btn.clicked.connect(self._show_settings)  # type: ignore[arg-type]
         bar.addWidget(settings_btn)
         bar.addSpacing(4)
 
-        help_btn = QPushButton("?")
-        help_btn.setObjectName("NavSettingsBtn")
-        help_btn.setToolTip("Quick start guide")
-        help_btn.clicked.connect(self._show_quick_tips)  # type: ignore[arg-type]
+        help_btn = QPushButton("Help")
+        help_btn.setObjectName("NavHelpBtn")
+        help_btn.setToolTip("Open the help guide — explains signals, demo vs real-money mode, and troubleshooting")
+        help_btn.clicked.connect(self._show_help)  # type: ignore[arg-type]
         bar.addWidget(help_btn)
 
         return nav
@@ -464,7 +587,7 @@ class MainWindow(QMainWindow):
         mb.setVisible(False)
         hmenu = mb.addMenu("&Help")
         for label, slot in [
-            ("&Quick start tips", self._show_quick_tips),
+            ("&Help guide", self._show_help),
             ("&About SwiftTrade", self._show_about),
         ]:
             a = QAction(label, self)
@@ -491,7 +614,7 @@ class MainWindow(QMainWindow):
                 "Demo mode: place orders on your Trading212 practice account.\n"
                 "Real trades: place orders using your saved real-money keys (tier re-checked on the server)."
             )
-            self.tier_status_label.setText("Pro license active — real trades are unlocked.")
+            self.tier_status_label.setText("Pro license active — real-money trading is unlocked.")
             self.tier_status_label.setProperty("tierKind", "pro")
         elif tier == "free":
             self.trading_mode.set_pro_unlocked(False)
@@ -500,20 +623,16 @@ class MainWindow(QMainWindow):
                 "Pro subscription required for real-money trades."
             )
             if self.license_key.text().strip():
-                self.tier_status_label.setText(
-                    "Free tier — demo account only. Upgrade on the SwiftTrade website for real trades."
-                )
+                self.tier_status_label.setText("Free plan — demo mode only. Upgrade to Pro for real-money trading.")
             else:
-                self.tier_status_label.setText(
-                    "Paper trading mode — no license needed. Add a Pro key only for real-money trades."
-                )
+                self.tier_status_label.setText("Free plan — you can skip this step and go straight to step 2.")
             self.tier_status_label.setProperty("tierKind", "free")
         else:
             self.trading_mode.set_pro_unlocked(False)
             self.trading_mode.setToolTip(
                 "Fix or remove your license key. Paper trading works without a key."
             )
-            self.tier_status_label.setText("License key invalid or revoked — remove it to stay on free paper trading.")
+            self.tier_status_label.setText("License key not recognized — double-check it, or clear the field to use the free plan.")
             self.tier_status_label.setProperty("tierKind", "pending")
         self.tier_status_label.style().unpolish(self.tier_status_label)
         self.tier_status_label.style().polish(self.tier_status_label)
@@ -594,16 +713,12 @@ class MainWindow(QMainWindow):
     def _sync_setup_mode_hint(self) -> None:
         """Mirror the top-bar Paper/Live state in the Setup tab hint."""
         if self.trading_mode.is_live():
-            self._setup_trading_mode_hint.setText(
-                "Top bar: Real trades ON — market orders may be sent to your real-money account."
-            )
+            self._setup_trading_mode_hint.setText("Real trades ON — orders use your live account.")
             self._setup_trading_mode_hint.setStyleSheet(
                 f"color: {_DANGER}; font-size: 8.8pt; font-weight: 600; background: transparent; padding: 0; margin: 0;"
             )
         else:
-            self._setup_trading_mode_hint.setText(
-                "Top bar: Demo mode — orders go to your Trading212 practice account."
-            )
+            self._setup_trading_mode_hint.setText("Use Demo mode in the top bar until you're ready for real trades.")
             self._setup_trading_mode_hint.setStyleSheet(
                 f"color: {_MUTED}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
             )
@@ -612,10 +727,14 @@ class MainWindow(QMainWindow):
         """User clicked Live — confirm before we arm real-money execution."""
         r = QMessageBox.warning(
             self,
-            "Enable real trades?",
-            "Real trades mode will send real-money orders on Trading212 using your saved real-money keys "
-            "every time the bot fires a LONG signal.\n\n"
-            "Your Pro license is active. Stay on Demo mode if you only want to watch signals in the log.",
+            "Switch to Real money mode?",
+            "You are about to enable Real money mode.\n\n"
+            "In this mode, the bot will place actual buy orders on your Trading212 "
+            "real-money account using your saved real-money API key — every time a signal arrives.\n\n"
+            "⚠  Make sure you understand the risks before continuing. "
+            "Start with Demo mode if you are unsure — no real money is used there.\n\n"
+            "Your Pro license is active and your real-money keys are saved. "
+            "Press OK only if you are ready to trade with real funds.",
             QMessageBox.StandardButton.Ok | QMessageBox.StandardButton.Cancel,
             QMessageBox.StandardButton.Cancel,
         )
@@ -663,21 +782,14 @@ class MainWindow(QMainWindow):
         self.test_t212_practice_btn.setEnabled(not busy)
         self.test_t212_live_btn.setEnabled(is_pro and not busy)
         if is_pro and self.trading_mode.is_live():
-            self._broker_keys_hint.setText(
-                "Real trades mode is ON: the app uses your saved real-money keys on Trading212. "
-                "Use Test real account to verify those keys."
-            )
+            self._broker_keys_hint.setText("Real trades ON — using live account keys.")
             self._broker_keys_hint.setStyleSheet(
                 f"color: {_DANGER}; font-size: 8.8pt; font-weight: 600; background: transparent; padding: 0; margin: 0;"
             )
+            self._broker_keys_hint.show()
         else:
-            self._broker_keys_hint.setText(
-                "Demo mode is ON (top bar): the app uses your demo account keys for paper trading. "
-                "Pro users can still test real-money keys without enabling real trades."
-            )
-            self._broker_keys_hint.setStyleSheet(
-                f"color: {_MUTED}; font-size: 8.8pt; background: transparent; padding: 0; margin: 0;"
-            )
+            self._broker_keys_hint.clear()
+            self._broker_keys_hint.hide()
 
     def _t212_base_url(self) -> str:
         """Live Trading212 host only when Pro and top bar is Live; otherwise demo."""
@@ -698,12 +810,28 @@ class MainWindow(QMainWindow):
             return None
         return stored.practice_api_key.strip(), stored.practice_secret_key
 
+    def _apply_background_settings(self, s: AppSettings) -> None:
+        """Apply background/power settings from a freshly-saved AppSettings."""
+        self._close_to_tray = s.close_to_tray
+        self._keep_awake = s.keep_awake
+        self._update_sleep_guard()
+
+        # Start-with-Windows registry toggle
+        if startup_manager.is_enabled() != s.start_with_windows:
+            if s.start_with_windows:
+                startup_manager.enable()
+            else:
+                startup_manager.disable()
+
     def _show_settings(self) -> None:
         s = self._settings_store.load()
         new_s = run_preferences_dialog(self, s, self._splitter.sizes())
         if new_s is None:
             return
         self._settings_store.save(new_s)
+        self._apply_log_settings(new_s)
+        self._apply_trading_settings(new_s)
+        self._apply_background_settings(new_s)
         self._apply_log_settings(new_s)
         self._apply_trading_settings(new_s)
         self._update_broker_keys_hint()
@@ -761,36 +889,31 @@ class MainWindow(QMainWindow):
             "notify_on_connect": saved.notify_on_connect,
             "auto_connect_on_start": saved.auto_connect_on_start,
             "start_minimized": saved.start_minimized,
+            "start_with_windows": saved.start_with_windows,
+            "close_to_tray": saved.close_to_tray,
+            "keep_awake": saved.keep_awake,
             "seen_welcome": saved.seen_welcome,
             "splitter_sizes": saved.splitter_sizes,
         }
         fields.update(overrides)
         self._settings_store.save(AppSettings(**fields))
 
+    def _show_help(self) -> None:
+        run_help_dialog(self)
+
     def _show_quick_tips(self) -> None:
-        QMessageBox.information(
-            self,
-            "Quick start",
-            "1.  Get started tab — paste your license key from swifttrade.io and click Check license.\n\n"
-            "2.  Trading212 — add your demo API keys (Trading212 app → Settings → API), "
-            "click Save demo keys, then Test connection.\n\n"
-            "3.  Click Connect in the top bar — the status dot turns green when linked.\n\n"
-            "4.  Demo mode vs Real trades — use the toggle in the top bar. "
-            "Demo mode only logs signals; Real trades places orders (Pro required).\n\n"
-            "Tip: right-click any table row to copy it.",
-        )
+        """Setup tab Help button — same full guide as navbar."""
+        self._show_help()
 
     def _show_welcome(self) -> None:
         QMessageBox.information(
             self,
             "Welcome to SwiftTrade",
-            "This app runs on your computer and connects to Trading212 for you.\n\n"
-            "Setup is easy — just follow the 3 cards on the Get started tab:\n\n"
-            "  1. Paste your license key from swifttrade.io\n"
-            "  2. Add your Trading212 demo API key (from the phone app)\n"
-            "  3. Click Connect\n\n"
-            "Tip: stay on Demo mode at first. It lets you watch signals without spending money.\n\n"
-            "Click ? in the top bar anytime for help.",
+            "3 steps on Get started:\n\n"
+            "1. License (optional — skip if you don't have Pro)\n"
+            "2. Trading212 demo key\n"
+            "3. Connect\n\n"
+            "Stay on Demo mode at first.",
         )
 
     def _has_saved_broker_keys(self) -> bool:
@@ -810,6 +933,7 @@ class MainWindow(QMainWindow):
             license_validated=license_validated,
             has_broker_keys=has_broker_keys,
             connected=connected,
+            license_field_nonempty=bool(self.license_key.text().strip()),
         )
 
         step1 = getattr(self, "_setup_step1", None)
@@ -842,7 +966,7 @@ class MainWindow(QMainWindow):
                 if setup_disconnect is not None:
                     setup_disconnect.show()
             elif self.connect_btn.isEnabled():
-                setup_connect.setText("  Connect to SwiftTrade  ")
+                setup_connect.setText("  Connect  ")
                 setup_connect.setEnabled(True)
                 setup_connect.show()
                 if setup_disconnect is not None:
@@ -886,6 +1010,8 @@ class MainWindow(QMainWindow):
         self._server_connected = status == "ONLINE"
         self._refresh_nav_status()
         self._refresh_setup_checklist()
+        self._update_sleep_guard()
+        self._update_tray_status()
         if status == "ONLINE":
             self._set_sb("Connected to bot server — receiving data.")
         elif status == "CONNECTING":
@@ -1043,6 +1169,8 @@ class MainWindow(QMainWindow):
         self._server_connected = False
         self._refresh_setup_checklist()
         self._set_status("OFFLINE")
+        self._update_sleep_guard()
+        self._update_tray_status()
         self._append_event("info", "Disconnected. You can reconnect at any time.")
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)

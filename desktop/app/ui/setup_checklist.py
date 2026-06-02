@@ -9,8 +9,8 @@ class SetupChecklist(QFrame):
     """Progress header aligned with the 3 setup cards below."""
 
     _STEPS = (
-        "License key",
-        "Trading212 account",
+        "License",
+        "Trading212",
         "Connect",
     )
 
@@ -27,21 +27,19 @@ class SetupChecklist(QFrame):
 
         title_col = QVBoxLayout()
         title_col.setSpacing(2)
-        title = QLabel("Set up in 3 steps")
+        title = QLabel("Get started")
         title.setObjectName("ChecklistTitle")
-        subtitle = QLabel(
-            "Work through the cards below from top to bottom. "
-            "You can expand a finished step anytime to change something."
-        )
+        subtitle = QLabel("Follow these 3 steps to connect the bot. No Pro license? You can skip step 1.")
         subtitle.setObjectName("ChecklistSubtitle")
         subtitle.setWordWrap(True)
         title_col.addWidget(title)
         title_col.addWidget(subtitle)
         head.addLayout(title_col, 1)
 
-        self._help_btn = QPushButton("Need help?")
+        self._help_btn = QPushButton("Help guide")
         self._help_btn.setObjectName("GhostBtn")
         self._help_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self._help_btn.setToolTip("Open the full guide — explains signals, demo vs real trades, and settings")
         head.addWidget(self._help_btn, alignment=Qt.AlignmentFlag.AlignTop)
 
         self._pct_label = QLabel("0%")
@@ -95,12 +93,13 @@ class SetupChecklist(QFrame):
         license_validated: bool,
         has_broker_keys: bool,
         connected: bool,
+        license_field_nonempty: bool = False,
     ) -> None:
         done = [license_validated, has_broker_keys, connected]
         completed = sum(done)
         pct = int(completed / len(done) * 100) if done else 0
         self._progress.setValue(pct)
-        self._pct_label.setText(f"{pct}% done")
+        self._pct_label.setText(f"{pct}%")
 
         current_idx = next((i for i, ok in enumerate(done) if not ok), len(done))
 
@@ -112,32 +111,38 @@ class SetupChecklist(QFrame):
         if completed == 3:
             self._summary_icon.setText("✓")
             self._summary_text.setText(
-                "You're connected. Open the Live feed tab to watch the bot, "
-                "or stay on Demo mode in the top bar until you're ready for real trades."
+                "You are connected! Switch to the Live feed tab to watch incoming signals in real time."
             )
             self._summary.setProperty("calloutKind", "success")
         elif not license_validated:
             self._summary_icon.setText("1")
-            self._summary_text.setText(
-                "Optional: paste a Pro license key in Step 1, or skip straight to Step 2 for free paper trading."
-            )
+            if license_field_nonempty:
+                self._summary_text.setText(
+                    "That license key doesn't look right. Double-check it, or clear the field to continue with the free plan."
+                )
+            else:
+                self._summary_text.setText(
+                    "No Pro license? That's fine — skip to step 2. "
+                    "You can still use the bot in demo mode for free."
+                )
             self._summary.setProperty("calloutKind", "active")
         elif not has_broker_keys:
             self._summary_icon.setText("2")
             self._summary_text.setText(
-                "On your phone, open Trading212 → Settings → API → create a demo/practice key. "
-                "Paste it in Step 2 and click Save demo keys."
+                "Open step 2, paste your Trading212 demo API key, then click Save demo keys. "
+                "Your money is safe — demo mode uses a practice account."
             )
             self._summary.setProperty("calloutKind", "active")
         elif not connected:
             self._summary_icon.setText("3")
             self._summary_text.setText(
-                "Almost there — click Connect in Step 3. The dot at the top will turn green when you're linked."
+                "Almost there! Open step 3 and click the Connect button. "
+                "The dot at the top will turn green when you are online."
             )
             self._summary.setProperty("calloutKind", "active")
         else:
             self._summary_icon.setText("→")
-            self._summary_text.setText(f"{len(done) - completed} step(s) left.")
+            self._summary_text.setText(f"{len(done) - completed} step(s) remaining.")
             self._summary.setProperty("calloutKind", "neutral")
 
         self._summary.style().unpolish(self._summary)

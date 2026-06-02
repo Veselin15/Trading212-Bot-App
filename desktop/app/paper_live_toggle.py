@@ -8,9 +8,9 @@ _BG_RAIL = "#1c1c25"
 _BORDER = "#3a3a4e"
 _TEXT = "#f1f1f3"
 _MUTED = "#6b7280"
-_EMERALD = "#10b981"
-_EMERALD_HOVER = "#34d399"
-_EMERALD_DIM = "#064e3b"
+_EMERALD = "#14b8a6"
+_EMERALD_HOVER = "#2dd4bf"
+_EMERALD_DIM = "#042f2e"
 _WARN = "#f59e0b"
 _WARN_DIM = "#78350f"
 _DANGER = "#ef4444"
@@ -35,7 +35,7 @@ class PaperLiveToggle(QWidget):
         outer.setContentsMargins(0, 0, 0, 0)
         outer.setSpacing(1)
 
-        cap = QLabel("Order mode")
+        cap = QLabel("Trading mode")
         cap.setStyleSheet(f"color: {_MUTED}; font-size: 7.5pt; background: transparent;")
         outer.addWidget(cap)
 
@@ -53,21 +53,21 @@ class PaperLiveToggle(QWidget):
         row.setContentsMargins(3, 3, 3, 3)
         row.setSpacing(4)
 
-        self._paper_btn = QPushButton("  Demo mode  ")
+        self._paper_btn = QPushButton("Demo (safe)")
         self._paper_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._paper_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        self._paper_btn.setMinimumHeight(26)
+        self._paper_btn.setMinimumHeight(28)
         self._paper_btn.setToolTip(
-            "Place orders on your Trading212 practice account when signals arrive."
+            "Safe mode — all trades go to your Trading212 practice account. No real money is used."
         )
         self._paper_btn.clicked.connect(self._on_paper_clicked)  # type: ignore[arg-type]
 
-        self._live_btn = QPushButton("  Real trades  ")
+        self._live_btn = QPushButton("Real money (Pro)")
         self._live_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self._live_btn.setSizePolicy(QSizePolicy.Policy.Minimum, QSizePolicy.Policy.Fixed)
-        self._live_btn.setMinimumHeight(26)
+        self._live_btn.setMinimumHeight(28)
         self._live_btn.setToolTip(
-            "Place real market orders on your Trading212 account when signals arrive (Pro required)."
+            "Live mode — the bot places real orders with your actual money. Requires a Pro license."
         )
         self._live_btn.clicked.connect(self._on_live_clicked)  # type: ignore[arg-type]
 

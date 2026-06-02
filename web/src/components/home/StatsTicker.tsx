@@ -1,16 +1,16 @@
 "use client";
 
 const STATS = [
-  { label: "CAGR", value: "+31.4%", positive: true },
-  { label: "Max Drawdown", value: "−7.2%", positive: false },
-  { label: "Sharpe Ratio", value: "1.84", positive: true },
-  { label: "Win Rate", value: "68.3%", positive: true },
-  { label: "Avg Trade", value: "+0.42%", positive: true },
+  { label: "CAGR", value: "+32.5%", positive: true },
+  { label: "Max Drawdown", value: "−9.4%", positive: false },
+  { label: "Sharpe Ratio", value: "1.83", positive: true },
+  { label: "Win Rate", value: "58.3%", positive: true },
+  { label: "Profit Factor", value: "1.72×", positive: true },
   { label: "Signal Latency", value: "< 200ms", positive: true },
   { label: "Uptime", value: "99.9%", positive: true },
-  { label: "Backtest Period", value: "36 mo", positive: true },
-  { label: "Strategy", value: "Long-only", positive: true },
-  { label: "Universe", value: "EU-listed", positive: true },
+  { label: "OOS Period", value: "12 mo", positive: true },
+  { label: "Strategy", value: "SwingV3 ML", positive: true },
+  { label: "Universe", value: "25 EU stocks", positive: true },
 ];
 
 const ITEMS = [...STATS, ...STATS];

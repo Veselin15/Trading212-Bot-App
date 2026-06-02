@@ -25,15 +25,16 @@ def build_activity_tab(win: MainWindow) -> QWidget:
 
     layout.addWidget(
         callout(
-            "This tab fills in after you connect. You'll see which markets are open, "
-            "what the bot is watching, and any trading signals as they arrive.",
+            "This tab updates in real time once you are connected. "
+            "You can see which stock markets are currently open, what the bot is monitoring, "
+            "and any buy or sell signals as they arrive.",
             kind="info",
         )
     )
 
     filt_row = QHBoxLayout()
     filt_row.setSpacing(8)
-    filt_row.addWidget(field_label("Search by stock symbol"))
+    filt_row.addWidget(field_label("Filter by stock symbol:"))
     filt_row.addWidget(win.activity_symbol_filter, 1)
     layout.addLayout(filt_row)
 
@@ -44,7 +45,7 @@ def build_activity_tab(win: MainWindow) -> QWidget:
     lm.setContentsMargins(0, 0, 0, 0)
     lm.setSpacing(6)
     lm.addWidget(section_title("Market hours"))
-    lm.addWidget(hint("Whether each stock market is open right now (from Trading212)."))
+    lm.addWidget(hint("Shows whether each stock exchange is currently open or closed. Data comes from Trading212."))
     lm.addWidget(win.market_table, 1)
     v_split.addWidget(p_market)
 
@@ -52,11 +53,11 @@ def build_activity_tab(win: MainWindow) -> QWidget:
     lb = QVBoxLayout(p_bot)
     lb.setContentsMargins(0, 0, 0, 0)
     lb.setSpacing(4)
-    lb.addWidget(section_title("Bot status"))
+    lb.addWidget(section_title("Bot status per stock"))
     lb.addWidget(
         hint(
-            "Shows what the bot is doing for each stock. "
-            "If markets are closed, many rows will say not ready — that's normal."
+            "Shows exactly what the bot is doing for each stock right now. "
+            "Rows showing 'not ready' when markets are closed is completely normal."
         ),
     )
     lb.addWidget(win.bot_table, 1)
@@ -67,7 +68,7 @@ def build_activity_tab(win: MainWindow) -> QWidget:
     ls.setContentsMargins(0, 0, 0, 0)
     ls.setSpacing(6)
     ls.addWidget(section_title("Recent signals"))
-    ls.addWidget(hint("Newest trading signals appear at the top."))
+    ls.addWidget(hint("The latest buy and sell recommendations from SwiftTrade AI, newest at the top."))
     ls.addWidget(win.signals_table, 1)
     v_split.addWidget(p_sig)
 

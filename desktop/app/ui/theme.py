@@ -3,16 +3,16 @@ from __future__ import annotations
 
 from PySide6.QtWidgets import QApplication, QStyleFactory
 
-_BG       = "#0c0c10"   # body — deepest layer
-_SURFACE  = "#13131a"   # cards / panels
-_SURFACE2 = "#1c1c25"   # elevated cards, groupboxes
-_BORDER   = "#2a2a38"   # subtle borders
-_BORDER2  = "#3a3a4e"   # interactive borders
-_SKY      = "#10b981"   # emerald-500 — primary accent
-_SKY_HVR  = "#34d399"   # emerald-400 — hover
-_SKY_DIM  = "#064e3b"   # emerald tint bg for tags/indicators
-_TEXT     = "#f1f1f3"   # primary text
-_MUTED    = "#8b8b9e"   # secondary / hint text
+_BG       = "#09090f"   # body — deepest layer
+_SURFACE  = "#12121a"   # cards / panels
+_SURFACE2 = "#1a1a24"   # elevated cards, groupboxes
+_BORDER   = "#262636"   # subtle borders
+_BORDER2  = "#353548"   # interactive borders
+_SKY      = "#14b8a6"   # teal — primary accent
+_SKY_HVR  = "#2dd4bf"   # hover
+_SKY_DIM  = "#042f2e"   # tint bg for tags/indicators
+_TEXT     = "#f0f0f2"   # primary text (slightly softer white for long-read comfort)
+_MUTED    = "#a0a0b4"   # secondary / hint text (slightly brighter for readability)
 _SUCCESS  = "#22c55e"
 _WARN     = "#f59e0b"
 _DANGER   = "#ef4444"
@@ -28,10 +28,11 @@ QMainWindow, QWidget {{
 
 /* ── navbar ───────────────────────────────────────────────────────── */
 QFrame#Navbar {{
-    background-color: {_SURFACE};
+    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+        stop:0 #16161f, stop:1 {_SURFACE});
     border-bottom: 1px solid {_BORDER};
-    min-height: 52px;
-    max-height: 58px;
+    min-height: 54px;
+    max-height: 60px;
 }}
 
 QLabel#AppWordmark {{
@@ -89,6 +90,22 @@ QPushButton#NavSettingsBtn:hover {{
     background-color: {_SURFACE2};
 }}
 
+QPushButton#NavHelpBtn {{
+    background-color: transparent;
+    color: {_MUTED};
+    border: 1px solid {_BORDER};
+    border-radius: 8px;
+    padding: 5px 12px;
+    font-size: 8.5pt;
+    font-weight: 600;
+    min-height: 24px;
+}}
+QPushButton#NavHelpBtn:hover {{
+    color: {_TEXT};
+    border-color: {_SKY};
+    background-color: {_SKY_DIM};
+}}
+
 /* ── top-bar status card — kept for backward compat ─────────────── */
 QFrame#StatusCard {{
     background-color: transparent;
@@ -107,8 +124,7 @@ QLabel#FieldLabel {{
 
 /* ── setup progress header ───────────────────────────────────────── */
 QFrame#SetupChecklist {{
-    background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
-        stop:0 {_SURFACE2}, stop:1 {_SURFACE});
+    background-color: {_SURFACE};
     border-bottom: 1px solid {_BORDER};
 }}
 
@@ -116,6 +132,7 @@ QLabel#ChecklistTitle {{
     color: {_TEXT};
     font-size: 13pt;
     font-weight: 700;
+    letter-spacing: -0.02em;
     background: transparent;
 }}
 
@@ -123,6 +140,7 @@ QLabel#ChecklistSubtitle {{
     color: {_MUTED};
     font-size: 9pt;
     background: transparent;
+    line-height: 1.4;
 }}
 
 QLabel#ChecklistPct {{
@@ -147,21 +165,22 @@ QLabel#ChecklistChip {{
     background-color: {_BG};
     border: 1px solid {_BORDER};
     border-radius: 8px;
-    padding: 8px 6px;
-    font-size: 8pt;
+    padding: 8px 10px;
+    font-size: 8.5pt;
+    font-weight: 600;
     color: {_MUTED};
 }}
 QLabel#ChecklistChip[chipState="active"] {{
     background-color: {_SKY_DIM};
     border-color: {_SKY};
-    color: {_TEXT};
+    color: {_SKY};
     font-weight: 700;
 }}
 QLabel#ChecklistChip[chipState="done"] {{
     background-color: #052e16;
     border-color: #166534;
     color: {_SUCCESS};
-    font-weight: 600;
+    font-weight: 700;
 }}
 
 QFrame#ChecklistCallout {{
@@ -187,17 +206,42 @@ QLabel#ChecklistCalloutText {{
     color: {_TEXT};
     font-size: 9.5pt;
     background: transparent;
-    line-height: 1.4;
+    line-height: 1.5;
+}}
+
+/* ── setup path overview (free vs pro) ───────────────────────────── */
+QFrame#PathCard {{
+    background-color: {_SURFACE};
+    border: 1px solid {_BORDER};
+    border-radius: 10px;
+}}
+QFrame#PathCard[pathKind="free"] {{
+    border-color: {_SKY};
+}}
+QFrame#PathCard[pathKind="pro"] {{
+    border-color: #a78bfa;
+}}
+QLabel#PathCardTitle {{
+    color: {_TEXT};
+    font-size: 10pt;
+    font-weight: 700;
+    background: transparent;
+}}
+QLabel#PathCardBody {{
+    color: {_MUTED};
+    font-size: 9pt;
+    background: transparent;
+    line-height: 1.45;
 }}
 
 /* ── setup step cards ────────────────────────────────────────────── */
 QFrame#SetupStepCard {{
     background-color: {_SURFACE};
     border: 1px solid {_BORDER};
-    border-radius: 12px;
+    border-radius: 14px;
 }}
 QFrame#SetupStepCard[stepState="active"] {{
-    border: 2px solid {_SKY};
+    border: 1px solid {_SKY};
     background-color: {_SURFACE2};
 }}
 QFrame#SetupStepCard[stepState="done"] {{
@@ -293,11 +337,13 @@ QLabel#SetupStepTitle {{
     font-size: 11pt;
     font-weight: 700;
     background: transparent;
+    letter-spacing: -0.01em;
 }}
 QLabel#SetupStepSubtitle {{
     color: {_MUTED};
     font-size: 9pt;
     background: transparent;
+    line-height: 1.4;
 }}
 QLabel#SetupStepStatus {{
     font-size: 8.5pt;
@@ -357,23 +403,24 @@ QLabel#CalloutText {{
 }}
 
 QFrame#InstructionRow {{
-    background-color: {_BG};
-    border: 1px solid {_BORDER};
-    border-radius: 8px;
+    background-color: transparent;
+    border: none;
+    border-radius: 0;
 }}
 QLabel#InstructionBadge {{
     background-color: {_SKY_DIM};
-    border: 1px solid {_SKY};
-    border-radius: 14px;
+    border: none;
+    border-radius: 12px;
     color: {_SKY};
-    font-size: 10pt;
+    font-size: 9pt;
     font-weight: 800;
 }}
 QLabel#InstructionText {{
     color: {_TEXT};
     font-size: 9.5pt;
     background: transparent;
-    padding-top: 2px;
+    padding-top: 4px;
+    line-height: 1.5;
 }}
 
 /* ── hero connect button ─────────────────────────────────────────── */
@@ -401,20 +448,22 @@ QPushButton#HeroBtn:disabled {{
 /* ── hint text ───────────────────────────────────────────────────── */
 QLabel#HintLabel {{
     color: {_MUTED};
-    font-size: 8.8pt;
+    font-size: 9pt;
     background: transparent;
     padding: 0;
     margin: 0;
+    line-height: 1.45;
 }}
 
 /* ── section headings inside tabs ────────────────────────────────── */
 QLabel#SectionTitle {{
     color: {_TEXT};
-    font-size: 9pt;
-    font-weight: 600;
+    font-size: 10pt;
+    font-weight: 700;
     background: transparent;
     padding: 0;
     margin: 0;
+    letter-spacing: -0.01em;
 }}
 
 /* ── groupboxes ───────────────────────────────────────────────────── */
@@ -476,34 +525,38 @@ QTextEdit {{
 
 /* ── tabs ─────────────────────────────────────────────────────────── */
 QTabWidget::pane {{
-    border: 1px solid {_BORDER};
-    border-radius: 0 8px 8px 8px;
+    border: none;
+    border-radius: 12px;
     background-color: {_SURFACE};
-    top: -1px;
-    margin-top: 0;
+    top: 0;
+    margin-top: 4px;
+}}
+QTabBar {{
+    background: transparent;
+    border-bottom: 2px solid {_BORDER};
 }}
 QTabBar::tab {{
-    background-color: {_BG};
+    background-color: transparent;
     color: {_MUTED};
-    border: 1px solid {_BORDER};
-    border-bottom: none;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
-    padding: 8px 18px;
-    margin-right: 3px;
+    border: none;
+    border-bottom: 2px solid transparent;
+    border-radius: 0;
+    padding: 10px 22px;
+    margin-right: 2px;
     min-width: 5em;
     font-size: 9.5pt;
+    font-weight: 500;
+    letter-spacing: 0.01em;
 }}
 QTabBar::tab:selected {{
-    background-color: {_SURFACE};
+    background-color: transparent;
     color: {_TEXT};
+    font-weight: 700;
     border-bottom: 2px solid {_SKY};
-    font-weight: 600;
-    padding-bottom: 2px;
 }}
 QTabBar::tab:hover:!selected {{
     color: {_TEXT};
-    background-color: {_SURFACE2};
+    background-color: rgba(255, 255, 255, 0.03);
 }}
 
 /* ── buttons ─────────────────────────────────────────────────────── */
@@ -512,11 +565,11 @@ QPushButton#PrimaryBtn {{
     color: #ffffff;
     border: none;
     border-radius: 6px;
-    padding: 5px 14px;
-    min-height: 22px;
-    max-height: 28px;
+    padding: 6px 16px;
+    min-height: 26px;
+    max-height: 32px;
     font-weight: 700;
-    font-size: 8.5pt;
+    font-size: 9pt;
     letter-spacing: 0.01em;
 }}
 QPushButton#PrimaryBtn:hover {{ background-color: {_SKY_HVR}; }}
@@ -531,11 +584,11 @@ QPushButton#SecondaryBtn {{
     color: {_TEXT};
     border: 1px solid {_BORDER2};
     border-radius: 6px;
-    padding: 5px 14px;
-    min-height: 22px;
-    max-height: 28px;
+    padding: 6px 16px;
+    min-height: 26px;
+    max-height: 32px;
     font-weight: 600;
-    font-size: 8.5pt;
+    font-size: 9pt;
 }}
 QPushButton#SecondaryBtn:hover {{
     background-color: #252530;

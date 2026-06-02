@@ -9,11 +9,11 @@ class NavStatusPill(QFrame):
     """Single readable status line — replaces scattered broker/license labels."""
 
     _LABELS: dict[str, tuple[str, str]] = {
-        "setup": ("Setup needed", "setup"),
-        "ready": ("Ready to connect", "ready"),
-        "connecting": ("Connecting…", "connecting"),
-        "online_demo": ("Connected · Demo mode", "online"),
-        "online_live": ("Connected · Real trades ON", "live"),
+        "setup": ("Setup not complete", "setup"),
+        "ready": ("Ready — click Connect", "ready"),
+        "connecting": ("Connecting to server…", "connecting"),
+        "online_demo": ("Online · Demo mode (safe)", "online"),
+        "online_live": ("Online · Real money trading ON", "live"),
     }
 
     def __init__(self, parent=None) -> None:
