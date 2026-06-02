@@ -85,6 +85,7 @@ function BacktestTooltip(props: unknown) {
   );
 }
 
+
 export function BacktestChart({
   className,
   startingBalance = 10_000,
