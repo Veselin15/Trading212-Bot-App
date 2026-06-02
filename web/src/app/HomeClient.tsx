@@ -15,6 +15,7 @@ import {
 
 import { BacktestChart } from "@/components/BacktestChart";
 import { BacktestSummary } from "@/components/BacktestSummary";
+import { EUMapIcon } from "@/components/EUMapIcon";
 import { HeroPipelineVisual } from "@/components/home/HeroPipelineVisual";
 import { RevealOnScroll } from "@/components/home/RevealOnScroll";
 import { StatsTicker } from "@/components/home/StatsTicker";
@@ -164,11 +165,9 @@ function HomeHeroBadge({ mode }: { mode: HomeCtaMode }) {
   if (mode.kind === "visitor") {
     return (
       <Badge className="border-emerald-500/30 bg-emerald-500/10 text-emerald-300">
-        <span className="relative flex h-1.5 w-1.5">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-60" />
-          <span className="live-dot relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
-        </span>
-        Integration ready
+        <EUMapIcon className="text-emerald-200" title="EU-focused" />
+        <span className="font-medium text-emerald-200">EU-first</span>
+        <span className="text-slate-400">Trading212 bot</span>
       </Badge>
     );
   }

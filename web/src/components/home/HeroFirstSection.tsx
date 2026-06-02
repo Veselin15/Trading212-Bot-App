@@ -9,6 +9,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Users } from "lucide-react";
 
 import { easeOutSnappy } from "@/components/motion/variants";
+import { EUMapIcon } from "@/components/EUMapIcon";
 import { ButtonLink } from "@/components/ui/Button";
 import { FeaturePills } from "@/components/home/FeaturePills";
 import { HeroInteractiveGraphic } from "@/components/home/HeroInteractiveGraphic";
@@ -28,7 +29,8 @@ export function HeroFirstSection() {
         transition={{ duration: 0.38, ease: easeOutSnappy }}
       >
         <div className="inline-flex cursor-default items-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs text-slate-300 shadow-sm backdrop-blur transition-all duration-300 hover:border-emerald-500/50 hover:bg-emerald-500/[0.15]">
-          <span className="font-medium text-emerald-200">🇪🇺 Built for the EU market</span>
+          <EUMapIcon className="text-emerald-200" title="EU market" />
+          <span className="font-medium text-emerald-200">Built for the EU market</span>
           <span className="text-slate-400">EU stocks only · Trading212</span>
         </div>
 
