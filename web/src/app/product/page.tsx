@@ -43,8 +43,8 @@ const FEATURES = [
   },
   {
     icon: Globe,
-    title: "25-stock EU universe",
-    desc: "Covers EUR-denominated blue-chips across defense, luxury, semiconductors, pharma, and financials. Tax withholding handling built-in.",
+    title: "22-stock active EU universe",
+    desc: "25 EUR-denominated blue-chips screened down to 22 active symbols. ALV.DE, SIE.DE, TTE.PA are blocklisted as chronic underperformers — blocklist is re-derived from OOS validation periodically.",
     tone: "sky" as const,
     tag: "Strategy",
   },
