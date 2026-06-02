@@ -594,7 +594,7 @@ QTabWidget::pane {{
 }}
 QTabBar {{
     background: transparent;
-    border-bottom: 2px solid {_BORDER};
+    border: none;
 }}
 QTabBar::tab {{
     background-color: transparent;

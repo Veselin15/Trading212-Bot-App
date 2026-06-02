@@ -76,7 +76,7 @@ LICENSE_RECHECK_INTERVAL_MS = 10 * 60 * 1000
 # Tiers that unlock real-money (live) trading. Mirrors backend app/services/tiers.py.
 _LIVE_TIERS = frozenset({"starter", "pro"})
 # Max concurrent open positions the executor will hold, per tier.
-_TIER_MAX_POSITIONS = {"trial": 2, "starter": 3, "pro": 10}
+_TIER_MAX_POSITIONS = {"trial": 3, "starter": 3, "pro": 10}
 
 
 class MainWindow(QMainWindow):
@@ -185,6 +185,7 @@ class MainWindow(QMainWindow):
         # ── license tier state & widgets ─────────────────────────────
         self._license_tier: str = "free"
         self._license_check_busy: bool = False
+        self._license_server_error: bool = False
 
         self.validate_btn = QPushButton("Check license")
         self.validate_btn.setObjectName("PrimaryBtn")
@@ -650,7 +651,8 @@ class MainWindow(QMainWindow):
                 "Upgrade to Pro to unlock real-money trades."
             )
             self.tier_status_label.setText(
-                "Free trial active — paper trading only. Upgrade to Pro for real-money trading."
+                f"Free trial active — paper trading only (up to {_TIER_MAX_POSITIONS['trial']} open positions). "
+                "Upgrade to Starter or Pro for real-money trading."
             )
             self.tier_status_label.setProperty("tierKind", "trial")
         elif tier == "expired":
@@ -708,14 +710,32 @@ class MainWindow(QMainWindow):
             lic = self.license_key.text().strip()
             ws = self.ws_url.text().strip()
             result = await check_license(lic, ws)
-            self._update_tier_ui(result.tier)
+
+            # Detect server-unreachable vs. genuinely invalid key — the message wording
+            # differs so we can show a clearer hint in the checklist header.
+            server_down = (
+                "HTTP 502" in result.message
+                or "HTTP 503" in result.message
+                or "HTTP 504" in result.message
+                or "Cannot reach" in result.message
+                or "Validation service unavailable" in result.message
+            )
+            self._license_server_error = server_down
+
+            if server_down:
+                # Keep the current tier; the server being down doesn't invalidate the key.
+                self._append_event("error", f"License check: {result.message}")
+                self._refresh_setup_checklist()
+            else:
+                self._update_tier_ui(result.tier)
+
             if silent:
-                if result.tier != prev_tier:
+                if not server_down and result.tier != prev_tier:
                     self._append_event(
                         "warn",
                         f"Periodic license check: tier changed from {prev_tier!r} to {result.tier!r}. {result.message}",
                     )
-                elif not result.valid and prev_tier in ("pro", "starter", "trial", "free"):
+                elif not server_down and not result.valid and prev_tier in ("pro", "starter", "trial", "free"):
                     self._append_event(
                         "error",
                         f"Periodic license check failed (was {prev_tier!r}) — {result.message}",
@@ -759,6 +779,13 @@ class MainWindow(QMainWindow):
         finally:
             self.validate_btn.setEnabled(True)
             self.validate_btn.setText("Check license")
+            # Keep step 1 expanded so the user can read the result before moving on.
+            step1 = getattr(self, "_setup_step1", None)
+            if step1 is not None:
+                step1.set_state(step1._state, expand=True)
+                scroll = getattr(self, "_setup_scroll", None)
+                if scroll is not None:
+                    scroll.ensureWidgetVisible(step1, 24, 24)
 
     @asyncSlot()
     async def _on_license_recheck_tick(self) -> None:
@@ -997,6 +1024,7 @@ class MainWindow(QMainWindow):
             has_broker_keys=has_broker_keys,
             connected=connected,
             license_field_nonempty=bool(self.license_key.text().strip()),
+            license_server_error=self._license_server_error,
         )
 
         step1 = getattr(self, "_setup_step1", None)
@@ -1239,6 +1267,9 @@ class MainWindow(QMainWindow):
 
     @asyncSlot()
     async def on_disconnect_clicked(self) -> None:
+        self.disconnect_btn.setEnabled(False)
+        self.disconnect_btn.setText("Disconnecting…")
+        self._set_sb("Disconnecting…")
         if self._ws_client:
             self._ws_client.stop()
         if self._ws_task:
@@ -1256,6 +1287,7 @@ class MainWindow(QMainWindow):
         self._append_event("info", "Disconnected. You can reconnect at any time.")
         self.connect_btn.setEnabled(True)
         self.disconnect_btn.setEnabled(False)
+        self.disconnect_btn.setText("Disconnect")
         self._refresh_setup_checklist()
         self._set_sb("")
 
@@ -1699,8 +1731,8 @@ class MainWindow(QMainWindow):
                 is_debug = bool(payload.get("debug"))
                 qty = self._order_quantity
 
-                # Tier position cap: hold at most N concurrent positions (Starter 3 / Pro 10 /
-                # Trial 2). Adding to an already-held symbol is always allowed.
+                # Tier position cap: hold at most N concurrent positions (Trial/Starter 3 / Pro 10).
+                # Adding to an already-held symbol is always allowed.
                 cap = self._max_open_positions()
                 if cap > 0:
                     try:
