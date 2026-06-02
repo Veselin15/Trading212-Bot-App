@@ -11,8 +11,9 @@ export const metadata: Metadata = {
   description:
     "Web portal for subscription and licensing, Windows desktop executor for Trading212. Broker API keys stay on your device.",
   icons: {
-    icon: "/logo.png",
-    apple: "/logo.png",
+    // Prefer Next.js icon routes (`src/app/icon.png`, `src/app/apple-icon.png`) for broad browser support.
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: [{ url: "/apple-icon.png", type: "image/png" }],
   },
 };
 
