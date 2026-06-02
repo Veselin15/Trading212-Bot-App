@@ -16,7 +16,7 @@ import {
 import { BacktestChart } from "@/components/BacktestChart";
 import { BacktestSummary } from "@/components/BacktestSummary";
 import { EUMapIcon } from "@/components/EUMapIcon";
-import { HeroPipelineVisual } from "@/components/home/HeroPipelineVisual";
+import { EUMapHeroVisual } from "@/components/home/EUMapHeroVisual";
 import { RevealOnScroll } from "@/components/home/RevealOnScroll";
 import { StatsTicker } from "@/components/home/StatsTicker";
 import { GlowHoverCard } from "@/components/motion/GlowHoverCard";
@@ -256,6 +256,14 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                   <span className="text-gradient-hero"> — built for EU investors</span>
                 </h1>
 
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-500/10 px-3 py-1 text-xs text-amber-200/90 shadow-[0_0_0_1px_rgba(251,191,36,0.08)]">
+                    <EUMapIcon className="h-[18px] w-[18px] text-amber-200/90" title="EU-only universe" variant="outline" />
+                    <span className="font-semibold tracking-wide">EU-only universe</span>
+                    <span className="text-amber-200/60">Xetra · Euronext · EU exchanges</span>
+                  </span>
+                </div>
+
                 <p className="max-w-md text-base leading-relaxed text-slate-400 sm:text-[1.05rem]">
                   The only bot targeting EU-listed stocks exclusively — no US withholding friction. Signals live in the portal; execution stays on your PC, API key never leaves your machine.
                 </p>
@@ -305,7 +313,7 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
               transition={{ duration: 0.7, delay: 0.12, ease: [0.22, 1, 0.36, 1] }}
               className="relative flex justify-center lg:justify-end"
             >
-              <HeroPipelineVisual />
+              <EUMapHeroVisual />
             </motion.div>
           </div>
         </Container>
