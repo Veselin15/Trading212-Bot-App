@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "cross-env NODE_OPTIONS=--use-system-ca next build --webpack",
+    "build": "next build --webpack",
     "pages:build": "opennextjs-cloudflare build",
     "pages:deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "pages:preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
