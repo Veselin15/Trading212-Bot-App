@@ -46,7 +46,7 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     s1 = win._setup_step1.body_layout()
     s1.addWidget(
         instruction_steps([
-            "Visit swifttrade.io and log in to your dashboard to find your license key.",
+            "Visit swifttrade.app and log in to your dashboard to find your license key.",
             "Paste the key into the field below, then click Check license to activate Pro features.",
         ])
     )
@@ -170,7 +170,7 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     lock_layout.setContentsMargins(16, 14, 16, 14)
     lock_lbl = QLabel(
         "Real-money trading requires an active Pro subscription.\n\n"
-        "Upgrade at swifttrade.io — once your Pro license is confirmed in Step 1, "
+        "Upgrade at swifttrade.app — once your Pro license is confirmed in Step 1, "
         "this section unlocks automatically."
     )
     lock_lbl.setObjectName("LiveKeyLockMsg")
@@ -243,6 +243,17 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     connect_row.addWidget(win.setup_disconnect_btn)
     connect_row.addStretch(1)
     s3.addLayout(connect_row)
+
+    legal_notice = QLabel(
+        'By connecting you agree to the '
+        '<a href="https://swifttrade.app/legal/terms">Terms of Service</a> and '
+        '<a href="https://swifttrade.app/legal/risk">Risk Disclosure</a>. '
+        'Trading involves risk of loss. API keys stay on your device only.'
+    )
+    legal_notice.setObjectName("LegalNotice")
+    legal_notice.setOpenExternalLinks(True)
+    legal_notice.setWordWrap(True)
+    s3.addWidget(legal_notice)
     layout.addWidget(win._setup_step3)
 
     # ── Troubleshooting (collapsed) ─────────────────────────────────

@@ -94,6 +94,7 @@ class SetupChecklist(QFrame):
         has_broker_keys: bool,
         connected: bool,
         license_field_nonempty: bool = False,
+        license_server_error: bool = False,
     ) -> None:
         done = [license_validated, has_broker_keys, connected]
         completed = sum(done)
@@ -116,7 +117,12 @@ class SetupChecklist(QFrame):
             self._summary.setProperty("calloutKind", "success")
         elif not license_validated:
             self._summary_icon.setText("1")
-            if license_field_nonempty:
+            if license_server_error and license_field_nonempty:
+                self._summary_text.setText(
+                    "Cannot reach the validation server — check your internet connection or try again shortly. "
+                    "Your key was not changed."
+                )
+            elif license_field_nonempty:
                 self._summary_text.setText(
                     "That license key doesn't look right. Double-check it, or clear the field to continue with the free plan."
                 )

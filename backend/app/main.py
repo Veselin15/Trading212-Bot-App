@@ -86,9 +86,16 @@ def create_app() -> FastAPI:
             _log.warning(
                 "Strategy runner ENABLED (RUN_STRATEGY=true) — new_trading212bot v2 ML engine."
             )
-            from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
-
-            asyncio.create_task(run_t212_miner_strategy_forever())
+            try:
+                from app.strategy.t212_miner_runner import run_t212_miner_strategy_forever
+            except Exception as import_err:  # noqa: BLE001
+                _log.error(
+                    "Strategy runner FAILED to import (set RUN_STRATEGY=false to skip it). "
+                    "The backend will continue WITHOUT the strategy runner. Error: %s",
+                    import_err,
+                )
+            else:
+                asyncio.create_task(run_t212_miner_strategy_forever())
         else:
             _log.info("Strategy runner disabled (RUN_STRATEGY=false).")
 

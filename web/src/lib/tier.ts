@@ -6,7 +6,7 @@ import { type SubscriptionRow, activePaidPlan } from "@/lib/subscription-model";
  *
  *   active subscription, plan=pro       -> PRO     (full signal feed, live, 10 positions)
  *   active subscription, plan=starter   -> STARTER (core signals, live, 3 positions)
- *   else trial_ends_at in future        -> TRIAL   (full feed, paper only)
+ *   else trial_ends_at in future        -> TRIAL   (full feed, paper only, 3 positions)
  *   else                                -> EXPIRED (locked until upgrade)
  */
 export type EffectiveTier = "TRIAL" | "STARTER" | "PRO" | "EXPIRED";
@@ -30,7 +30,7 @@ export type TierCapabilities = {
 };
 
 export const TIER_CAPABILITIES: Record<EffectiveTier, TierCapabilities> = {
-  TRIAL: { liveTrading: false, fullSignalFeed: true, maxOpenPositions: 2, label: "Free trial", priceEur: null },
+  TRIAL: { liveTrading: false, fullSignalFeed: true, maxOpenPositions: 3, label: "Free trial", priceEur: null },
   STARTER: { liveTrading: true, fullSignalFeed: false, maxOpenPositions: 3, label: "Starter", priceEur: 19 },
   PRO: { liveTrading: true, fullSignalFeed: true, maxOpenPositions: 10, label: "Pro", priceEur: 49 },
   EXPIRED: { liveTrading: false, fullSignalFeed: false, maxOpenPositions: 0, label: "Expired", priceEur: null },

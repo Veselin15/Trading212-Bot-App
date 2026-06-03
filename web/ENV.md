@@ -8,7 +8,7 @@ A new account gets a **14-day free trial** (no card): the `handle_new_user` trig
 
 - **PRO** — active Stripe subscription on `STRIPE_PRICE_ID_PRO` (€49). Live execution on the **full** signal feed, up to 10 concurrent positions.
 - **STARTER** — active Stripe subscription on `STRIPE_PRICE_ID_STARTER` (€19). Live execution on **core** signals only, up to 3 concurrent positions.
-- **TRIAL** — inside the trial window. Full signal feed but paper trading only (2 positions).
+- **TRIAL** — inside the trial window. Full signal feed but paper trading only (up to 3 concurrent positions).
 - **EXPIRED** — trial ended (or subscription lapsed). Desktop app, signals, and license are locked until upgrade.
 
 The price-id → plan mapping lives in `web/src/lib/plans.ts`; the webhook denormalizes the resolved plan into `subscriptions.plan`. The Starter↔Pro feature split is enforced server-side: the FastAPI backend tags each ML signal `min_tier` by confidence rank and the WebSocket layer withholds Pro-only signals from Starter connections.

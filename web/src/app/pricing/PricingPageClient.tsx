@@ -59,6 +59,7 @@ function PlanCta({ plan, cta }: { plan: "starter" | "pro"; cta: PricingCta }) {
 const TRIAL_FEATURES = [
   "Full signal feed (paper mode)",
   "Paper trading on your practice account",
+  "Up to 3 concurrent positions",
   "Desktop app + license key",
   "No credit card required",
 ] as const;
@@ -80,7 +81,7 @@ const COMPARE_ROWS = [
   { label: "Live real-money trading",  trial: "–",              starter: "✓",             pro: "✓" },
   { label: "Paper trading",            trial: "✓",              starter: "✓",             pro: "✓" },
   { label: "Signal feed",              trial: "Full (paper)",   starter: "Core only",     pro: "Full feed" },
-  { label: "Concurrent positions",     trial: "2 (paper)",      starter: "3",             pro: "10" },
+  { label: "Concurrent positions",     trial: "3 (paper)",      starter: "3",             pro: "10" },
   { label: "Desktop app + license",    trial: "✓",              starter: "✓",             pro: "✓" },
   { label: "Support",                  trial: "Community",      starter: "Email",         pro: "Priority" },
 ] as const;
@@ -196,6 +197,12 @@ export function PricingPageClient({ cta }: { cta: PricingCta }) {
                 <PlanCta plan="pro" cta={cta} />
                 <p className="mt-4 text-center text-xs text-slate-600">
                   Trading212 API key stored only in desktop app
+                </p>
+                <p className="mt-2 text-center text-xs text-slate-700">
+                  By subscribing you agree to our{" "}
+                  <a href="/legal/terms" className="underline hover:text-slate-500">Terms of Service</a>
+                  {" "}and{" "}
+                  <a href="/legal/risk" className="underline hover:text-slate-500">Risk Disclosure</a>.
                 </p>
               </div>
             </div>

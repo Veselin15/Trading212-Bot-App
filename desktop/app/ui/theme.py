@@ -516,6 +516,23 @@ QLabel#HintLabel {{
     line-height: 1.45;
 }}
 
+/* ── legal notice below connect button ───────────────────────────── */
+QLabel#LegalNotice {{
+    color: {_MUTED};
+    font-size: 7.5pt;
+    background: transparent;
+    padding: 0;
+    margin-top: 6px;
+    line-height: 1.5;
+}}
+QLabel#LegalNotice a {{
+    color: #34d399;
+    text-decoration: none;
+}}
+QLabel#LegalNotice a:hover {{
+    text-decoration: underline;
+}}
+
 /* ── section headings inside tabs ────────────────────────────────── */
 QLabel#SectionTitle {{
     color: {_TEXT};

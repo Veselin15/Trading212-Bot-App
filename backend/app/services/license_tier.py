@@ -66,11 +66,23 @@ async def resolve_license_tier(
         return "invalid", None, "License key has no associated account."
 
     # 1) Active paid subscription -> PRO or STARTER (by plan).
-    sub_rows = await sb.get(
-        client,
-        "subscriptions?select=status,current_period_end,plan"
-        f"&user_id=eq.{user_id}&order=created_at.desc&limit=1",
-    )
+    # Defensively fall back to a plan-less query if the plan column doesn't exist yet
+    # (migration 20260602_000005_starter_pro_tiers.sql not yet applied to this DB).
+    try:
+        sub_rows = await sb.get(
+            client,
+            "subscriptions?select=status,current_period_end,plan"
+            f"&user_id=eq.{user_id}&order=created_at.desc&limit=1",
+        )
+    except httpx.HTTPStatusError as exc:
+        if exc.response.status_code in (400, 404):
+            sub_rows = await sb.get(
+                client,
+                "subscriptions?select=status,current_period_end"
+                f"&user_id=eq.{user_id}&order=created_at.desc&limit=1",
+            )
+        else:
+            raise
     sub = sub_rows[0] if sub_rows else None
     if sub and str(sub.get("status") or "") == "active":
         cpe = _parse_ts(sub.get("current_period_end"))

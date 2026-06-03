@@ -29,6 +29,7 @@ export function PricingTiers() {
           <ul className="mt-6 space-y-2 text-sm text-slate-200">
             <li>Full signals feed (paper)</li>
             <li>Paper trading on your practice account</li>
+            <li>Up to 3 concurrent positions</li>
             <li>Desktop app + license key</li>
           </ul>
           <div className="mt-7">

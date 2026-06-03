@@ -12,6 +12,12 @@ const FOOTER_LINKS = [
   { href: "/login", label: "Sign in" },
 ] as const;
 
+const LEGAL_LINKS = [
+  { href: "/legal/terms", label: "Terms of Service" },
+  { href: "/legal/privacy", label: "Privacy Policy" },
+  { href: "/legal/risk", label: "Risk Disclosure" },
+] as const;
+
 const TRUST_STATS = [
   { value: "< 200ms", label: "Signal latency" },
   { value: "99.9%", label: "Uptime" },
@@ -65,6 +71,19 @@ export function SiteFooter() {
               <p className="section-eyebrow mb-4">Explore</p>
               <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-1">
                 {FOOTER_LINKS.map((link) => (
+                  <li key={link.href}>
+                    <Link
+                      className="text-sm text-slate-500 transition-colors hover:text-emerald-400"
+                      href={link.href}
+                    >
+                      {link.label}
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+              <p className="section-eyebrow mb-3 mt-7">Legal</p>
+              <ul className="grid grid-cols-2 gap-x-4 gap-y-2.5 sm:grid-cols-1">
+                {LEGAL_LINKS.map((link) => (
                   <li key={link.href}>
                     <Link
                       className="text-sm text-slate-500 transition-colors hover:text-emerald-400"

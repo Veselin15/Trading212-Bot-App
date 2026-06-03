@@ -38,7 +38,7 @@ class TierCapabilities:
 _CAPS: dict[str, TierCapabilities] = {
     "pro": TierCapabilities(live_trading=True, signal_level=SIGNAL_LEVEL_EXTENDED, max_open_positions=10),
     "starter": TierCapabilities(live_trading=True, signal_level=SIGNAL_LEVEL_CORE, max_open_positions=3),
-    "trial": TierCapabilities(live_trading=False, signal_level=SIGNAL_LEVEL_EXTENDED, max_open_positions=2),
+    "trial": TierCapabilities(live_trading=False, signal_level=SIGNAL_LEVEL_EXTENDED, max_open_positions=3),
     "expired": TierCapabilities(live_trading=False, signal_level=0, max_open_positions=0),
     "invalid": TierCapabilities(live_trading=False, signal_level=0, max_open_positions=0),
 }

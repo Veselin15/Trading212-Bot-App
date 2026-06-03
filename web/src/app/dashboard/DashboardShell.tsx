@@ -441,7 +441,9 @@ export function DashboardShell({
                 <Download className="h-4 w-4" /> Download App (.exe)
               </ButtonLink>
               {isTrial && (
-                <p className="text-xs text-slate-500">Trial: full signal feed in paper mode on your practice account. Pick a live plan to trade real money.</p>
+                <p className="text-xs text-slate-500">
+                  Trial: full signal feed in paper mode on your practice account, up to {caps.maxOpenPositions} concurrent positions. Pick a live plan to trade real money.
+                </p>
               )}
               {isStarter && (
                 <p className="text-xs text-slate-500">Starter: live execution on core signals, up to {caps.maxOpenPositions} concurrent positions. Upgrade to Pro for the full feed.</p>
