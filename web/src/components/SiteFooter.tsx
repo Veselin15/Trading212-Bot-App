@@ -58,6 +58,12 @@ export function SiteFooter() {
                 Portal for subscriptions and signals. Your Trading212 API keys stay on your Windows desktop — never on
                 this site.
               </p>
+              <a
+                href="mailto:legal@swifttrade.app"
+                className="text-sm text-slate-500 transition-colors hover:text-emerald-400"
+              >
+                legal@swifttrade.app
+              </a>
               <div className="flex items-center gap-2 rounded-full border border-emerald-500/20 bg-emerald-500/8 px-3 py-1.5 w-fit">
                 <span className="relative flex h-1.5 w-1.5">
                   <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-50" />

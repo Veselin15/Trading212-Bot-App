@@ -87,7 +87,7 @@ const GROUPS: Group[] = [
       {
         question: "Can I use the desktop app on multiple machines?",
         answer:
-          "Currently, one active license key is issued per Pro subscription. The key is tied to your account and can be regenerated from the dashboard at any time. Concurrent multi-machine activation is an Enterprise feature — contact us if you need this.",
+          "Currently, one active license key is issued per Pro subscription. The key is tied to your account and can be regenerated from the dashboard at any time. Concurrent multi-machine activation is an Enterprise feature — email legal@swifttrade.app if you need this.",
       },
     ],
   },
@@ -200,7 +200,11 @@ export function FaqClient() {
           <div className="mx-auto mt-12 max-w-3xl rounded-2xl border border-white/[0.07] bg-[#060609]/80 p-6 text-center">
             <p className="mb-1 text-sm font-semibold text-slate-200">Still have questions?</p>
             <p className="mb-4 text-sm text-slate-500">
-              Check the product overview or read the architecture details.
+              Email us at{" "}
+              <a href="mailto:legal@swifttrade.app" className="text-emerald-400 hover:underline">
+                legal@swifttrade.app
+              </a>{" "}
+              or check the product overview.
             </p>
             <div className="flex flex-wrap justify-center gap-3">
               <ButtonLink href="/product" variant="secondary" className="h-10 px-4 text-sm">
