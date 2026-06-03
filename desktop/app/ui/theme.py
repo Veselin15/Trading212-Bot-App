@@ -516,6 +516,23 @@ QLabel#HintLabel {{
     line-height: 1.45;
 }}
 
+/* ── first-run terms dialog ──────────────────────────────────────── */
+QLabel#FirstRunTitle {{
+    color: {_TEXT};
+    font-size: 13pt;
+    font-weight: 700;
+    background: transparent;
+}}
+QLabel#FirstRunBody {{
+    color: {_MUTED};
+    font-size: 9pt;
+    background: transparent;
+    line-height: 1.6;
+}}
+QLabel#FirstRunBody a {{
+    color: #34d399;
+}}
+
 /* ── legal notice below connect button ───────────────────────────── */
 QLabel#LegalNotice {{
     color: {_MUTED};

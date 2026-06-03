@@ -3,12 +3,15 @@ from __future__ import annotations
 
 import asyncio
 import sys
+from pathlib import Path
 
 from PySide6.QtGui import QGuiApplication
 from PySide6.QtWidgets import QApplication
 from qasync import QEventLoop
 
 from .main_window import MainWindow
+from .settings_store import SettingsStore
+from .ui.first_run_dialog import run_first_run_dialog
 from .ui.theme import apply_desktop_styles
 
 __all__ = ["MainWindow", "main"]
@@ -32,6 +35,16 @@ def main() -> None:
 
     loop = QEventLoop(app)
     asyncio.set_event_loop(loop)
+
+    # Show terms/risk acceptance dialog on first launch.
+    _base_dir = Path.home() / ".t212_executor"
+    _store = SettingsStore(_base_dir)
+    _settings = _store.load()
+    if not _settings.terms_accepted:
+        if not run_first_run_dialog():
+            sys.exit(0)
+        _settings.terms_accepted = True
+        _store.save(_settings)
 
     w = MainWindow()
     _center_on_primary_screen(w)

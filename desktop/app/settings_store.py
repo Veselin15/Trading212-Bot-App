@@ -39,6 +39,7 @@ class AppSettings:
     start_minimized: bool = False
     start_with_windows: bool = False
     seen_welcome: bool = False
+    terms_accepted: bool = False
 
     # Background / power
     close_to_tray: bool = True      # hide to tray on window-close instead of quitting
@@ -54,6 +55,7 @@ class AppSettings:
             ws_url=keep.ws_url,
             license_key=keep.license_key,
             seen_welcome=keep.seen_welcome,
+            terms_accepted=keep.terms_accepted,
             splitter_sizes=list(keep.splitter_sizes),
             reconnect_interval_s=fresh.reconnect_interval_s,
             max_reconnect_attempts=fresh.max_reconnect_attempts,
@@ -119,6 +121,7 @@ class SettingsStore:
                 start_minimized=bool(obj.get("start_minimized", False)),
                 start_with_windows=bool(obj.get("start_with_windows", False)),
                 seen_welcome=bool(obj.get("seen_welcome", False)),
+                terms_accepted=bool(obj.get("terms_accepted", False)),
                 close_to_tray=bool(obj.get("close_to_tray", True)),
                 keep_awake=bool(obj.get("keep_awake", True)),
                 splitter_sizes=list(obj.get("splitter_sizes") or [580, 440]),
