@@ -1,8 +1,8 @@
 """Small Qt widget factories for tab layouts."""
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout, QWidget
+from PySide6.QtCore import QEvent, Qt
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QTableWidget, QVBoxLayout, QWidget
 
 from .theme import _BORDER, _DANGER, _MUTED, _SUCCESS, _TEXT, _WARN
 
@@ -73,6 +73,45 @@ def instruction_steps(steps: list[str]) -> QWidget:
         row_layout.addWidget(body, 1)
         layout.addWidget(row)
     return wrap
+
+
+class _TableEmptyOverlay(QLabel):
+    """Centered placeholder shown over a table while it has no rows.
+
+    Purely cosmetic — it lives on the viewport and never alters ``rowCount``.
+    """
+
+    def __init__(self, table: QTableWidget, text: str) -> None:
+        super().__init__(text, table.viewport())
+        self.setObjectName("TableEmptyOverlay")
+        self.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.setWordWrap(True)
+        self.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents, True)
+        self._table = table
+        table.viewport().installEventFilter(self)
+        model = table.model()
+        model.rowsInserted.connect(self._refresh)  # type: ignore[arg-type]
+        model.rowsRemoved.connect(self._refresh)  # type: ignore[arg-type]
+        model.modelReset.connect(self._refresh)  # type: ignore[arg-type]
+        self._refresh()
+
+    def eventFilter(self, obj, event) -> bool:  # type: ignore[override]
+        if obj is self._table.viewport() and event.type() == QEvent.Type.Resize:
+            self._reposition()
+        return False
+
+    def _reposition(self) -> None:
+        vp = self._table.viewport()
+        self.setGeometry(0, 0, vp.width(), vp.height())
+
+    def _refresh(self, *_args) -> None:
+        self._reposition()
+        self.setVisible(self._table.rowCount() == 0)
+
+
+def attach_empty_overlay(table: QTableWidget, text: str) -> _TableEmptyOverlay:
+    """Show a friendly placeholder over ``table`` whenever it is empty."""
+    return _TableEmptyOverlay(table, text)
 
 
 def status_text(status: str) -> tuple[str, str]:

@@ -136,7 +136,7 @@ def run_help_dialog(parent: QWidget) -> None:
             "these recommendations in real time and, depending on your settings, "
             "places the corresponding trade on Trading212 automatically.\n\n"
             "You can see every signal that arrives in the Signals tab, and a full "
-            "history of what the app did in the What happened log on the right.",
+            "history of what the app did in the Activity log on the right.",
         ),
         (
             "🎮",
@@ -159,7 +159,7 @@ def run_help_dialog(parent: QWidget) -> None:
             "bot is doing for each stock, and the most recent signals it has received.\n\n"
             "Signals — A full list of every signal that has arrived since you connected, "
             "newest at the top.\n\n"
-            "What happened (right side) — A color-coded log of every action the app "
+            "Activity log (right side) — A color-coded log of every action the app "
             "takes. Green = success, Yellow = warning, Red = something went wrong.",
         ),
         (
@@ -184,7 +184,7 @@ def run_help_dialog(parent: QWidget) -> None:
             "• Go to Get started → Troubleshooting → Open health check for a full "
             "diagnostic.\n"
             "• Try closing and reopening the app.\n"
-            "• If nothing helps, visit swifttrade.io or open a support ticket from your "
+            "• If nothing helps, visit swifttrade.app or email legal@swifttrade.app from your "
             "dashboard.",
         ),
     ]

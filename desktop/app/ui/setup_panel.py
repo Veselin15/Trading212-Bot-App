@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from .setup_checklist import SetupChecklist
 from .setup_step_card import SetupStepCard
+from .welcome_banner import WelcomeBanner
 from .widgets import field_label, hint, instruction_steps
 
 if TYPE_CHECKING:
@@ -36,6 +37,12 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     layout = QVBoxLayout(inner)
     layout.setContentsMargins(18, 14, 18, 18)
     layout.setSpacing(14)
+
+    # ── First-run welcome banner (dismissible) ──────────────────────
+    win._welcome_banner = WelcomeBanner()
+    win._welcome_banner.dismissed.connect(win._on_welcome_dismissed)  # type: ignore[arg-type]
+    win._welcome_banner.hide()  # main window reveals it on first run
+    layout.addWidget(win._welcome_banner)
 
     # ── Step 1: License ─────────────────────────────────────────────
     win._setup_step1 = SetupStepCard(
@@ -233,11 +240,13 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     win.setup_connect_btn.setObjectName("HeroBtn")
     win.setup_connect_btn.setMinimumHeight(44)
     win.setup_connect_btn.setMinimumWidth(160)
+    win.setup_connect_btn.setCursor(Qt.CursorShape.PointingHandCursor)
     win.setup_connect_btn.clicked.connect(win.on_connect_clicked)  # type: ignore[arg-type]
     connect_row.addWidget(win.setup_connect_btn)
     win.setup_disconnect_btn = QPushButton("Disconnect")
     win.setup_disconnect_btn.setObjectName("SecondaryBtn")
     win.setup_disconnect_btn.setMinimumHeight(44)
+    win.setup_disconnect_btn.setCursor(Qt.CursorShape.PointingHandCursor)
     win.setup_disconnect_btn.hide()
     win.setup_disconnect_btn.clicked.connect(win.on_disconnect_clicked)  # type: ignore[arg-type]
     connect_row.addWidget(win.setup_disconnect_btn)
@@ -261,6 +270,7 @@ def build_setup_tab(win: MainWindow) -> QWidget:
     win._advanced_toggle.setObjectName("GhostBtn")
     win._advanced_toggle.setCheckable(True)
     win._advanced_toggle.setChecked(False)
+    win._advanced_toggle.setCursor(Qt.CursorShape.PointingHandCursor)
     layout.addWidget(win._advanced_toggle, alignment=Qt.AlignmentFlag.AlignLeft)
 
     win._advanced_panel = QWidget()

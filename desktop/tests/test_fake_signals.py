@@ -124,7 +124,7 @@ def test_live_non_pro_blocks_and_forces_paper(window, qasync_loop):
     qasync_loop.run_until_complete(run())
 
     assert window.trading_mode.is_live() is False
-    assert "Pro subscription required" in window.event_log.toPlainText()
+    assert "Starter or Pro subscription is required" in window.event_log.toPlainText()
 
 
 def test_t212_base_url_demo_when_not_pro(window, qasync_loop):

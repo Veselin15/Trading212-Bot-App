@@ -10,6 +10,7 @@ _BORDER   = "#262636"   # subtle borders
 _BORDER2  = "#353548"   # interactive borders
 _SKY      = "#14b8a6"   # teal — primary accent
 _SKY_HVR  = "#2dd4bf"   # hover
+_SKY_PRS  = "#0d9488"   # pressed (darker teal)
 _SKY_DIM  = "#042f2e"   # tint bg for tags/indicators
 _TEXT     = "#f0f0f2"   # primary text (slightly softer white for long-read comfort)
 _MUTED    = "#a0a0b4"   # secondary / hint text (slightly brighter for readability)
@@ -250,6 +251,12 @@ QFrame#SetupStepCard[stepState="done"] {{
 QFrame#SetupStepCard[stepState="locked"] {{
     background-color: #0e0e14;
     border-color: {_BORDER};
+}}
+QFrame#SetupStepCard[stepState="active"]:hover {{
+    border: 1px solid {_SKY_HVR};
+}}
+QFrame#SetupStepCard[stepState="done"]:hover {{
+    border: 1px solid {_SUCCESS};
 }}
 
 /* ── nav status pill ─────────────────────────────────────────────── */
@@ -499,7 +506,7 @@ QPushButton#HeroBtn:hover {{
     background-color: {_SKY_HVR};
 }}
 QPushButton#HeroBtn:pressed {{
-    background-color: #059669;
+    background-color: {_SKY_PRS};
 }}
 QPushButton#HeroBtn:disabled {{
     background-color: #166534;
@@ -514,6 +521,31 @@ QLabel#HintLabel {{
     padding: 0;
     margin: 0;
     line-height: 1.45;
+}}
+
+/* ── first-run welcome banner (inline, dismissible) ──────────────── */
+QFrame#WelcomeBanner {{
+    background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+        stop:0 rgba(20, 184, 166, 0.12), stop:1 rgba(20, 184, 166, 0.03));
+    border: 1px solid {_SKY};
+    border-radius: 12px;
+}}
+QLabel#WelcomeBannerIcon {{
+    font-size: 17pt;
+    background: transparent;
+}}
+QLabel#WelcomeBannerTitle {{
+    color: {_TEXT};
+    font-size: 11pt;
+    font-weight: 800;
+    letter-spacing: -0.01em;
+    background: transparent;
+}}
+QLabel#WelcomeBannerBody {{
+    color: {_MUTED};
+    font-size: 9pt;
+    background: transparent;
+    line-height: 1.5;
 }}
 
 /* ── first-run terms dialog ──────────────────────────────────────── */
@@ -668,7 +700,7 @@ QPushButton#PrimaryBtn {{
     letter-spacing: 0.01em;
 }}
 QPushButton#PrimaryBtn:hover {{ background-color: {_SKY_HVR}; }}
-QPushButton#PrimaryBtn:pressed {{ background-color: #0284c7; }}
+QPushButton#PrimaryBtn:pressed {{ background-color: {_SKY_PRS}; }}
 QPushButton#PrimaryBtn:disabled {{
     background-color: {_BORDER};
     color: {_MUTED};
@@ -777,6 +809,13 @@ QHeaderView::section {{
 }}
 QHeaderView::section:last {{
     border-right: none;
+}}
+
+/* ── empty-state overlay shown over a table with no rows ─────────── */
+QLabel#TableEmptyOverlay {{
+    color: {_MUTED};
+    font-size: 9.5pt;
+    background: transparent;
 }}
 
 /* ── list widget ────────────────────────────────────────────────── */

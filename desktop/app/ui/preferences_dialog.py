@@ -77,6 +77,7 @@ def _read_from_widgets(s: AppSettings, widgets: dict, splitter_sizes: list[int])
         close_to_tray=widgets["close_to_tray_cb"].isChecked(),
         keep_awake=widgets["keep_awake_cb"].isChecked(),
         seen_welcome=s.seen_welcome,
+        terms_accepted=s.terms_accepted,
         splitter_sizes=splitter_sizes,
     )
 

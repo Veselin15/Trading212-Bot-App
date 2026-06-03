@@ -11,7 +11,7 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from .widgets import callout, field_label, hint, section_title
+from .widgets import attach_empty_overlay, callout, field_label, hint, section_title
 
 if TYPE_CHECKING:
     from ..main_window import MainWindow
@@ -77,4 +77,9 @@ def build_activity_tab(win: MainWindow) -> QWidget:
     v_split.setStretchFactor(2, 2)
     v_split.setSizes([140, 220, 200])
     layout.addWidget(v_split, 1)
+
+    # Friendly empty states while disconnected / before data arrives.
+    attach_empty_overlay(win.market_table, "Connect to see which markets are open.")
+    attach_empty_overlay(win.bot_table, "Bot activity appears here once you're connected.")
+    attach_empty_overlay(win.signals_table, "No signals yet — they'll show up here in real time.")
     return w

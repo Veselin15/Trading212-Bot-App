@@ -238,6 +238,19 @@ class MainWindow(QMainWindow):
         self.save_live_keys_btn.clicked.connect(self.on_save_live_keys_clicked)  # type: ignore[arg-type]
         self.test_t212_practice_btn.clicked.connect(self.on_test_t212_practice_clicked)  # type: ignore[arg-type]
         self.test_t212_live_btn.clicked.connect(self.on_test_t212_live_clicked)  # type: ignore[arg-type]
+
+        # Pointing-hand cursor on every clickable control — small touch that
+        # makes the UI feel responsive and obviously interactive.
+        for _btn in (
+            self.validate_btn,
+            self.connect_btn,
+            self.disconnect_btn,
+            self.save_practice_keys_btn,
+            self.save_live_keys_btn,
+            self.test_t212_practice_btn,
+            self.test_t212_live_btn,
+        ):
+            _btn.setCursor(Qt.CursorShape.PointingHandCursor)
         # ── event log ────────────────────────────────────────────────
         self.event_log = QTextEdit()
         self.event_log.setReadOnly(True)
@@ -283,6 +296,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self._build_trades_tab(), "  Signals  ")
         self.tabs.setTabToolTip(2, "Full list of every AI trading signal received since you connected")
         self.tabs.setDocumentMode(True)
+        self.tabs.tabBar().setCursor(Qt.CursorShape.PointingHandCursor)
 
         self._splitter = QSplitter(Qt.Horizontal)
         self._splitter.addWidget(self.tabs)
@@ -358,8 +372,10 @@ class MainWindow(QMainWindow):
         self._sync_setup_mode_hint()
         self._refresh_setup_checklist()
 
-        if not settings.seen_welcome:
-            QTimer.singleShot(400, self._show_welcome_and_dismiss)
+        # First-run welcome is an inline, dismissible banner (no modal stacking
+        # on top of the Terms dialog, and safe under the async test loop).
+        if not settings.seen_welcome and hasattr(self, "_welcome_banner"):
+            self._welcome_banner.show()
 
     # ── background / tray / sleep ─────────────────────────────────────────────
 
@@ -570,6 +586,7 @@ class MainWindow(QMainWindow):
 
         settings_btn = QPushButton("⚙")
         settings_btn.setObjectName("NavSettingsBtn")
+        settings_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         settings_btn.setToolTip("Settings — order size, stop-loss, notifications and more")
         settings_btn.clicked.connect(self._show_settings)  # type: ignore[arg-type]
         bar.addWidget(settings_btn)
@@ -577,6 +594,7 @@ class MainWindow(QMainWindow):
 
         help_btn = QPushButton("Help")
         help_btn.setObjectName("NavHelpBtn")
+        help_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         help_btn.setToolTip("Open the help guide — explains signals, demo vs real-money mode, and troubleshooting")
         help_btn.clicked.connect(self._show_help)  # type: ignore[arg-type]
         bar.addWidget(help_btn)
@@ -922,8 +940,6 @@ class MainWindow(QMainWindow):
         self._apply_log_settings(new_s)
         self._apply_trading_settings(new_s)
         self._apply_background_settings(new_s)
-        self._apply_log_settings(new_s)
-        self._apply_trading_settings(new_s)
         self._update_broker_keys_hint()
         self._append_event("info", "Preferences saved.")
 
@@ -953,8 +969,8 @@ class MainWindow(QMainWindow):
             f"Version: {self._app_version()}",
         )
 
-    def _show_welcome_and_dismiss(self) -> None:
-        self._show_welcome()
+    def _on_welcome_dismissed(self) -> None:
+        """User closed the inline welcome banner — remember it for next launch."""
         saved = self._settings_store.load()
         self._persist_settings(saved, seen_welcome=True)
 
@@ -983,6 +999,7 @@ class MainWindow(QMainWindow):
             "close_to_tray": saved.close_to_tray,
             "keep_awake": saved.keep_awake,
             "seen_welcome": saved.seen_welcome,
+            "terms_accepted": saved.terms_accepted,
             "splitter_sizes": saved.splitter_sizes,
         }
         fields.update(overrides)
@@ -994,17 +1011,6 @@ class MainWindow(QMainWindow):
     def _show_quick_tips(self) -> None:
         """Setup tab Help button — same full guide as navbar."""
         self._show_help()
-
-    def _show_welcome(self) -> None:
-        QMessageBox.information(
-            self,
-            "Welcome to SwiftTrade",
-            "3 steps on Get started:\n\n"
-            "1. License (optional — skip if you don't have Pro)\n"
-            "2. Trading212 demo key\n"
-            "3. Connect\n\n"
-            "Stay on Demo mode at first.",
-        )
 
     def _has_saved_broker_keys(self) -> bool:
         stored = self._store.load()
@@ -1646,11 +1652,25 @@ class MainWindow(QMainWindow):
 
         self._signal_count += 1
         self.exec_queue.insertItem(0, QListWidgetItem(f"[{ts}]  {line}"))
+        # Drop the initial "No signals received yet." placeholder once real signals flow.
+        last = self.exec_queue.count() - 1
+        if last > 0:
+            tail = self.exec_queue.item(last)
+            if tail is not None and tail.text() == "No signals received yet.":
+                self.exec_queue.takeItem(last)
         if self.exec_queue.count() > 200:
             self.exec_queue.takeItem(self.exec_queue.count() - 1)
 
         if self._notify_on_signal:
             self._append_event("info", f"Signal received: {line}")
+
+        direction_upper = str(payload.get("direction") or "LONG").strip().upper()
+        sym_str = str(payload.get("symbol") or "").strip()
+
+        # Skip non-LONG signals first — no need to touch the broker for a signal we won't act on.
+        if self._skip_non_long_signals and direction_upper != "LONG":
+            self._append_event("warn", f"Skipped (direction={direction_upper}) — only LONG signals are executed.")
+            return
 
         if self.trading_mode.is_live() and not self._live_allowed():
             self._append_event(
@@ -1674,14 +1694,6 @@ class MainWindow(QMainWindow):
             profile = "live"
         else:
             profile = "demo"
-
-        direction_upper = str(payload.get("direction") or "LONG").strip().upper()
-        sym_str = str(payload.get("symbol") or "").strip()
-
-        # Skip non-LONG signals if configured
-        if self._skip_non_long_signals and direction_upper != "LONG":
-            self._append_event("warn", f"Skipped (direction={direction_upper}) — only LONG signals are executed.")
-            return
 
         # Daily trade limit check
         today = datetime.now().date()
