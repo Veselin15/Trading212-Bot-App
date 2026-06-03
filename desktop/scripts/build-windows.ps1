@@ -26,7 +26,17 @@
 [CmdletBinding()]
 param(
     [string] $DefaultExecutorWsUrl = "",
-    [switch] $NoStopRunningApp
+    [switch] $NoStopRunningApp,
+
+    # ── Code signing (the real fix for AV false positives) ──────────────
+    # Provide ONE of:
+    #   -SignCertFile  path\to\cert.pfx  -SignCertPassword "pfx-password"
+    #   -SignSubject   "Your Company Name"   (uses a cert already in the user cert store)
+    # Leave all unset to skip signing (dev builds).
+    [string] $SignCertFile = "",
+    [string] $SignCertPassword = "",
+    [string] $SignSubject = "",
+    [string] $TimestampUrl = "http://timestamp.digicert.com"
 )
 
 $ErrorActionPreference = "Stop"
@@ -148,6 +158,65 @@ Or run with -NoStopRunningApp only after closing SwiftTrade manually.
 
 Ensure-DistExeWritable -Path $distExe
 
+# Authenticode code signing. A validly signed EXE is the only reliable way to stop
+# antivirus false positives (Avast CyberCapture, Defender SmartScreen) for good.
+function Find-SignTool {
+    $cmd = Get-Command signtool.exe -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    $roots = @(
+        "${env:ProgramFiles(x86)}\Windows Kits\10\bin",
+        "${env:ProgramFiles}\Windows Kits\10\bin"
+    )
+    foreach ($root in $roots) {
+        if (-not (Test-Path $root)) { continue }
+        $found = Get-ChildItem -Path $root -Recurse -Filter signtool.exe -ErrorAction SilentlyContinue |
+            Where-Object { $_.FullName -match "x64" } |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+        if ($found) { return $found.FullName }
+    }
+    return $null
+}
+
+function Invoke-CodeSign {
+    param([string]$Path)
+
+    $wantSign = ($SignCertFile -and $SignCertFile.Trim()) -or ($SignSubject -and $SignSubject.Trim())
+    if (-not $wantSign) {
+        Write-Host "No signing cert provided (-SignCertFile / -SignSubject) - shipping UNSIGNED." -ForegroundColor Yellow
+        Write-Host "  Unsigned builds may be flagged by Avast/Defender. See desktop/docs/ANTIVIRUS.md." -ForegroundColor Yellow
+        return
+    }
+
+    $signtool = Find-SignTool
+    if (-not $signtool) {
+        throw "signtool.exe not found. Install the Windows 10/11 SDK (Signing Tools), then retry."
+    }
+    Write-Host "Signing with: $signtool" -ForegroundColor Cyan
+
+    $args = @("sign", "/fd", "SHA256", "/tr", $TimestampUrl, "/td", "SHA256")
+    if ($SignCertFile -and $SignCertFile.Trim()) {
+        if (-not (Test-Path $SignCertFile)) { throw "SignCertFile not found: $SignCertFile" }
+        $args += @("/f", $SignCertFile)
+        if ($SignCertPassword -and $SignCertPassword.Trim()) { $args += @("/p", $SignCertPassword) }
+    } else {
+        # Use a cert already installed in the user's certificate store, matched by subject.
+        $args += @("/n", $SignSubject)
+    }
+    $args += $Path
+
+    & $signtool @args
+    if ($LASTEXITCODE -ne 0) { throw "signtool failed (exit $LASTEXITCODE)." }
+
+    # Verify the signature chains and is timestamped.
+    & $signtool @("verify", "/pa", "/v", $Path) | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "WARNING: signature verification reported issues for $Path" -ForegroundColor Yellow
+    } else {
+        Write-Host "Signature verified OK: $Path" -ForegroundColor Green
+    }
+}
+
 Write-Host "Running PyInstaller..." -ForegroundColor Cyan
 Set-Location $desktopDir
 Invoke-Python @("-m", "PyInstaller", "SwiftTrade.spec", "--clean", "--noconfirm")
@@ -160,10 +229,29 @@ if (Test-Path $distExe) {
     Write-Host "  Output : $distExe" -ForegroundColor Green
     Write-Host "  Size   : $sizeMB MB" -ForegroundColor Green
     Write-Host ""
+
+    # Sign the EXE (no-op if no cert provided). Must happen before zipping.
+    Invoke-CodeSign -Path $distExe
+
     # Create a ZIP for distribution (more AV-friendly than shipping a raw .exe).
     New-Item -ItemType Directory -Force -Path $releaseDir | Out-Null
     if (Test-Path $zipOut) { Remove-Item -Force $zipOut }
-    Compress-Archive -Path (Join-Path $distDir "*") -DestinationPath $zipOut -Force
+    # Avast/Defender often locks the freshly-built EXE for a few seconds while it
+    # scans it, which makes Compress-Archive fail. Retry until the file is free.
+    $zipped = $false
+    for ($attempt = 1; $attempt -le 6; $attempt++) {
+        try {
+            Compress-Archive -Path (Join-Path $distDir "*") -DestinationPath $zipOut -Force -ErrorAction Stop
+            $zipped = $true
+            break
+        } catch {
+            Write-Host "ZIP attempt $attempt failed (EXE likely locked by AV scan); retrying in 3s..." -ForegroundColor Yellow
+            Start-Sleep -Seconds 3
+        }
+    }
+    if (-not $zipped) {
+        throw "Could not create $zipOut after several attempts (EXE stayed locked). Pause antivirus and retry."
+    }
 
     Write-Host "Build output is one-folder. Ship the ZIP:" -ForegroundColor Green
     Write-Host "  $zipOut" -ForegroundColor Green

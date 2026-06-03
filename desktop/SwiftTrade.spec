@@ -11,6 +11,16 @@ from PyInstaller.utils.hooks import collect_submodules
 block_cipher = None
 
 _spec_dir = Path(os.path.abspath(SPEC)).parent
+
+# Windows metadata + icon + manifest reduce antivirus false positives.
+# An EXE with a real publisher name, version resource, icon and an asInvoker
+# manifest looks far less like anonymous malware to Avast/Defender heuristics.
+_icon_ico = _spec_dir / "assets" / "SwiftTrade.ico"
+_icon = str(_icon_ico) if _icon_ico.is_file() else None
+_version_file = _spec_dir / "version_info.txt"
+_version = str(_version_file) if _version_file.is_file() else None
+_manifest_file = _spec_dir / "SwiftTrade.manifest"
+_manifest = str(_manifest_file) if _manifest_file.is_file() else None
 _app_hidden = collect_submodules("app")
 _datas = [
     # Bundle the repo logo so the navbar icon works in the frozen exe.
@@ -117,7 +127,10 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    # Optionally add a Windows .ico file:  icon="assets/SwiftTrade.ico"
+    # Windows metadata to reduce AV false positives (see files in desktop/).
+    icon=_icon,
+    version=_version,
+    manifest=_manifest,
 )
 
 # One-folder build (recommended for reducing AV false positives).
