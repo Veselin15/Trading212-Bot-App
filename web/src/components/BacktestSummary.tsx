@@ -4,6 +4,8 @@ import { useInView, useReducedMotion } from "framer-motion";
 import { useEffect, useMemo, useRef, useState } from "react";
 import CountUp from "react-countup";
 
+import { fetchStrategyDashboard } from "@/lib/strategy-dashboard";
+
 type HeroMetrics = {
   total_return_pct?: number;
   cagr_pct?: number;
@@ -78,11 +80,7 @@ export function BacktestSummary() {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/strategy_dashboard.json", { cache: "no-store" })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return (await r.json()) as DashboardPayload;
-      })
+    fetchStrategyDashboard<DashboardPayload>()
       .then((p) => {
         if (!cancelled) setPayload(p);
       })

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowRight, Check, Shield, ShieldCheck, Zap } from "lucide-react";
+import { Check, Shield, ShieldCheck, Zap } from "lucide-react";
 
 import { RevealOnScroll } from "@/components/home/RevealOnScroll";
 import { Badge } from "@/components/ui/Badge";

@@ -26,7 +26,6 @@ export async function getUserIdForStripeCustomer(
  */
 export function licenseEffectFromSubscriptionRow(
   status: string,
-  _currentPeriodEndIso: string | null,
 ): "ensure" | "revoke" | "ignore" {
   const s = status.toLowerCase();
   if (s === "active" || s === "trialing") return "ensure";

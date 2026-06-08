@@ -51,6 +51,7 @@ export function BrandLogo({
           className,
         )}
       >
+        {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset; next/image adds needless optimization overhead on the Cloudflare runtime */}
         <img
           src="/logo_text.png"
           alt="SwiftTrade"
@@ -71,6 +72,7 @@ export function BrandLogo({
       className={cx("group inline-flex transition-opacity hover:opacity-95", v.wrap, className)}
       aria-label="SwiftTrade"
     >
+      {/* eslint-disable-next-line @next/next/no-img-element -- static brand asset; next/image adds needless optimization overhead on the Cloudflare runtime */}
       <img
         src="/logo.png"
         alt=""

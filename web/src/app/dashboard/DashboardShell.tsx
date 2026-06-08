@@ -21,7 +21,6 @@ import { toast } from "sonner";
 import type { SubscriptionRow } from "@/lib/subscription-model";
 import {
   canCancelStripeSubscription,
-  isActiveSubscription,
   isPastDueWithGrace,
 } from "@/lib/subscription-model";
 import type { EffectiveTier } from "@/lib/tier";

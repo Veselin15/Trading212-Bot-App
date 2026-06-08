@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { cookies } from "next/headers";
 import { createServerClient } from "@supabase/ssr";
 
@@ -23,10 +24,17 @@ export async function createSupabaseServerClient() {
   });
 }
 
-export async function getServerUser() {
+/**
+ * The authenticated user, validated against Supabase's auth server.
+ *
+ * Wrapped in React `cache()` so the (network) `getUser()` round-trip runs at most
+ * once per request — the root-layout header and the page both call this, and so do
+ * the subscription/profile/license helpers below.
+ */
+export const getServerUser = cache(async () => {
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.getUser();
   if (error) return null;
   return data.user ?? null;
-}
+});
 

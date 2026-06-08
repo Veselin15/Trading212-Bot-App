@@ -107,12 +107,10 @@ export async function POST(request: Request) {
         if (!customerId) break;
 
         const patch = subscriptionPatchFromStripeSubscription(sub);
-        const currentPeriodEnd =
-          typeof patch.current_period_end === "string" ? patch.current_period_end : null;
 
         await upsertByCustomer(customerId, patch);
 
-        const effect = licenseEffectFromSubscriptionRow(String(sub.status || "inactive"), currentPeriodEnd);
+        const effect = licenseEffectFromSubscriptionRow(String(sub.status || "inactive"));
         await applyLicenseEffectForStripeCustomer(admin, customerId, effect);
         await applyProfileTierForStripeCustomer(admin, customerId, String(sub.status || "inactive"));
         break;

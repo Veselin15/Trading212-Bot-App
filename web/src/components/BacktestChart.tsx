@@ -12,6 +12,8 @@ import {
   YAxis,
 } from "recharts";
 
+import { fetchStrategyDashboard } from "@/lib/strategy-dashboard";
+
 type EquityPoint = {
   month: string;
   equity: number;
@@ -101,11 +103,7 @@ export function BacktestChart({
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/strategy_dashboard.json", { cache: "no-store" })
-      .then(async (r) => {
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return (await r.json()) as DashboardPayload;
-      })
+    fetchStrategyDashboard<DashboardPayload>()
       .then((p) => {
         if (!cancelled) setPayload(p);
       })
@@ -117,8 +115,12 @@ export function BacktestChart({
     };
   }, []);
 
-  // Prefer equity_5yr, fall back to legacy points field
-  const rawPoints = payload?.equity_5yr ?? payload?.points ?? [];
+  // Prefer equity_5yr, fall back to legacy points field. Memoized so the derived
+  // `data`/`oosStartMonth` don't recompute on every render from a fresh array ref.
+  const rawPoints = useMemo<EquityPoint[]>(
+    () => payload?.equity_5yr ?? payload?.points ?? [],
+    [payload],
+  );
   const oosStartMonth = rawPoints.find((p) => p.is_oos)?.month ?? null;
 
   const data = useMemo<ChartPoint[]>(() => {

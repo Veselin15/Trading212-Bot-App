@@ -1,7 +1,9 @@
+import { cache } from "react";
+
 import type { AdminClient } from "@/lib/billing-license-sync";
 import { getUserIdForStripeCustomer } from "@/lib/billing-license-sync";
 import { type ProfileRow } from "@/lib/tier";
-import { createSupabaseServerClient } from "@/lib/supabase/server";
+import { createSupabaseServerClient, getServerUser } from "@/lib/supabase/server";
 
 const TRIAL_DAYS = 14;
 
@@ -9,20 +11,20 @@ function trialEndIso(days = TRIAL_DAYS): string {
   return new Date(Date.now() + days * 86_400_000).toISOString();
 }
 
-/** Read the signed-in user's profile row (RLS: own row only). */
-export async function getMyProfile(): Promise<ProfileRow | null> {
-  const supabase = await createSupabaseServerClient();
-  const { data: userRes, error: userErr } = await supabase.auth.getUser();
-  if (userErr || !userRes.user) return null;
+/** Read the signed-in user's profile row (RLS: own row only). Memoized per request. */
+export const getMyProfile = cache(async (): Promise<ProfileRow | null> => {
+  const user = await getServerUser();
+  if (!user) return null;
 
+  const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from("profiles")
     .select("subscription_tier,trial_ends_at")
-    .eq("user_id", userRes.user.id)
+    .eq("user_id", user.id)
     .maybeSingle();
 
   return (data as ProfileRow | null) ?? null;
-}
+});
 
 /**
  * Safety net for accounts created before the `handle_new_user` trigger / backfill:
