@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import {
   AlertTriangle,
   ArrowRight,
@@ -18,6 +19,28 @@ import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { Container } from "@/components/ui/Container";
 import { SectionLabel } from "@/components/ui/SectionLabel";
+
+export const metadata: Metadata = {
+  title: "How It Works — Trading212 Bot for EU Stocks",
+  description:
+    "SwiftTrade automates trading on Trading212 using an ML signal engine. Your API keys never leave your PC. Long-only EU stock strategy with live signal delivery via Supabase Realtime.",
+  keywords: [
+    "Trading212 bot",
+    "Trading212 automation",
+    "EU stock bot",
+    "automated Trading212",
+    "EU stock signals",
+    "algorithmic trading EU",
+    "Trading212 API bot",
+  ],
+  alternates: { canonical: "/product" },
+  openGraph: {
+    title: "How It Works — Trading212 Bot for EU Stocks · SwiftTrade",
+    description:
+      "ML-powered Trading212 automation for EU stocks. API keys stay local, signals delivered in <200 ms.",
+    url: "/product",
+  },
+};
 
 const FEATURES = [
   {
