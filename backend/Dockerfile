@@ -21,40 +21,32 @@ RUN grep -vE "^(xgboost|lightgbm|scikit-learn|pandas-ta)" /tmp/backend-requireme
     && pip install --no-cache-dir --prefix=/install -r /tmp/base-requirements.txt \
     && pip install --no-cache-dir --prefix=/install numpy pandas yfinance
 
-# ── Step 2: source-build ML packages with AVX disabled ────────────────────────
-# The PyPI wheels for lightgbm ≥ 3 and xgboost ≥ 2 embed AVX2 instructions that
-# cause SIGILL (exit 132) on CPUs without AVX support (e.g. Pentium 4, older
-# Celerons, many home-server / NAS boards).  Building from source with these
-# CFLAGS restricts code generation to SSE2 + SSE3 only, which every x86_64 CPU
-# since 2003 supports.
-ENV CFLAGS="-O2 -msse2 -mno-sse4.1 -mno-sse4.2 -mno-avx -mno-avx2"
-ENV CXXFLAGS="-O2 -msse2 -mno-sse4.1 -mno-sse4.2 -mno-avx -mno-avx2"
+# ── Step 2: ML packages pinned to last versions with SSE2-only PyPI wheels ─────
+# xgboost 2.x and lightgbm 4.x embed AVX2 instructions in their PyPI wheels
+# (SIGILL / exit 132 on CPUs without AVX — Pentium 4, older Celerons, etc.).
+# xgboost 1.7.x and lightgbm 3.3.x were the last releases whose manylinux wheels
+# used SSE2-only code paths and run on any x86_64 CPU.
+# scikit-learn uses runtime-dispatch numpy so any recent version is fine.
+RUN pip install --no-cache-dir --prefix=/install "scikit-learn>=1.3.0"
+RUN pip install --no-cache-dir --prefix=/install "xgboost==1.7.6"
+RUN pip install --no-cache-dir --prefix=/install "lightgbm==3.3.5"
 
-# scikit-learn (dependency of both xgboost and lightgbm)
-RUN pip install --no-cache-dir --prefix=/install \
-    --no-binary scikit-learn \
-    "scikit-learn>=1.3.0"
-
-# lightgbm — build from source so the AVX2 code paths are never compiled in
-RUN pip install --no-cache-dir --prefix=/install \
-    --no-binary lightgbm \
-    "lightgbm>=4.0.0"
-
-# xgboost — build from source for the same reason
-RUN pip install --no-cache-dir --prefix=/install \
-    --no-binary xgboost \
-    "xgboost>=2.0.0"
-
-# pandas-ta is pure Python + numpy; pin below 0.4.0 to avoid the numba/llvmlite
-# dependency that 0.4.x introduced — llvmlite ships an AVX2-compiled LLVM binary
-# that SIGILLs on CPUs without AVX support (e.g. Pentium 4, older home servers).
-RUN pip install --no-cache-dir --prefix=/install "pandas-ta>=0.3.14b,<0.4.0"
+# pandas-ta: install WITHOUT its declared dependencies so numba/llvmlite are never
+# pulled in.  pandas-ta 0.4.x lists numba as a hard dep, but numba requires
+# llvmlite whose PyPI wheel embeds an AVX2-compiled LLVM binary that SIGILLs on
+# CPUs without AVX (e.g. Pentium 4).  At runtime pandas-ta detects the absence of
+# numba and falls back to pure numpy/pandas — all indicators still work, just
+# without JIT acceleration.  numpy, pandas and tqdm (its real runtime deps) are
+# already installed above.
+RUN pip install --no-cache-dir --prefix=/install tqdm \
+ && pip install --no-cache-dir --prefix=/install --no-deps --pre "pandas-ta"
 
 # ── Runtime: minimal image for home-server / Watchtower pulls ─────────────────
 FROM python:3.12-slim AS runtime
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq5 \
+    libgomp1 \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -63,7 +55,13 @@ COPY --from=builder /install /usr/local
 COPY backend/ /app/backend/
 COPY Server-App/ /app/Server-App/
 
-RUN chmod +x /app/backend/docker-entrypoint.sh
+# Strip Windows line-endings from the entrypoint and make it executable.
+# Delete any stale Python bytecode copied from Windows — a .pyc compiled before
+# a name was added to a module causes ImportError even though the .py is correct.
+RUN sed -i 's/\r$//' /app/backend/docker-entrypoint.sh \
+ && chmod +x /app/backend/docker-entrypoint.sh \
+ && find /app -name "*.pyc" -delete \
+ && find /app -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null; true
 
 ENV PYTHONPATH=/app/backend
 ENV PYTHONUNBUFFERED=1

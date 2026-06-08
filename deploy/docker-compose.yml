@@ -20,7 +20,7 @@ services:
       DEBUG_ROUTES_ENABLED: ${DEBUG_ROUTES_ENABLED:-false}
       APP_BASE_URL: ${APP_BASE_URL:-https://signals.swifttrade.app}
     volumes:
-      - swifttrade_bot_state:/app/Server-App/t212_miner_bot
+      - swifttrade_bot_state:/app/Server-App/t212_miner_bot/models
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8010/health')\""]
       interval: 30s
@@ -59,7 +59,7 @@ services:
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       BOT_COLORS: "0"
     volumes:
-      - swifttrade_bot_state:/app/Server-App/t212_miner_bot
+      - swifttrade_bot_state:/app/Server-App/t212_miner_bot/models
 
   # Optional: self-host the Next.js portal on the same machine.
   # Prefer Cloudflare Pages for swifttrade.app if the server CPU is tight.

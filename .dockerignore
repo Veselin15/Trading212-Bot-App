@@ -1,0 +1,21 @@
+# Python bytecode — stale .pyc files cause ImportError for names added after
+# the cache was compiled.  Always recompile from source inside the container.
+**/__pycache__
+**/*.pyc
+**/*.pyo
+
+# Dev / editor noise
+.git
+.gitattributes
+**/.DS_Store
+**/*.swp
+
+# Web / Node (not needed in the backend image)
+web/
+web/node_modules/
+
+# Local env files (secrets must not end up in the image)
+**/.env
+**/.env.*
+!backend/.env.example
+!deploy/env.*.example

@@ -54,6 +54,12 @@ def create_app() -> FastAPI:
     app.include_router(license_router)
     app.include_router(ws_router)
 
+    from app.api.signal_push import router as signal_push_router, _ENABLED as _PUSH_ENABLED
+
+    app.include_router(signal_push_router)
+    if _PUSH_ENABLED:
+        _log.info("Remote signal push endpoint ENABLED at POST /api/signal/push")
+
     @app.on_event("startup")
     async def _startup() -> None:
         from app.integrations.supabase_rest import supabase_config_smoke_dict

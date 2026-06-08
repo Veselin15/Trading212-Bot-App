@@ -1,0 +1,8 @@
+# Ensure shell scripts always have LF line endings in the repo and in Docker builds
+*.sh text eol=lf
+
+# Python source files
+*.py text eol=lf
+
+# Everything else: auto-detect
+* text=auto
