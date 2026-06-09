@@ -93,6 +93,13 @@ class Settings(BaseSettings):
     # When enabled, requires xgboost/lgbm deps and trained model files.
     run_strategy: bool = False
 
+    # Owner executor — trades the owner's personal T212 account server-side.
+    # Set OWNER_EXECUTOR_ENABLED=true and supply OWNER_T212_API_KEY to activate.
+    # OWNER_T212_BASE_URL defaults to live; set to https://demo.trading212.com to paper-trade.
+    owner_executor_enabled: bool = False
+    owner_t212_api_key: str = ""
+    owner_t212_base_url: str = "https://live.trading212.com"
+
 
 settings = Settings()  # type: ignore[call-arg]
 

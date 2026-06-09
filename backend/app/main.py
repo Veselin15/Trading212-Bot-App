@@ -105,6 +105,27 @@ def create_app() -> FastAPI:
         else:
             _log.info("Strategy runner disabled (RUN_STRATEGY=false).")
 
+        if settings.owner_executor_enabled:
+            if not settings.owner_t212_api_key:
+                _log.error(
+                    "OWNER_EXECUTOR_ENABLED=true but OWNER_T212_API_KEY is not set. "
+                    "Owner executor will NOT start — set the key in .env."
+                )
+            else:
+                _log.warning(
+                    "Owner executor ENABLED — trading owner account against %s.",
+                    settings.owner_t212_base_url,
+                )
+                from app.strategy.owner_executor import run_owner_executor_forever
+                asyncio.create_task(
+                    run_owner_executor_forever(
+                        api_key=settings.owner_t212_api_key,
+                        base_url=settings.owner_t212_base_url,
+                    )
+                )
+        else:
+            _log.info("Owner executor disabled (OWNER_EXECUTOR_ENABLED=false).")
+
     return app
 
 
