@@ -47,7 +47,6 @@ services:
     container_name: swifttrade_live_trader
     restart: always
     profiles: ["trader"]
-    working_dir: /app/Server-App
     command: ["python", "-m", "t212_miner_bot.live_trader"]
     env_file:
       - .env

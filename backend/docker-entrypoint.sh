@@ -10,5 +10,13 @@ else
   echo "[entrypoint] Skipping database migrations (RUN_DB_MIGRATIONS=false)."
 fi
 
+# If a custom command was passed (e.g. from docker-compose `command:`), run that
+# instead of the default uvicorn server.  This lets the same image serve as both
+# the FastAPI backend and the standalone live_trader process.
+if [ $# -gt 0 ]; then
+  echo "[entrypoint] Running custom command: $*"
+  exec "$@"
+fi
+
 echo "[entrypoint] Starting backend server on 0.0.0.0:8010..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8010
