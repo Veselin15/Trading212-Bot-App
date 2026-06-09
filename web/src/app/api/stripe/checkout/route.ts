@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import type { PaidPlan } from "@/lib/subscription-model";
 import { priceIdForPlan } from "@/lib/plans";
+import { ensureStripeCustomerForUser, isStripeMissingResourceError } from "@/lib/stripe-customer-resolve";
 import { getStripeClient } from "@/lib/stripe";
 import { createSupabaseAdminClient } from "@/lib/supabase/admin";
 import { createSupabaseServerClient } from "@/lib/supabase/server";
@@ -48,7 +49,7 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient();
   const { data: existingSub, error: subErr } = await admin
     .from("subscriptions")
-    .select("stripe_customer_id")
+    .select("id,stripe_customer_id")
     .eq("user_id", userRes.user.id)
     .order("created_at", { ascending: false })
     .limit(1)
@@ -60,32 +61,60 @@ export async function POST(request: Request) {
 
   const stripe = getStripeClient();
 
-  let customerId = existingSub?.stripe_customer_id ?? null;
-  if (!customerId) {
-    const customer = await stripe.customers.create({
-      email: userRes.user.email ?? undefined,
-      metadata: { supabase_user_id: userRes.user.id },
-    });
-    customerId = customer.id;
-
-    // Create a placeholder subscription row so we retain customer mapping.
-    await admin.from("subscriptions").insert({
-      user_id: userRes.user.id,
-      stripe_customer_id: customerId,
-      status: "inactive",
-    });
+  let subscriptionRowId = existingSub?.id ?? null;
+  let customerId: string;
+  try {
+    if (subscriptionRowId) {
+      customerId = await ensureStripeCustomerForUser(admin, {
+        userId: userRes.user.id,
+        email: userRes.user.email,
+        existingCustomerId: existingSub?.stripe_customer_id,
+        subscriptionRowId,
+      });
+    } else {
+      customerId = await ensureStripeCustomerForUser(admin, {
+        userId: userRes.user.id,
+        email: userRes.user.email,
+        existingCustomerId: null,
+      });
+      const { data: inserted, error: insertErr } = await admin
+        .from("subscriptions")
+        .insert({
+          user_id: userRes.user.id,
+          stripe_customer_id: customerId,
+          status: "inactive",
+        })
+        .select("id")
+        .single();
+      if (insertErr || !inserted) {
+        return NextResponse.json({ error: "Failed to save subscription row" }, { status: 500 });
+      }
+      subscriptionRowId = inserted.id;
+    }
+  } catch (err) {
+    console.error("stripe checkout customer setup failed", err);
+    return NextResponse.json({ error: "Stripe customer setup failed" }, { status: 502 });
   }
 
-  const session = await stripe.checkout.sessions.create({
-    mode: "subscription",
-    customer: customerId,
-    client_reference_id: userRes.user.id,
-    metadata: { supabase_user_id: userRes.user.id, plan },
-    line_items: [{ price: priceId, quantity: 1 }],
-    allow_promotion_codes: true,
-    success_url: `${siteUrl}/dashboard?checkout=success`,
-    cancel_url: `${siteUrl}/dashboard?checkout=cancel`,
-  });
+  let session;
+  try {
+    session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      customer: customerId,
+      client_reference_id: userRes.user.id,
+      metadata: { supabase_user_id: userRes.user.id, plan },
+      line_items: [{ price: priceId, quantity: 1 }],
+      allow_promotion_codes: true,
+      success_url: `${siteUrl}/dashboard?checkout=success`,
+      cancel_url: `${siteUrl}/dashboard?checkout=cancel`,
+    });
+  } catch (err) {
+    console.error("stripe checkout session create failed", err);
+    const hint = isStripeMissingResourceError(err)
+      ? "Check STRIPE_PRICE_ID_STARTER / STRIPE_PRICE_ID_PRO are live-mode price ids."
+      : "Stripe checkout failed.";
+    return NextResponse.json({ error: hint }, { status: 502 });
+  }
 
   if (!session.url) {
     return NextResponse.json({ error: "Stripe session URL missing" }, { status: 500 });

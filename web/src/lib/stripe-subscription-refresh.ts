@@ -6,6 +6,10 @@ import {
 } from "@/lib/billing-license-sync";
 import { planFromStripeSubscription } from "@/lib/plans";
 import { setProfileTier } from "@/lib/profile";
+import {
+  clearStaleStripeBillingIds,
+  isStripeMissingResourceError,
+} from "@/lib/stripe-customer-resolve";
 import { getStripeClient } from "@/lib/stripe";
 import {
   ensureSubscriptionRowForUser,
@@ -51,14 +55,19 @@ async function resolveStripeSubscription(
 
   if (!row.stripe_customer_id) return null;
 
-  const listed = await stripe.subscriptions.list({
-    customer: row.stripe_customer_id,
-    status: "all",
-    limit: 10,
-    expand: ["data.items.data.price"],
-  });
+  try {
+    const listed = await stripe.subscriptions.list({
+      customer: row.stripe_customer_id,
+      status: "all",
+      limit: 10,
+      expand: ["data.items.data.price"],
+    });
 
-  return pickStripeSubscription(listed.data);
+    return pickStripeSubscription(listed.data);
+  } catch (err) {
+    if (isStripeMissingResourceError(err)) return null;
+    throw err;
+  }
 }
 
 export type RefreshSubscriptionOptions = {
@@ -75,6 +84,18 @@ export async function refreshSubscriptionRowFromStripe(
 ): Promise<void> {
   if (!process.env.STRIPE_SECRET_KEY) return;
 
+  try {
+    await refreshSubscriptionRowFromStripeInner(userId, options);
+  } catch (err) {
+    // Never break /dashboard when Stripe sync fails (stale test ids, transient API errors).
+    console.error("refreshSubscriptionRowFromStripe failed", err);
+  }
+}
+
+async function refreshSubscriptionRowFromStripeInner(
+  userId: string,
+  options?: RefreshSubscriptionOptions,
+): Promise<void> {
   const admin = createSupabaseAdminClient();
   const stripe = getStripeClient();
 
@@ -94,7 +115,18 @@ export async function refreshSubscriptionRowFromStripe(
   if (!row?.id) return;
 
   const sub = await resolveStripeSubscription(stripe, row);
-  if (!sub) return;
+  if (!sub) {
+    if (row.stripe_customer_id) {
+      try {
+        await stripe.customers.retrieve(row.stripe_customer_id);
+      } catch (err) {
+        if (isStripeMissingResourceError(err)) {
+          await clearStaleStripeBillingIds(admin, row.id);
+        }
+      }
+    }
+    return;
+  }
 
   const patch = subscriptionPatchFromStripeSubscription(sub);
 
