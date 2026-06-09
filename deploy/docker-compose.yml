@@ -54,6 +54,7 @@ services:
     environment:
       PYTHONPATH: /app/Server-App
       T212_API_KEY: ${T212_API_KEY:-}
+      T212_SECRET_KEY: ${T212_SECRET_KEY:-}
       T212_BASE_URL: ${T212_BASE_URL:-https://demo.trading212.com}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
