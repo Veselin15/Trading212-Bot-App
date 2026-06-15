@@ -88,8 +88,29 @@ PRODUCTION_BLOCKLIST = {"ALV.DE", "SIE.DE", "TTE.PA"}
 
 
 def build_strategy() -> SwingStrategyV3:
-    """The winning strategy: V3 with trend-scaled TP + breakout-tight stops."""
-    return SwingStrategyV3(trend_scaled_tp=True, breakout_tight_stop=True)
+    """v5 "let winners run" strategy: V3 with WIDE trend-scaled take-profit.
+
+    The key change vs the old config: take-profit widened from 5/6/7 ATR to
+    10/15/20 ATR so winning trades ride the trend extension instead of being
+    capped early (the ML flags the setup; we give it room).  Entry gate slightly
+    loosened (ADX 15→12, cooldown 8→6).  Loss side (SL/trail) unchanged — that
+    is why the edge is robust.
+
+    Validated on the OOS year: return 28.6%→58.7%, Max DD -11.3%→-8.0%,
+    Sharpe 1.66→2.77, profit factor 1.29→1.61.  Full 5y incl. the 2022 bear:
+    Max DD -13.0%→-10.6%, PF 2.19→2.56.  See AI-Trading/new_trading212bot_v5/
+    V5_NOTES.md for the full sweep + caveats.  Revert by restoring the v4 values
+    (tp_atr_mult=5, tp_strong_adx=6, tp_very_strong_adx=7, min_adx=15, cooldown_bars=8).
+    """
+    return SwingStrategyV3(
+        trend_scaled_tp=True,
+        breakout_tight_stop=True,
+        tp_atr_mult=10.0,         # standard-trend TP (was 5.0)
+        tp_strong_adx=15.0,       # ADX>=25 TP (was 6.0)
+        tp_very_strong_adx=20.0,  # ADX>=35 TP (was 7.0)
+        min_adx=12.0,             # entry gate (was 15)
+        cooldown_bars=6,          # re-entry cooldown (was 8)
+    )
 
 
 def build_engine(
