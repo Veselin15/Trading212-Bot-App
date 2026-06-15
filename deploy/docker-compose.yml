@@ -58,6 +58,13 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
       BOT_COLORS: "0"
+      # Concentration control: max % of the account a single position may take,
+      # AFTER the bull/bear risk multiplier. 0.90 = max-profit setting (owner's
+      # choice): ~28% OOS return / -11.3% DD, but allows ~90% in ONE stock (real
+      # single-stock gap risk not shown in DD). Lower to 0.25 (~38% max/name,
+      # -4.4% DD) or 0.20 (risk-adjusted optimum) to de-risk. See production.py.
+      PROD_POS_CEILING: ${PROD_POS_CEILING:-0.90}
+      PROD_RISK_CEILING: ${PROD_RISK_CEILING:-0.75}
     volumes:
       - swifttrade_bot_state:/app/Server-App/t212_miner_bot/models
 
