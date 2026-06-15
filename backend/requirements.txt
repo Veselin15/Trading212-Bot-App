@@ -11,13 +11,15 @@ passlib[bcrypt]==1.7.4
 python-multipart==0.0.20
 httpx==0.28.1
 python-dotenv==1.1.0
-numpy==2.2.6
-pandas==2.2.3
+numpy>=2.0.0
+pandas>=2.3.2
 yfinance==0.2.61
-# Pinned to last versions whose PyPI manylinux wheels use SSE2-only code paths.
-# xgboost 2.x and lightgbm 4.x embed AVX2 (SIGILL on Pentium 4 / older CPUs).
-xgboost==1.7.6
-lightgbm==3.3.5
+# XGBoost 2.x and LightGBM 4.x require AVX2. The home server (Ubuntu 26.04)
+# supports AVX2; the models in the volume were also trained with XGBoost 2.x
+# so 1.7.6 was causing 'Booster has no attribute handle' pickle incompatibility.
+xgboost>=2.0.0
+lightgbm>=4.0.0
 scikit-learn>=1.3.0
-pandas-ta==0.4.71b0
+# pandas-ta is installed separately in the Dockerfile with --no-deps to avoid
+# pulling in numba/llvmlite (AVX2-compiled LLVM). Do NOT add it here.
 joblib>=1.3.0
