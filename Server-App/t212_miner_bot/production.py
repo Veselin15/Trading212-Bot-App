@@ -51,7 +51,12 @@ def _env_float(name: str, default: float) -> float:
 
 # ── Winning levers (B7) ────────────────────────────────────────────────────
 PROD_RISK_SCALE   = MACRO_BULL_RISK_SCALE * 2.0   # 2.80 base
-PROD_BULL         = MACRO_BULL_RISK_SCALE * 3.0   # 4.20 in bull regime
+# Bull-regime risk multiplier.  Was 4.20 (=1.4*3).  Owner's max-profit choice:
+# 6.0 — the exact top row of the sweep (cap0.90 x6 bull6 = ~28.6% OOS / -11.3%
+# DD / Sharpe 1.66).  Note this SATURATES: bull 6, 8, 10 gave identical results
+# because the book is already ~fully invested (exposure 0.98), so >6 adds nothing.
+# Env-overridable (e.g. PROD_BULL=4.2 to soften single-name sizing).
+PROD_BULL         = _env_float("PROD_BULL", 6.0)
 PROD_BEAR         = MACRO_BEAR_RISK_SCALE * 1.0   # 0.70 in bear regime
 PROD_SLOTS        = 6     # 6 (was 5): +1 name of diversification, tested marginally best
 PROD_EXPOSURE     = 0.98
