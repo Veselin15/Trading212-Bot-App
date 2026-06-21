@@ -21,6 +21,35 @@ from sklearn.metrics import roc_auc_score, log_loss, accuracy_score
 from xgboost import XGBClassifier
 from lightgbm import LGBMClassifier
 
+# ── XGBoost ≥1.7 / sklearn ≥1.3 compatibility ────────────────────────────────
+# sklearn's BaseEstimator.get_params() is called inside XGBoost's predict_proba
+# via _can_use_inplace_predict → get_xgb_params → get_params.  It iterates
+# __init__ parameter names and does getattr(self, key).  Models pickled with
+# XGBoost ≤1.6 stored use_label_encoder in their state; newer XGBoost removes
+# the attribute entirely, so getattr raises AttributeError and kills inference.
+#
+# Patching BaseEstimator.get_params to swallow AttributeErrors on missing keys
+# is the only reliable fix — instance-level and class-level XGBClassifier dict
+# writes are silently blocked by XGBoost's internal parameter machinery.
+from sklearn.base import BaseEstimator as _BaseEstimator
+
+_orig_get_params = _BaseEstimator.get_params
+
+def _compat_get_params(self, deep: bool = True) -> dict:
+    out: dict = {}
+    for key in self._get_param_names():
+        try:
+            value = getattr(self, key)
+        except AttributeError:
+            continue
+        if deep and hasattr(value, "get_params") and not isinstance(value, type):
+            out.update((key + "__" + k, v) for k, v in value.get_params().items())
+        out[key] = value
+    return out
+
+_BaseEstimator.get_params = _compat_get_params
+# ─────────────────────────────────────────────────────────────────────────────
+
 from t212_miner_bot.config import (
     MODEL_DIR,
     XGB_PARAMS,
