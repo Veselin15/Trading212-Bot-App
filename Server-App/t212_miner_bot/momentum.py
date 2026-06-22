@@ -382,9 +382,9 @@ class MomentumExecutor:
                 _log.error("  momentum SELL FAILED %s: %s", sym, exc)
                 failures.append(f"SELL {sym}")
 
-        # Let sells settle, then re-read the free-cash budget for buys
+        # Let sells settle, then re-read cash + holdings for buys
         if sells and not self.dry_run:
-            time.sleep(5)
+            time.sleep(12)
             try:
                 free = float(self.client.get_cash().get("free", free))
                 portfolio = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
@@ -396,8 +396,19 @@ class MomentumExecutor:
         # Leave a small margin: T212 fills at the ASK (slightly above our close
         # price), so a buy sized to 100% of free cash gets rejected at the limit.
         CASH_BUFFER = 0.985
+        if not self.dry_run:
+            try:
+                free = float(self.client.get_cash().get("free", free))
+            except Exception:  # noqa: BLE001
+                pass
         free_budget = investable if self.dry_run else free * CASH_BUFFER
-        for sym, tgt in target_shares.items():
+        # Largest deficits first so one failed order does not strand cash on tiny names.
+        buy_queue = sorted(
+            target_shares.items(),
+            key=lambda kv: kv[1] * _sizing_price(kv[0], float(px.get(kv[0], 0))),
+            reverse=True,
+        )
+        for sym, tgt in buy_queue:
             price = _sizing_price(sym, float(px.get(sym, 0)))
             cur = portfolio.get(ticker_map[sym], 0.0)
             delta = tgt - cur
@@ -419,39 +430,40 @@ class MomentumExecutor:
                 placed += 1
                 free_budget -= cost
                 _log.info("  BUY %s %.4f (~€%.0f)", sym, delta, cost)
+                if not self.dry_run:
+                    try:
+                        free = float(self.client.get_cash().get("free", free))
+                        free_budget = free * CASH_BUFFER
+                    except Exception:  # noqa: BLE001
+                        pass
             except Exception as exc:  # noqa: BLE001
                 _log.error("  momentum BUY FAILED %s: %s", sym, exc)
                 failures.append(f"BUY {sym}")
 
         if not self.dry_run:
-            # Don't mark the month done if meaningful deltas remain but nothing traded
-            # (e.g. old image / mapping bug) — allows retry on next wake or restart.
-            incomplete = placed == 0 and len(target_shares) > 0
-            if incomplete:
+            # Don't mark the month done if orders failed or meaningful deltas remain.
+            incomplete = bool(failures)
+            if not incomplete:
+                incomplete = placed == 0 and len(target_shares) > 0
+            if not incomplete and len(target_shares) > 0:
                 try:
                     pf = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                           for p in self.client.get_portfolio()}
-                    for sym, (t212, q) in held.items():
-                        if sym in target_shares and ticker_map.get(sym) != t212:
+                    for sym, tgt in target_shares.items():
+                        tt = ticker_map.get(sym)
+                        if not tt:
+                            continue
+                        price = _sizing_price(sym, float(px.get(sym, 0)))
+                        if abs(tgt - pf.get(tt, 0.0)) * price >= self.p.min_order_eur:
                             incomplete = True
                             break
-                    else:
-                        incomplete = False
-                        for sym, tgt in target_shares.items():
-                            tt = ticker_map.get(sym)
-                            if not tt:
-                                continue
-                            price = _sizing_price(sym, float(px.get(sym, 0)))
-                            if abs(tgt - pf.get(tt, 0.0)) * price >= self.p.min_order_eur:
-                                incomplete = True
-                                break
                 except Exception:  # noqa: BLE001
-                    incomplete = placed == 0 and len(target_shares) > 0
+                    incomplete = bool(failures)
             if incomplete:
-                _log.warning("momentum: rebalance incomplete (deltas remain, 0 orders) — "
-                             "NOT saving monthly state; will retry next cycle.")
+                _log.warning("momentum: rebalance incomplete — NOT saving monthly state; will retry.")
                 return {"action": "rebalance_incomplete", "month": month,
-                        "targets": list(target_shares), "orders": 0}
+                        "targets": list(target_shares), "orders": placed,
+                        "failures": failures}
             state["last_rebalance_month"] = month
             state["last_rebalance_at"] = datetime.now(tz=timezone.utc).isoformat()
             state["target"] = target_shares
