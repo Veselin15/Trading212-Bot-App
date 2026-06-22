@@ -171,6 +171,28 @@ def target_weights(closes: pd.DataFrame, p: MomentumParams = PROD) -> pd.Series:
 STATE_PATH = Path(__file__).resolve().parent / "momentum_owner_state.json"
 
 
+def _place_with_precision(client, t212: str, qty: float):
+    """Place a market order, retrying with fewer decimals on T212's
+    'quantity-precision-mismatch' (each instrument allows a different precision,
+    and T212 does not expose it in metadata).  Returns the quantity actually sent."""
+    last_exc = None
+    for dp in (4, 2, 1, 0):
+        q = float(int(qty)) if dp == 0 else round(qty, dp)
+        if q == 0:
+            continue
+        try:
+            client.place_market_order(t212, quantity=q)
+            return q
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            if "precision" in str(exc).lower():
+                continue          # too many decimals for this instrument → coarsen
+            raise
+    if last_exc is not None:
+        raise last_exc
+    return 0.0
+
+
 class MomentumExecutor:
     """Rebalances the configured T212 account to the momentum target, monthly.
 
@@ -235,39 +257,77 @@ class MomentumExecutor:
         portfolio = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                      for p in self.client.get_portfolio()}
 
-        # Target share map
+        free = float(cash.get("free", 0.0))
+        invested = float(cash.get("invested", 0.0))
+        _log.info("momentum: equity=%.2f free=%.2f invested=%.2f", equity, free, invested)
+
+        # Target share map (sized on TOTAL equity — sells fund the buys)
         target_shares: Dict[str, float] = {}
         for sym, w in tgt_w.items():
             t212 = ticker_map.get(sym)
             price = float(px.get(sym, 0))
             if t212 and price > 0:
-                target_shares[sym] = round(investable * w / price, 4)
+                target_shares[sym] = investable * w / price
 
-        # Reconcile (sells first to free cash, then buys)
-        orders: List[Tuple[str, str, float, float]] = []
         held = {t212_to_sym.get(t, t): (t, q) for t, q in portfolio.items() if q > 0}
-        for sym, (t212, q) in held.items():
-            if sym not in target_shares:
-                orders.append((sym, t212, -q, float(px.get(sym, 0))))
-        for sym, tgt in target_shares.items():
-            t212 = ticker_map[sym]
-            delta = round(tgt - portfolio.get(t212, 0.0), 4)
-            if abs(delta) * float(px.get(sym, 0)) >= self.p.min_order_eur:
-                orders.append((sym, t212, delta, float(px.get(sym, 0))))
-        orders.sort(key=lambda o: o[2])   # sells (negative) first
+        if held:
+            _log.info("momentum: holdings %s", {s: round(q, 4) for s, (t, q) in held.items()})
 
         placed = 0
-        for sym, t212, delta, price in orders:
-            side = "BUY" if delta > 0 else "SELL"
+
+        # ── SELLS first: fully exit non-targets, trim over-weight targets ──────
+        sells = []
+        for sym, (t212, q) in held.items():
+            tgt = target_shares.get(sym)
+            if tgt is None:
+                sells.append((sym, t212, q))                              # exit fully
+            elif (q - tgt) * float(px.get(sym, 0)) >= self.p.min_order_eur:
+                sells.append((sym, ticker_map.get(sym, t212), q - tgt))   # trim
+        for sym, t212, q in sells:
             if self.dry_run:
-                _log.info("  [DRY] %s %s %+.4f (~€%.0f)", side, sym, delta, abs(delta) * price)
+                _log.info("  [DRY] SELL %s %.4f (~€%.0f)", sym, q, q * float(px.get(sym, 0)))
                 continue
             try:
-                self.client.place_market_order(t212, quantity=round(delta, 4))
+                _place_with_precision(self.client, t212, -abs(q))
                 placed += 1
-                _log.info("  %s %s %+.4f (~€%.0f)", side, sym, delta, abs(delta) * price)
-            except Exception as exc:
-                _log.error("  momentum order FAILED %s: %s", sym, exc)
+                _log.info("  SELL %s %.4f", sym, q)
+            except Exception as exc:  # noqa: BLE001
+                _log.error("  momentum SELL FAILED %s: %s", sym, exc)
+
+        # Let sells settle, then re-read the free-cash budget for buys
+        if sells and not self.dry_run:
+            time.sleep(5)
+            try:
+                free = float(self.client.get_cash().get("free", free))
+            except Exception:  # noqa: BLE001
+                pass
+
+        # ── BUYS: cash-aware (never exceed free cash), precision-tolerant ─────
+        free_budget = investable if self.dry_run else free
+        for sym, tgt in target_shares.items():
+            price = float(px.get(sym, 0))
+            cur = portfolio.get(ticker_map[sym], 0.0)
+            delta = tgt - cur
+            if delta * price < self.p.min_order_eur:
+                continue
+            cost = delta * price
+            if cost > free_budget:                       # scale to fit remaining cash
+                delta = free_budget / price if price > 0 else 0.0
+                cost = delta * price
+            if delta <= 0 or cost < self.p.min_order_eur:
+                _log.info("  skip BUY %s — only €%.0f free left", sym, free_budget)
+                continue
+            if self.dry_run:
+                _log.info("  [DRY] BUY %s %.4f (~€%.0f)", sym, delta, cost)
+                free_budget -= cost
+                continue
+            try:
+                _place_with_precision(self.client, ticker_map[sym], delta)
+                placed += 1
+                free_budget -= cost
+                _log.info("  BUY %s %.4f (~€%.0f)", sym, delta, cost)
+            except Exception as exc:  # noqa: BLE001
+                _log.error("  momentum BUY FAILED %s: %s", sym, exc)
 
         if not self.dry_run:
             state["last_rebalance_month"] = month
