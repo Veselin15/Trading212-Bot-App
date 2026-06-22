@@ -281,13 +281,24 @@ class MomentumExecutor:
             for sym, tgt in saved.items():
                 tt = ticker_map.get(sym)
                 if not tt:
-                    continue
+                    _log.warning("momentum: cannot resolve %s for drift check — re-rebalancing.",
+                                 sym)
+                    return True
                 cur = portfolio.get(tt, 0.0)
                 if abs(tgt - cur) <= max(0.01, abs(tgt) * 0.03):
                     continue
                 _log.info("momentum: book drift on %s (have %.2f, want %.2f)",
                           sym, cur, tgt)
                 return True
+            try:
+                free = float(self.client.get_cash().get("free", 0))
+                total = float(self.client.get_cash().get("total", 0))
+                if total > 0 and free > max(self.p.min_order_eur * 2, total * 0.04):
+                    _log.info("momentum: €%.0f free (%.0f%%) with open targets — re-rebalancing.",
+                              free, 100 * free / total)
+                    return True
+            except Exception:  # noqa: BLE001
+                pass
         except Exception as exc:  # noqa: BLE001
             _log.warning("momentum: drift check failed (%s) — assuming book OK.", exc)
         return False
@@ -438,21 +449,30 @@ class MomentumExecutor:
             except Exception:  # noqa: BLE001
                 pass
         free_budget = investable if self.dry_run else free * CASH_BUFFER
-        # Largest deficits first so one failed order does not strand cash on tiny names.
-        buy_queue = sorted(
-            target_shares.items(),
-            key=lambda kv: kv[1] * _sizing_price(kv[0], float(px.get(kv[0], 0))),
-            reverse=True,
-        )
-        for sym, tgt in buy_queue:
+        buy_needs: List[Tuple[str, float, float, float, float]] = []
+        for sym, tgt in target_shares.items():
             price = _sizing_price(sym, float(px.get(sym, 0)))
+            if price <= 0 or sym not in ticker_map:
+                continue
             cur = portfolio.get(ticker_map[sym], 0.0)
             delta = tgt - cur
-            if delta * price < self.p.min_order_eur:
-                continue
+            if delta * price >= self.p.min_order_eur:
+                buy_needs.append((sym, tgt, cur, delta, price))
+        # Split free cash evenly across slots still needing capital so the 8th name
+        # on a €1k account is not starved after the first 7 full-size buys.
+        buy_needs.sort(key=lambda x: x[3] * x[4], reverse=True)
+        for idx, (sym, tgt, cur, delta, price) in enumerate(buy_needs):
+            if not self.dry_run:
+                try:
+                    free = float(self.client.get_cash().get("free", free))
+                    free_budget = free * CASH_BUFFER
+                except Exception:  # noqa: BLE001
+                    pass
+            slots_left = len(buy_needs) - idx
+            slot_budget = free_budget / slots_left if slots_left > 0 else free_budget
             cost = delta * price
-            if cost > free_budget:                       # scale to fit remaining cash
-                delta = free_budget / price if price > 0 else 0.0
+            if cost > slot_budget:
+                delta = slot_budget / price
                 cost = delta * price
             if delta <= 0 or cost < self.p.min_order_eur:
                 _log.info("  skip BUY %s — only €%.0f free left", sym, free_budget)
@@ -466,12 +486,6 @@ class MomentumExecutor:
                 placed += 1
                 free_budget -= cost
                 _log.info("  BUY %s %.4f (~€%.0f)", sym, delta, cost)
-                if not self.dry_run:
-                    try:
-                        free = float(self.client.get_cash().get("free", free))
-                        free_budget = free * CASH_BUFFER
-                    except Exception:  # noqa: BLE001
-                        pass
             except Exception as exc:  # noqa: BLE001
                 _log.error("  momentum BUY FAILED %s: %s", sym, exc)
                 failures.append(f"BUY {sym}")
