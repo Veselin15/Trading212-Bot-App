@@ -344,13 +344,27 @@ class MomentumExecutor:
         held = {t212_to_sym.get(t, t): (t, q) for t, q in portfolio.items() if q > 0}
         if held:
             _log.info("momentum: holdings %s", {s: round(q, 4) for s, (t, q) in held.items()})
+        if target_shares:
+            _log.info("momentum: target shares %s",
+                      {s: round(v, 2) for s, v in target_shares.items()})
 
         placed = 0
         failures: List[str] = []
 
         # ── SELLS first: fully exit non-targets, trim over-weight targets ──────
         sells = []
+        sold_syms: set[str] = set()
         for sym, (t212, q) in held.items():
+            expected = ticker_map.get(sym)
+            # Wrong instrument (e.g. Eurofins held where TotalEnergies is targeted).
+            if sym in target_shares and expected and t212 != expected:
+                _log.info("  momentum: %s on wrong instrument %s (want %s) — sell all",
+                          sym, t212, expected)
+                sells.append((sym, t212, q))
+                sold_syms.add(sym)
+        for sym, (t212, q) in held.items():
+            if sym in sold_syms:
+                continue
             tgt = target_shares.get(sym)
             if tgt is None:
                 sells.append((sym, t212, q))                              # exit fully
@@ -373,6 +387,8 @@ class MomentumExecutor:
             time.sleep(5)
             try:
                 free = float(self.client.get_cash().get("free", free))
+                portfolio = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
+                             for p in self.client.get_portfolio()}
             except Exception:  # noqa: BLE001
                 pass
 
@@ -408,6 +424,34 @@ class MomentumExecutor:
                 failures.append(f"BUY {sym}")
 
         if not self.dry_run:
+            # Don't mark the month done if meaningful deltas remain but nothing traded
+            # (e.g. old image / mapping bug) — allows retry on next wake or restart.
+            incomplete = placed == 0 and len(target_shares) > 0
+            if incomplete:
+                try:
+                    pf = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
+                          for p in self.client.get_portfolio()}
+                    for sym, (t212, q) in held.items():
+                        if sym in target_shares and ticker_map.get(sym) != t212:
+                            incomplete = True
+                            break
+                    else:
+                        incomplete = False
+                        for sym, tgt in target_shares.items():
+                            tt = ticker_map.get(sym)
+                            if not tt:
+                                continue
+                            price = _sizing_price(sym, float(px.get(sym, 0)))
+                            if abs(tgt - pf.get(tt, 0.0)) * price >= self.p.min_order_eur:
+                                incomplete = True
+                                break
+                except Exception:  # noqa: BLE001
+                    incomplete = placed == 0 and len(target_shares) > 0
+            if incomplete:
+                _log.warning("momentum: rebalance incomplete (deltas remain, 0 orders) — "
+                             "NOT saving monthly state; will retry next cycle.")
+                return {"action": "rebalance_incomplete", "month": month,
+                        "targets": list(target_shares), "orders": 0}
             state["last_rebalance_month"] = month
             state["last_rebalance_at"] = datetime.now(tz=timezone.utc).isoformat()
             state["target"] = target_shares
