@@ -253,6 +253,23 @@ class MomentumExecutor:
         if not self._built:
             self.resolver.build()
             self._built = True
+        # Free cash blocked by stale pending orders (e.g. left by a prior strategy)
+        # so the full balance is available to rebalance.
+        if not self.dry_run:
+            try:
+                pending = self.client.get_orders() or []
+                for o in pending:
+                    oid = o.get("id")
+                    if oid is not None:
+                        try:
+                            self.client.cancel_order(oid)
+                        except Exception:  # noqa: BLE001
+                            pass
+                if pending:
+                    _log.info("momentum: cancelled %d stale pending order(s) to free cash", len(pending))
+                    time.sleep(3)
+            except Exception as exc:  # noqa: BLE001
+                _log.warning("momentum: pending-order cleanup failed: %s", exc)
         cash = self.client.get_cash()
         equity = float(cash.get("total", 0.0))
         investable = equity * self.p.total_exposure
@@ -307,7 +324,10 @@ class MomentumExecutor:
                 pass
 
         # ── BUYS: cash-aware (never exceed free cash), precision-tolerant ─────
-        free_budget = investable if self.dry_run else free
+        # Leave a small margin: T212 fills at the ASK (slightly above our close
+        # price), so a buy sized to 100% of free cash gets rejected at the limit.
+        CASH_BUFFER = 0.985
+        free_budget = investable if self.dry_run else free * CASH_BUFFER
         for sym, tgt in target_shares.items():
             price = float(px.get(sym, 0))
             cur = portfolio.get(ticker_map[sym], 0.0)
