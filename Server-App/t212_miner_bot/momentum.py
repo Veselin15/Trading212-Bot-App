@@ -76,6 +76,27 @@ TD_BASE = "https://api.twelvedata.com/time_series"
 FETCH_YEARS = 1.6
 _TD_SLEEP = float(os.getenv("TD_SLEEP_S", "1.2"))   # paid Grow55 plan ~55/min
 
+# ── Safety guards ───────────────────────────────────────────────────────────
+# Never rebalance on a partial/bad data pull: if fewer than this many symbols
+# loaded, HOLD (do nothing) rather than risk a spurious "risk-off → sell all"
+# from missing data.  Tune via MOMENTUM_MIN_UNIVERSE.
+MIN_UNIVERSE = int(os.getenv("MOMENTUM_MIN_UNIVERSE", "60").strip() or "60")
+MIN_EQUITY_EUR = 10.0   # if the broker reports near-zero equity, treat as a glitch and hold
+
+
+def _notify(msg: str) -> None:
+    """Best-effort Telegram alert (no-op if creds absent). So you find out when
+    something happens without watching logs."""
+    token, chat = os.getenv("TELEGRAM_BOT_TOKEN", ""), os.getenv("TELEGRAM_CHAT_ID", "")
+    if not token or not chat:
+        return
+    try:
+        import requests
+        requests.post(f"https://api.telegram.org/bot{token}/sendMessage",
+                      json={"chat_id": chat, "text": msg}, timeout=6)
+    except Exception as exc:  # noqa: BLE001
+        _log.warning("momentum telegram failed: %s", exc)
+
 
 # ── TwelveData daily fetch (system cert store for corporate CAs) ─────────────
 class _SystemCertAdapter(HTTPAdapter):
@@ -237,10 +258,21 @@ class MomentumExecutor:
             return {"action": "hold", "month": month}
 
         _log.info("momentum: rebalancing for %s …", month)
-        closes = fetch_universe_closes()
-        if closes.empty:
-            _log.warning("momentum: no price data fetched — skipping rebalance.")
-            return {"action": "skip_no_data"}
+        try:
+            closes = fetch_universe_closes()
+        except Exception as exc:  # noqa: BLE001
+            _log.error("momentum: data fetch failed (%s) — HOLDING, will retry next cycle.", exc)
+            _notify(f"⚠️ Momentum: data fetch failed ({str(exc)[:80]}). No trades; will retry.")
+            return {"action": "skip_fetch_error"}
+        # SAFETY: never act on a partial/bad data pull — holding is always safe,
+        # liquidating on missing data is not.  State is NOT saved, so it retries.
+        n = 0 if closes is None or closes.empty else closes.shape[1]
+        if n < MIN_UNIVERSE:
+            _log.warning("momentum: only %d/%d symbols loaded (< MIN_UNIVERSE=%d) — HOLDING, no trades.",
+                         n, len(UNIVERSE), MIN_UNIVERSE)
+            _notify(f"⚠️ Momentum: only {n}/{len(UNIVERSE)} symbols loaded — below safety floor. "
+                    f"No trades this cycle (holding current positions).")
+            return {"action": "skip_insufficient_data", "loaded": n}
         tgt_w = target_weights(closes, self.p)
         px = closes.iloc[-1]
         if len(tgt_w) == 0:
@@ -282,6 +314,14 @@ class MomentumExecutor:
         invested = float(cash.get("invested", 0.0))
         _log.info("momentum: equity=%.2f free=%.2f invested=%.2f", equity, free, invested)
 
+        # SAFETY: a near-zero equity reading is almost always a broker/API glitch,
+        # not a real wipeout — don't act on it (acting would liquidate to "cash").
+        if equity < MIN_EQUITY_EUR:
+            _log.warning("momentum: equity reads €%.2f (< €%.2f) — likely an API glitch; HOLDING.",
+                         equity, MIN_EQUITY_EUR)
+            _notify(f"⚠️ Momentum: broker equity reads €{equity:.2f} — looks wrong, holding (no trades).")
+            return {"action": "skip_bad_equity", "equity": equity}
+
         # Target share map (sized on TOTAL equity — sells fund the buys)
         target_shares: Dict[str, float] = {}
         for sym, w in tgt_w.items():
@@ -295,6 +335,7 @@ class MomentumExecutor:
             _log.info("momentum: holdings %s", {s: round(q, 4) for s, (t, q) in held.items()})
 
         placed = 0
+        failures: List[str] = []
 
         # ── SELLS first: fully exit non-targets, trim over-weight targets ──────
         sells = []
@@ -314,6 +355,7 @@ class MomentumExecutor:
                 _log.info("  SELL %s %.4f", sym, q)
             except Exception as exc:  # noqa: BLE001
                 _log.error("  momentum SELL FAILED %s: %s", sym, exc)
+                failures.append(f"SELL {sym}")
 
         # Let sells settle, then re-read the free-cash budget for buys
         if sells and not self.dry_run:
@@ -352,11 +394,21 @@ class MomentumExecutor:
                 _log.info("  BUY %s %.4f (~€%.0f)", sym, delta, cost)
             except Exception as exc:  # noqa: BLE001
                 _log.error("  momentum BUY FAILED %s: %s", sym, exc)
+                failures.append(f"BUY {sym}")
 
         if not self.dry_run:
             state["last_rebalance_month"] = month
             state["last_rebalance_at"] = datetime.now(tz=timezone.utc).isoformat()
             state["target"] = target_shares
             self._save_state(state)
+
+        # Alert: rebalance summary (and prominently flag any failed orders).
+        book = ", ".join(tgt_w.index) if len(tgt_w) else "CASH (risk-off)"
+        if failures:
+            _notify(f"⚠️ Momentum {month}: rebalanced to [{book}] with {placed} orders "
+                    f"but {len(failures)} FAILED: {', '.join(failures[:8])}")
+        else:
+            _notify(f"✅ Momentum {month}: rebalanced to [{book}] — {placed} orders, all OK.")
+
         return {"action": "rebalanced", "month": month, "targets": list(target_shares),
-                "orders": placed if not self.dry_run else len(orders)}
+                "orders": placed, "failures": failures}
