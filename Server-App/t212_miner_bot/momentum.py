@@ -168,7 +168,10 @@ def target_weights(closes: pd.DataFrame, p: MomentumParams = PROD) -> pd.Series:
 
 
 # ── Owner-account executor (monthly rebalance) ──────────────────────────────
-STATE_PATH = Path(__file__).resolve().parent / "momentum_owner_state.json"
+# Store state under models/ — that subdir is the persisted Docker volume
+# (swifttrade_bot_state), so the monthly gate survives container restarts and the
+# bot doesn't re-trade on every redeploy.
+STATE_PATH = Path(__file__).resolve().parent / "models" / "momentum_owner_state.json"
 
 
 def _place_with_precision(client, t212: str, qty: float):
@@ -220,6 +223,7 @@ class MomentumExecutor:
 
     def _save_state(self, state: dict) -> None:
         try:
+            STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
             STATE_PATH.write_text(json.dumps(state, indent=2), encoding="utf-8")
         except Exception as exc:
             _log.warning("momentum state save failed: %s", exc)
