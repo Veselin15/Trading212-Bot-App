@@ -38,7 +38,6 @@ MANUAL_T212_MAP: Dict[str, str] = {
     "AIR.PA":    "AIp_EQ",
     "DSY.PA":    "DSYp_EQ",
     "EL.PA":     "ELp_EQ",
-    "ENR.DE":    "ENRl_EQ",     # NOTE: ENR trades on Xetra (Frankfurt)
     "HO.PA":     "HOp_EQ",
     "KER.PA":    "KERp_EQ",
     "MC.PA":     "MCp_EQ",
@@ -46,17 +45,25 @@ MANUAL_T212_MAP: Dict[str, str] = {
     "RMS.PA":    "RMSp_EQ",
     "SAF.PA":    "SAFp_EQ",
     "SAN.PA":    "SANp_EQ",
-    "STMPA.PA":  "STMPAp_EQ",
-    "TTE.PA":    "TTEp_EQ",
-    # ── Frankfurt / Xetra (suffix 'l_EQ') ────────────────────────────────
-    "ALV.DE":    "ALVl_EQ",
-    "BAYN.DE":   "BAYNl_EQ",
-    "DBK.DE":    "DBKl_EQ",
-    "IFX.DE":    "IFXl_EQ",
-    "RHM.DE":    "RHMl_EQ",
-    "SAP.DE":    "SAPl_EQ",
-    "SIE.DE":    "SIEl_EQ",
-    "VOW3.DE":   "VOW3l_EQ",
+    "STMPA.PA":  "STMpp_EQ",    # live T212 ticker (old STMPAp_EQ is stale)
+    # TTE.PA resolved via ISIN (FR0000120271) — do NOT use FR0014000MR3 (Eurofins)
+    # ── Frankfurt / Xetra (suffix 'd_EQ' on live T212) ───────────────────
+    "ALV.DE":    "ALVd_EQ",
+    "BAYN.DE":   "BAYNd_EQ",
+    "DBK.DE":    "DBKd_EQ",
+    "IFX.DE":    "IFXd_EQ",
+    "RHM.DE":    "RHMd_EQ",
+    "SAP.DE":    "SAPd_EQ",
+    "SIE.DE":    "SITEd_EQ",
+    "VOW3.DE":   "VOW3d_EQ",
+    "ENR.DE":    "ENRd_EQ",
+    # ── London (suffix 'l_EQ') ───────────────────────────────────────────
+    "HSBA.L":    "HSBAl_EQ",
+    "GSK.L":     "GSKl_EQ",
+    "SHEL.L":    "SHELl_EQ",
+    "AZN.L":     "AZNl_EQ",
+    "ULVR.L":    "ULVRl_EQ",
+    "BP.L":      "BPl_EQ",
     # ── Swiss (SIX, suffix 's_EQ') ────────────────────────────────────────
     "ROG.SW":    "ROGs_EQ",
 }
@@ -72,7 +79,7 @@ KNOWN_ISINS: Dict[str, str] = {
     "AIR.PA":    "NL0000235190",
     "ALV.DE":    "DE0008404005",
     "SIE.DE":    "DE0007236101",
-    "TTE.PA":    "FR0014000MR3",
+    "TTE.PA":    "FR0000120271",   # TotalEnergies (FR0014000MR3 is Eurofins!)
     "SAP.DE":    "DE0007164600",
     "IFX.DE":    "DE0006231004",
     "ENR.DE":    "DE000ENER6Y0",
@@ -87,8 +94,14 @@ KNOWN_ISINS: Dict[str, str] = {
     "DBK.DE":    "DE0005140008",
     "PRX.AS":    "NL0013654783",
     "VOW3.DE":   "DE0007664039",
-    "HO.PA":     "FR0000120271",
+    "HO.PA":     "FR0000121329",   # Thales
     "SAF.PA":    "FR0000073272",
+    "HSBA.L":    "GB0005405286",
+    "GSK.L":     "GB0009252886",
+    "SHEL.L":    "GB00BP6MXD84",
+    "AZN.L":     "GB0009895292",
+    "ULVR.L":    "GB00B10RZP78",
+    "BP.L":      "GB0007980591",
 }
 
 

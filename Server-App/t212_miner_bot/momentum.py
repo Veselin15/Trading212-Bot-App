@@ -167,6 +167,17 @@ def fetch_universe_closes(years: float = FETCH_YEARS) -> pd.DataFrame:
 
 
 # ── Signal: identical math to the AI-Trading backtest ───────────────────────
+def _sizing_price(symbol: str, close: float) -> float:
+    """Convert Twelve Data close to major currency units for share sizing.
+
+    LSE (.L) quotes arrive in GBX (pence); using them raw makes UK targets ~100×
+    too small (e.g. HSBA/GSK at €7 instead of ~€625).
+    """
+    if symbol.endswith(".L") and close > 0:
+        return close / 100.0
+    return close
+
+
 def target_weights(closes: pd.DataFrame, p: MomentumParams = PROD) -> pd.Series:
     """Latest-bar target weights (equal-weight top-K momentum, or empty = cash)."""
     stocks = list(closes.columns)
@@ -326,7 +337,7 @@ class MomentumExecutor:
         target_shares: Dict[str, float] = {}
         for sym, w in tgt_w.items():
             t212 = ticker_map.get(sym)
-            price = float(px.get(sym, 0))
+            price = _sizing_price(sym, float(px.get(sym, 0)))
             if t212 and price > 0:
                 target_shares[sym] = investable * w / price
 
@@ -343,11 +354,11 @@ class MomentumExecutor:
             tgt = target_shares.get(sym)
             if tgt is None:
                 sells.append((sym, t212, q))                              # exit fully
-            elif (q - tgt) * float(px.get(sym, 0)) >= self.p.min_order_eur:
+            elif (q - tgt) * _sizing_price(sym, float(px.get(sym, 0))) >= self.p.min_order_eur:
                 sells.append((sym, ticker_map.get(sym, t212), q - tgt))   # trim
         for sym, t212, q in sells:
             if self.dry_run:
-                _log.info("  [DRY] SELL %s %.4f (~€%.0f)", sym, q, q * float(px.get(sym, 0)))
+                _log.info("  [DRY] SELL %s %.4f (~€%.0f)", sym, q, q * _sizing_price(sym, float(px.get(sym, 0))))
                 continue
             try:
                 _place_with_precision(self.client, t212, -abs(q))
@@ -371,7 +382,7 @@ class MomentumExecutor:
         CASH_BUFFER = 0.985
         free_budget = investable if self.dry_run else free * CASH_BUFFER
         for sym, tgt in target_shares.items():
-            price = float(px.get(sym, 0))
+            price = _sizing_price(sym, float(px.get(sym, 0)))
             cur = portfolio.get(ticker_map[sym], 0.0)
             delta = tgt - cur
             if delta * price < self.p.min_order_eur:
