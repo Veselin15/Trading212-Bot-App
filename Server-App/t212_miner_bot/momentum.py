@@ -260,13 +260,49 @@ class MomentumExecutor:
         except Exception as exc:
             _log.warning("momentum state save failed: %s", exc)
 
+    def _book_drifts_from_saved_targets(self, state: dict) -> bool:
+        """True if live holdings materially differ from the last saved target book.
+
+        Covers partial fills, failed orders, and paper-account resets without
+        requiring anyone to delete the state file by hand.
+        """
+        saved = state.get("target") or {}
+        if not saved:
+            return False
+        try:
+            if not self._built:
+                self.resolver.build()
+                self._built = True
+            ticker_map = self.resolver.resolve_all(list(saved.keys()))
+            portfolio = {
+                p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
+                for p in self.client.get_portfolio()
+            }
+            for sym, tgt in saved.items():
+                tt = ticker_map.get(sym)
+                if not tt:
+                    continue
+                cur = portfolio.get(tt, 0.0)
+                if abs(tgt - cur) <= max(0.01, abs(tgt) * 0.03):
+                    continue
+                _log.info("momentum: book drift on %s (have %.2f, want %.2f)",
+                          sym, cur, tgt)
+                return True
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("momentum: drift check failed (%s) — assuming book OK.", exc)
+        return False
+
     def maybe_rebalance(self, force: bool = False) -> dict:
         """Rebalance once per calendar month. Returns a small result dict for logging."""
         state = self._load_state()
         month = datetime.now(tz=timezone.utc).strftime("%Y-%m")
         if state.get("last_rebalance_month") == month and not force:
-            _log.info("momentum: already rebalanced for %s — holding.", month)
-            return {"action": "hold", "month": month}
+            if self._book_drifts_from_saved_targets(state):
+                _log.info("momentum: %s marked done but book incomplete — re-rebalancing.",
+                          month)
+            else:
+                _log.info("momentum: already rebalanced for %s — holding.", month)
+                return {"action": "hold", "month": month}
 
         _log.info("momentum: rebalancing for %s …", month)
         try:
