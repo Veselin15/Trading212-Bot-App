@@ -220,8 +220,46 @@ def _place_with_precision(client, t212: str, qty: float):
             return q
         except Exception as exc:  # noqa: BLE001
             last_exc = exc
-            if "precision" in str(exc).lower():
+            msg = str(exc).lower()
+            if "precision" in msg:
                 continue          # too many decimals for this instrument → coarsen
+            raise
+    if last_exc is not None:
+        raise last_exc
+    return 0.0
+
+
+def _place_buy_capped(client, t212: str, delta: float, price: float,
+                      max_eur: float, min_eur: float) -> float:
+    """Buy up to *delta* shares, never above *max_eur* or live free cash.
+
+  T212 can report free cash that ignores very recent fills (blocked cash), so
+  we re-read before each attempt and shrink on 'insufficient funds'.
+    """
+    qty = delta
+    last_exc = None
+    for attempt in range(6):
+        if qty <= 0 or price <= 0:
+            return 0.0
+        try:
+            free = float(client.get_cash().get("free", 0))
+        except Exception:  # noqa: BLE001
+            free = max_eur
+        cap_eur = min(max_eur, free * 0.95)
+        cost = qty * price
+        if cost > cap_eur:
+            qty = cap_eur / price
+            cost = qty * price
+        if cost < min_eur:
+            return 0.0
+        try:
+            return _place_with_precision(client, t212, qty)
+        except Exception as exc:  # noqa: BLE001
+            last_exc = exc
+            if "insufficient" in str(exc).lower() and attempt < 5:
+                qty *= 0.88
+                time.sleep(2)
+                continue
             raise
     if last_exc is not None:
         raise last_exc
@@ -461,31 +499,40 @@ class MomentumExecutor:
         # Split free cash evenly across slots still needing capital so the 8th name
         # on a €1k account is not starved after the first 7 full-size buys.
         buy_needs.sort(key=lambda x: x[3] * x[4], reverse=True)
+        n_slots = max(len(buy_needs), 1)
+        per_slot_eur = (investable * CASH_BUFFER) / n_slots
         for idx, (sym, tgt, cur, delta, price) in enumerate(buy_needs):
+            slots_left = len(buy_needs) - idx
+            slot_budget = per_slot_eur
             if not self.dry_run:
                 try:
                     free = float(self.client.get_cash().get("free", free))
-                    free_budget = free * CASH_BUFFER
+                    slot_budget = min(per_slot_eur, (free * CASH_BUFFER) / slots_left)
                 except Exception:  # noqa: BLE001
                     pass
-            slots_left = len(buy_needs) - idx
-            slot_budget = free_budget / slots_left if slots_left > 0 else free_budget
             cost = delta * price
             if cost > slot_budget:
                 delta = slot_budget / price
                 cost = delta * price
             if delta <= 0 or cost < self.p.min_order_eur:
-                _log.info("  skip BUY %s — only €%.0f free left", sym, free_budget)
+                _log.info("  skip BUY %s — only €%.0f slot budget", sym, slot_budget)
                 continue
             if self.dry_run:
                 _log.info("  [DRY] BUY %s %.4f (~€%.0f)", sym, delta, cost)
                 free_budget -= cost
                 continue
             try:
-                _place_with_precision(self.client, ticker_map[sym], delta)
+                if not self.dry_run and idx > 0:
+                    time.sleep(1.5)
+                q = _place_buy_capped(
+                    self.client, ticker_map[sym], delta, price,
+                    max_eur=slot_budget, min_eur=self.p.min_order_eur,
+                )
+                if q <= 0:
+                    _log.info("  skip BUY %s — broker free below min order", sym)
+                    continue
                 placed += 1
-                free_budget -= cost
-                _log.info("  BUY %s %.4f (~€%.0f)", sym, delta, cost)
+                _log.info("  BUY %s %.4f (~€%.0f)", sym, q, q * price)
             except Exception as exc:  # noqa: BLE001
                 _log.error("  momentum BUY FAILED %s: %s", sym, exc)
                 failures.append(f"BUY {sym}")
@@ -530,9 +577,15 @@ class MomentumExecutor:
                 if delta <= 0 or cost < self.p.min_order_eur:
                     break
                 try:
-                    _place_with_precision(self.client, ticker_map[sym], delta)
+                    time.sleep(1.5)
+                    q = _place_buy_capped(
+                        self.client, ticker_map[sym], delta, price,
+                        max_eur=free_budget, min_eur=self.p.min_order_eur,
+                    )
+                    if q <= 0:
+                        break
                     placed += 1
-                    _log.info("  BUY %s %.4f (~€%.0f) [cash sweep]", sym, delta, cost)
+                    _log.info("  BUY %s %.4f (~€%.0f) [cash sweep]", sym, q, q * price)
                 except Exception as exc:  # noqa: BLE001
                     _log.error("  momentum sweep BUY FAILED %s: %s", sym, exc)
                     failures.append(f"BUY {sym}")
