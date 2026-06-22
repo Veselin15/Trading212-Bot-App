@@ -476,6 +476,54 @@ class MomentumExecutor:
                 _log.error("  momentum BUY FAILED %s: %s", sym, exc)
                 failures.append(f"BUY {sym}")
 
+        # ── CASH SWEEP: deploy leftover cash into the largest remaining gaps ───
+        # On smaller accounts the main buy loop can fill 7/8 names and strand ~€90.
+        if not self.dry_run and target_shares:
+            for _ in range(4):
+                try:
+                    free = float(self.client.get_cash().get("free", 0))
+                except Exception:  # noqa: BLE001
+                    break
+                free_budget = free * CASH_BUFFER
+                if free_budget < self.p.min_order_eur:
+                    break
+                try:
+                    portfolio = {
+                        p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
+                        for p in self.client.get_portfolio()
+                    }
+                except Exception:  # noqa: BLE001
+                    break
+                gaps: List[Tuple[str, float, float, float, bool]] = []
+                for sym, tgt in target_shares.items():
+                    tt = ticker_map.get(sym)
+                    if not tt:
+                        continue
+                    price = _sizing_price(sym, float(px.get(sym, 0)))
+                    if price <= 0:
+                        continue
+                    cur = portfolio.get(tt, 0.0)
+                    deficit = tgt - cur
+                    gap_eur = deficit * price
+                    if gap_eur >= self.p.min_order_eur:
+                        gaps.append((sym, deficit, price, gap_eur, cur <= 0))
+                if not gaps:
+                    break
+                gaps.sort(key=lambda g: (g[4], g[3]), reverse=True)
+                sym, deficit, price, _gap_eur, _ = gaps[0]
+                delta = min(deficit, free_budget / price)
+                cost = delta * price
+                if delta <= 0 or cost < self.p.min_order_eur:
+                    break
+                try:
+                    _place_with_precision(self.client, ticker_map[sym], delta)
+                    placed += 1
+                    _log.info("  BUY %s %.4f (~€%.0f) [cash sweep]", sym, delta, cost)
+                except Exception as exc:  # noqa: BLE001
+                    _log.error("  momentum sweep BUY FAILED %s: %s", sym, exc)
+                    failures.append(f"BUY {sym}")
+                    break
+
         if not self.dry_run:
             # Don't mark the month done if orders failed or meaningful deltas remain.
             incomplete = bool(failures)
@@ -493,6 +541,13 @@ class MomentumExecutor:
                         if abs(tgt - pf.get(tt, 0.0)) * price >= self.p.min_order_eur:
                             incomplete = True
                             break
+                    # Stranded cash well above the intentional ~2% buffer → not done.
+                    if not incomplete:
+                        free_now = float(self.client.get_cash().get("free", 0))
+                        if free_now > max(self.p.min_order_eur * 2, equity * 0.04):
+                            _log.info("momentum: €%.0f free remains (>4%% buffer) — incomplete.",
+                                      free_now)
+                            incomplete = True
                 except Exception:  # noqa: BLE001
                     incomplete = bool(failures)
             if incomplete:
