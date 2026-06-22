@@ -74,10 +74,10 @@ async def run_owner_executor_forever(api_key: str, base_url: str) -> None:
         return
 
     _log.info(
-        "owner_executor: MOMENTUM strategy ready (%s) — top-%d, %dd momentum, "
+        "owner_executor: MOMENTUM v6 ready (%s) — top-%d, %s blend, "
         "monthly rebalance, against %s",
         "DRY-RUN (no orders)" if _OWNER_DRY_RUN else "LIVE ORDERS",
-        PROD.top_k, PROD.lookback, base_url,
+        PROD.top_k, "+".join(str(lb) for lb in PROD.lookbacks), base_url,
     )
 
     while True:

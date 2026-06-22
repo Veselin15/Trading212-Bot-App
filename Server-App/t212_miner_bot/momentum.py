@@ -61,7 +61,7 @@ SUFFIX_TO_MIC = {"AS": "XAMS", "PA": "XPAR", "DE": "XETR",
 # ── Deployed config: GROWTH (chosen profile) ────────────────────────────────
 @dataclass
 class MomentumParams:
-    lookback: int = 189          # momentum window (trading days)
+    lookbacks: tuple = (126, 189, 252)  # multi-horizon momentum blend (v6 upgrade)
     skip: int = 5                # skip most-recent days
     top_k: int = 8
     regime_sma: int = 100        # basket-index SMA for risk-on/off
@@ -179,19 +179,27 @@ def _sizing_price(symbol: str, close: float) -> float:
 
 
 def target_weights(closes: pd.DataFrame, p: MomentumParams = PROD) -> pd.Series:
-    """Latest-bar target weights (equal-weight top-K momentum, or empty = cash)."""
+    """Latest-bar target weights (equal-weight top-K momentum, or empty = cash).
+
+    Uses multi-horizon momentum blending: averages the return-rank across all
+    lookback windows in p.lookbacks for a less noisy signal (v6 upgrade).
+    """
     stocks = list(closes.columns)
     rets = closes.pct_change()
     basket = (1 + rets.mean(axis=1).fillna(0)).cumprod()
     bsma = basket.rolling(p.regime_sma).mean()
     i = len(closes) - 1
-    if i < p.lookback + p.skip:
+    max_lb = max(p.lookbacks)
+    if i < max_lb + p.skip:
         return pd.Series(dtype=float)
     on = bool(basket.iloc[i] > bsma.iloc[i]) if not np.isnan(bsma.iloc[i]) else False
     if not on:
-        return pd.Series(dtype=float)   # risk-off → cash
-    score = closes.iloc[i - p.skip] / closes.iloc[i - p.lookback - p.skip] - 1.0
-    sma = closes.iloc[max(0, i - p.lookback):i + 1].mean()
+        return pd.Series(dtype=float)   # risk-off -> cash
+    score = pd.Series(0.0, index=stocks)
+    for lb in p.lookbacks:
+        score = score + (closes.iloc[i - p.skip] / closes.iloc[i - lb - p.skip] - 1.0)
+    score /= len(p.lookbacks)
+    sma = closes.iloc[max(0, i - max_lb):i + 1].mean()
     cand = score[(score > 0) & (closes.iloc[i] > sma)]
     top = cand.sort_values(ascending=False).head(p.top_k)
     if not len(top):
