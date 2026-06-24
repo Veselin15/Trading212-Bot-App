@@ -291,18 +291,21 @@ class MomentumExecutor:
         self.resolver = TickerResolver(self.client)
         self._built = False
 
-    def _pending_buy_qty(self) -> Dict[str, float]:
-        """Map T212 ticker -> total in-flight BUY quantity from pending orders.
+    def _pending_net_qty(self) -> Dict[str, float]:
+        """Map T212 ticker -> NET in-flight quantity from pending orders
+        (buys positive, sells negative).
 
         Market orders placed while the exchange is closed sit PENDING and do not
-        yet show up in get_portfolio().  Counting them prevents re-ordering the
-        same name on every retry (the duplicate-pending-order bug)."""
+        yet show up in get_portfolio().  Adding this net quantity to filled
+        holdings gives the *effective* position, so we neither re-buy a name whose
+        buy is still pending nor treat a name as overweight when its trim-sell is
+        still pending (both caused needless re-trading)."""
         out: Dict[str, float] = {}
         try:
             for o in (self.client.get_orders() or []):
                 tt = o.get("ticker")
                 q = float(o.get("quantity", 0) or 0)
-                if tt and q > 0:
+                if tt and q != 0:
                     out[tt] = out.get(tt, 0.0) + q
         except Exception:  # noqa: BLE001
             pass
@@ -341,10 +344,10 @@ class MomentumExecutor:
                 p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                 for p in self.client.get_portfolio()
             }
-            # Count in-flight buys: if the book looks "incomplete" only because
+            # Count NET in-flight orders: if the book looks "off" only because
             # orders are still PENDING (e.g. placed while the market was closed),
             # we should WAIT for them to fill, not cancel + re-place every cycle.
-            pending = self._pending_buy_qty()
+            pending = self._pending_net_qty()
             for sym, tgt in saved.items():
                 tt = ticker_map.get(sym)
                 if not tt:
@@ -357,15 +360,6 @@ class MomentumExecutor:
                 _log.info("momentum: book drift on %s (have %.2f, want %.2f)",
                           sym, cur, tgt)
                 return True
-            try:
-                free = float(self.client.get_cash().get("free", 0))
-                total = float(self.client.get_cash().get("total", 0))
-                if total > 0 and free > max(self.p.min_order_eur * 2, total * 0.04):
-                    _log.info("momentum: €%.0f free (%.0f%%) with open targets — re-rebalancing.",
-                              free, 100 * free / total)
-                    return True
-            except Exception:  # noqa: BLE001
-                pass
         except Exception as exc:  # noqa: BLE001
             _log.warning("momentum: drift check failed (%s) — assuming book OK.", exc)
         return False
@@ -636,27 +630,27 @@ class MomentumExecutor:
                 try:
                     pf = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                           for p in self.client.get_portfolio()}
-                    # Count in-flight (pending) buys: an order placed while the
-                    # market is closed covers its target even before it fills, so
-                    # the book is complete — mark the month done and let it fill,
-                    # rather than cancel + re-place it next cycle.
-                    pend = self._pending_buy_qty()
+                    # Count NET in-flight orders (buys + pending trim-sells): an
+                    # order placed while the market is closed already moves the
+                    # position to target even before it fills, so the book is
+                    # complete — mark the month done and let it fill rather than
+                    # cancel + re-place next cycle.
+                    pend = self._pending_net_qty()
+                    # "Incomplete" only if a target name is still UNDER-weight by a
+                    # deployable amount (>= min order).  Leftover cash that can't
+                    # buy a full min-order slot anywhere is an unavoidable buffer,
+                    # NOT a reason to re-trade forever (that was a churn loop).
                     for sym, tgt in target_shares.items():
                         tt = ticker_map.get(sym)
                         if not tt:
                             continue
                         price = _sizing_price(sym, float(px.get(sym, 0)))
                         have = pf.get(tt, 0.0) + pend.get(tt, 0.0)
-                        if abs(tgt - have) * price >= self.p.min_order_eur:
+                        if (tgt - have) * price >= self.p.min_order_eur:
+                            _log.info("momentum: %s still under target (have %.3f, want %.3f) — incomplete.",
+                                      sym, have, tgt)
                             incomplete = True
                             break
-                    # Stranded cash well above the intentional ~2% buffer → not done.
-                    if not incomplete:
-                        free_now = float(self.client.get_cash().get("free", 0))
-                        if free_now > max(self.p.min_order_eur * 2, equity * 0.04):
-                            _log.info("momentum: €%.0f free remains (>4%% buffer) — incomplete.",
-                                      free_now)
-                            incomplete = True
                 except Exception:  # noqa: BLE001
                     incomplete = bool(failures)
             if incomplete:
