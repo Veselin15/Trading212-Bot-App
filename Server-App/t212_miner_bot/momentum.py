@@ -291,6 +291,23 @@ class MomentumExecutor:
         self.resolver = TickerResolver(self.client)
         self._built = False
 
+    def _pending_buy_qty(self) -> Dict[str, float]:
+        """Map T212 ticker -> total in-flight BUY quantity from pending orders.
+
+        Market orders placed while the exchange is closed sit PENDING and do not
+        yet show up in get_portfolio().  Counting them prevents re-ordering the
+        same name on every retry (the duplicate-pending-order bug)."""
+        out: Dict[str, float] = {}
+        try:
+            for o in (self.client.get_orders() or []):
+                tt = o.get("ticker")
+                q = float(o.get("quantity", 0) or 0)
+                if tt and q > 0:
+                    out[tt] = out.get(tt, 0.0) + q
+        except Exception:  # noqa: BLE001
+            pass
+        return out
+
     def _load_state(self) -> dict:
         if STATE_PATH.exists():
             try:
@@ -324,13 +341,17 @@ class MomentumExecutor:
                 p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                 for p in self.client.get_portfolio()
             }
+            # Count in-flight buys: if the book looks "incomplete" only because
+            # orders are still PENDING (e.g. placed while the market was closed),
+            # we should WAIT for them to fill, not cancel + re-place every cycle.
+            pending = self._pending_buy_qty()
             for sym, tgt in saved.items():
                 tt = ticker_map.get(sym)
                 if not tt:
                     _log.warning("momentum: cannot resolve %s for drift check — re-rebalancing.",
                                  sym)
                     return True
-                cur = portfolio.get(tt, 0.0)
+                cur = portfolio.get(tt, 0.0) + pending.get(tt, 0.0)
                 if abs(tgt - cur) <= max(0.01, abs(tgt) * 0.03):
                     continue
                 _log.info("momentum: book drift on %s (have %.2f, want %.2f)",
@@ -495,6 +516,11 @@ class MomentumExecutor:
             except Exception:  # noqa: BLE001
                 pass
         free_budget = investable if self.dry_run else free * CASH_BUFFER
+        # In-memory tally of what we've ORDERED this run (keyed by T212 ticker).
+        # Market orders may sit pending (exchange closed) and not yet show in the
+        # portfolio, so we add this to filled holdings when computing remaining
+        # gaps — otherwise we'd re-order the same name on every retry/sweep.
+        ordered: Dict[str, float] = {}
         buy_needs: List[Tuple[str, float, float, float, float]] = []
         for sym, tgt in target_shares.items():
             price = _sizing_price(sym, float(px.get(sym, 0)))
@@ -540,6 +566,7 @@ class MomentumExecutor:
                     _log.info("  skip BUY %s — broker free below min order", sym)
                     continue
                 placed += 1
+                ordered[ticker_map[sym]] = ordered.get(ticker_map[sym], 0.0) + q
                 _log.info("  BUY %s %.4f (~€%.0f)", sym, q, q * price)
             except Exception as exc:  # noqa: BLE001
                 _log.error("  momentum BUY FAILED %s: %s", sym, exc)
@@ -571,7 +598,7 @@ class MomentumExecutor:
                     price = _sizing_price(sym, float(px.get(sym, 0)))
                     if price <= 0:
                         continue
-                    cur = portfolio.get(tt, 0.0)
+                    cur = portfolio.get(tt, 0.0) + ordered.get(tt, 0.0)
                     deficit = tgt - cur
                     gap_eur = deficit * price
                     if gap_eur >= self.p.min_order_eur:
@@ -593,6 +620,7 @@ class MomentumExecutor:
                     if q <= 0:
                         break
                     placed += 1
+                    ordered[ticker_map[sym]] = ordered.get(ticker_map[sym], 0.0) + q
                     _log.info("  BUY %s %.4f (~€%.0f) [cash sweep]", sym, q, q * price)
                 except Exception as exc:  # noqa: BLE001
                     _log.error("  momentum sweep BUY FAILED %s: %s", sym, exc)
@@ -608,12 +636,18 @@ class MomentumExecutor:
                 try:
                     pf = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                           for p in self.client.get_portfolio()}
+                    # Count in-flight (pending) buys: an order placed while the
+                    # market is closed covers its target even before it fills, so
+                    # the book is complete — mark the month done and let it fill,
+                    # rather than cancel + re-place it next cycle.
+                    pend = self._pending_buy_qty()
                     for sym, tgt in target_shares.items():
                         tt = ticker_map.get(sym)
                         if not tt:
                             continue
                         price = _sizing_price(sym, float(px.get(sym, 0)))
-                        if abs(tgt - pf.get(tt, 0.0)) * price >= self.p.min_order_eur:
+                        have = pf.get(tt, 0.0) + pend.get(tt, 0.0)
+                        if abs(tgt - have) * price >= self.p.min_order_eur:
                             incomplete = True
                             break
                     # Stranded cash well above the intentional ~2% buffer → not done.
