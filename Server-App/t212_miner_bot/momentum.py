@@ -623,14 +623,17 @@ class MomentumExecutor:
         if not self.dry_run:
             # Don't mark the month done if orders failed or meaningful deltas remain.
             incomplete = bool(failures)
+            try:
+                free_now = float(self.client.get_cash().get("free", 0))
+            except Exception:  # noqa: BLE001
+                free_now = 0.0
             if not incomplete:
-                incomplete = placed == 0 and len(target_shares) > 0
+                incomplete = placed == 0 and len(target_shares) > 0 and free_now >= self.p.min_order_eur
             if not incomplete and len(target_shares) > 0:
                 try:
                     pf = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                           for p in self.client.get_portfolio()}
                     pend = self._pending_net_qty()
-                    free_now = float(self.client.get_cash().get("free", 0))
                     for sym, tgt in target_shares.items():
                         tt = ticker_map.get(sym)
                         if not tt:
