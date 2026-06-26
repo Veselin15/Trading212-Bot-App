@@ -134,8 +134,14 @@ def fetch_universe_closes(years: float = FETCH_YEARS) -> pd.DataFrame:
         closes.index = closes.index.tz_convert("UTC")
     good = {c: closes[c].dropna() for c in closes.columns if closes[c].dropna().shape[0] > 200}
     result = pd.DataFrame(good).sort_index()
+    result = result[~result.index.duplicated(keep="last")]
+    # Forward-fill so exchanges that haven't reported today (e.g. US market
+    # hasn't opened when the bot runs during European hours) carry yesterday's
+    # close instead of NaN — without this, US stocks silently fail the SMA
+    # filter and get excluded from rankings.
+    result = result.ffill()
     _log.info("momentum: loaded %d/%d symbols from Yahoo Finance.", len(good), len(UNIVERSE))
-    return result[~result.index.duplicated(keep="last")]
+    return result
 
 
 def _fetch_prices_yf(syms: List[str]) -> Dict[str, float]:
