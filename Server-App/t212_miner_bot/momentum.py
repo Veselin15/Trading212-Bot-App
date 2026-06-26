@@ -24,7 +24,7 @@ import os
 import ssl
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Dict, List, Tuple
 
@@ -67,6 +67,16 @@ class MomentumParams:
     regime_sma: int = 100        # basket-index SMA for risk-on/off
     total_exposure: float = 0.98 # keep a small cash buffer
     min_order_eur: float = 5.0
+    # ── v8 intra-month dip-rotate overlay ───────────────────────────────────
+    # Between monthly rebalances, if a held name falls >= dip_drop from its
+    # rebalance anchor, ADD to it ("buy the dip") funded by trimming the OTHER
+    # holdings pro-rata (self-funding rotation, total exposure preserved).
+    # Validated in the AI-Trading walk-forward (momentum_v8 dip-rotate):
+    # ~+1%/yr after-tax over plain monthly momentum, at equal drawdown.
+    dip_enabled: bool = True
+    dip_drop: float = 0.10       # trigger: holding down >= 10% from its anchor
+    dip_cooldown_days: int = 5   # min days between adds on the same name
+    dip_max_tiers: int = 2       # max adds per name per month
 
 
 PROD = MomentumParams()
@@ -658,9 +668,19 @@ class MomentumExecutor:
                 return {"action": "rebalance_incomplete", "month": month,
                         "targets": list(target_shares), "orders": placed,
                         "failures": failures}
+            now_iso = datetime.now(tz=timezone.utc).isoformat()
             state["last_rebalance_month"] = month
-            state["last_rebalance_at"] = datetime.now(tz=timezone.utc).isoformat()
+            state["last_rebalance_at"] = now_iso
             state["target"] = target_shares
+            # Reset the intra-month dip-rotate baseline: anchor each holding at its
+            # rebalance price, zero the add-tiers.  Backdate the cooldown clock so a
+            # dip can be bought immediately (cooldown gates ADDS apart, not the
+            # start of the month) — matches the v8 backtest.
+            eligible_iso = (datetime.now(tz=timezone.utc)
+                            - timedelta(days=self.p.dip_cooldown_days)).isoformat()
+            state["dip_anchors"] = {s: _sizing_price(s, float(px.get(s, 0))) for s in target_shares}
+            state["dip_tiers"] = {s: 0 for s in target_shares}
+            state["dip_last"] = {s: eligible_iso for s in target_shares}
             self._save_state(state)
 
         # Alert: rebalance summary (and prominently flag any failed orders).
@@ -673,3 +693,196 @@ class MomentumExecutor:
 
         return {"action": "rebalanced", "month": month, "targets": list(target_shares),
                 "orders": placed, "failures": failures}
+
+    # ── v8 intra-month dip-rotate overlay ───────────────────────────────────
+    def _fetch_prices(self, syms: List[str]) -> Dict[str, float]:
+        """Latest sizing price for a handful of symbols (cheap — only holdings).
+
+        Used by the dip check between monthly rebalances; we only need the
+        current price of the ~8 held names, not the whole universe."""
+        key = os.getenv("TWELVEDATA_API_KEY", "").strip()
+        if not key:
+            return {}
+        sess = _session()
+        out: Dict[str, float] = {}
+        for sym in syms:
+            s = _fetch_daily(sess, key, sym, 0.05)   # ~18d window; we want the last bar
+            if len(s):
+                out[sym] = _sizing_price(sym, float(s.iloc[-1]))
+        return out
+
+    def maybe_dip_rotate(self) -> dict:
+        """Intra-month 'buy the dip' rotation (v8).  Runs between monthly
+        rebalances: if a held name has fallen >= dip_drop from its anchor, add to
+        it (up to dip_max_tiers times, dip_cooldown_days apart) funded by trimming
+        the OTHER holdings pro-rata — an exposure-preserving tilt.  Only acts on a
+        CLEAN book (no pending orders) to stay clear of the pending/churn paths."""
+        if not getattr(self.p, "dip_enabled", True):
+            return {"action": "dip_disabled"}
+        state = self._load_state()
+        month = datetime.now(tz=timezone.utc).strftime("%Y-%m")
+        if state.get("last_rebalance_month") != month:
+            return {"action": "dip_skip_no_month"}   # let the monthly rebalance run first
+        target = state.get("target") or {}
+        if not target:
+            return {"action": "dip_skip_no_target"}
+
+        # Only act when the book is clean — never fight pending orders.
+        if not self.dry_run:
+            try:
+                if self.client.get_orders():
+                    return {"action": "dip_skip_pending"}
+            except Exception:  # noqa: BLE001
+                return {"action": "dip_skip_pending"}
+
+        held_syms = list(target.keys())
+        prices = self._fetch_prices(held_syms)
+        if len(prices) < len(held_syms):
+            _log.info("momentum dip: only %d/%d holding prices — skipping dip check.",
+                      len(prices), len(held_syms))
+            return {"action": "dip_skip_prices"}
+
+        now = datetime.now(tz=timezone.utc)
+        anchors = state.get("dip_anchors")
+        tiers = state.get("dip_tiers")
+        dip_last = state.get("dip_last")
+        # Books rebalanced before this upgrade have no dip baseline — establish it
+        # now (anchor at current price), trade nothing this cycle.
+        if not anchors or not tiers or not dip_last:
+            eligible_iso = (now - timedelta(days=self.p.dip_cooldown_days)).isoformat()
+            state["dip_anchors"] = dict(prices)
+            state["dip_tiers"] = {s: 0 for s in held_syms}
+            state["dip_last"] = {s: eligible_iso for s in held_syms}
+            self._save_state(state)
+            _log.info("momentum dip: initialised anchors for %s (no trades).", month)
+            return {"action": "dip_init", "month": month}
+
+        # Which holdings just dipped (and are still eligible to add)?
+        triggered: List[Tuple[str, float, float]] = []
+        for s in held_syms:
+            a = float(anchors.get(s, 0) or 0)
+            p_now = float(prices.get(s, 0) or 0)
+            if a <= 0 or p_now <= 0:
+                continue
+            if int(tiers.get(s, 0)) >= self.p.dip_max_tiers:
+                continue
+            try:
+                last = datetime.fromisoformat(dip_last.get(s, now.isoformat()))
+            except Exception:  # noqa: BLE001
+                last = now
+            if (now - last).days < self.p.dip_cooldown_days:
+                continue
+            drop = p_now / a - 1.0
+            if drop <= -self.p.dip_drop:
+                triggered.append((s, p_now, drop))
+
+        if not triggered:
+            return {"action": "dip_hold", "month": month}
+
+        for s, p_now, drop in triggered:
+            tiers[s] = int(tiers.get(s, 0)) + 1
+            dip_last[s] = now.isoformat()
+            anchors[s] = p_now          # re-anchor: a further add needs another drop
+            _log.info("momentum dip: %s fell %.1f%% from anchor → add (tier %d)",
+                      s, drop * 100, tiers[s])
+
+        # Exposure-preserving tilt: weight ∝ (1 + tier), summing to total_exposure.
+        denom = sum(1 + int(tiers.get(s, 0)) for s in held_syms) or 1
+        weights = {s: (1 + int(tiers.get(s, 0))) / denom * self.p.total_exposure
+                   for s in held_syms}
+
+        if not self._built:
+            self.resolver.build()
+            self._built = True
+        ticker_map = self.resolver.resolve_all(held_syms)
+        try:
+            cash = self.client.get_cash()
+            equity = float(cash.get("total", 0.0))
+        except Exception as exc:  # noqa: BLE001
+            _log.warning("momentum dip: cash read failed (%s) — skipping.", exc)
+            return {"action": "dip_skip_cash"}
+        if equity < MIN_EQUITY_EUR:
+            _log.warning("momentum dip: equity €%.2f looks wrong — skipping.", equity)
+            return {"action": "dip_skip_bad_equity"}
+
+        target_shares: Dict[str, float] = {}
+        for s in held_syms:
+            t212 = ticker_map.get(s)
+            price = float(prices.get(s, 0) or 0)
+            if t212 and price > 0:
+                target_shares[s] = equity * weights[s] / price
+
+        portfolio = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
+                     for p in self.client.get_portfolio()}
+        placed = 0
+        failures: List[str] = []
+
+        # SELLS first (trim the non-dippers) to fund the dip buys, then settle.
+        for s in held_syms:
+            t212, price = ticker_map.get(s), float(prices.get(s, 0) or 0)
+            if not t212 or price <= 0:
+                continue
+            delta = target_shares.get(s, 0.0) - portfolio.get(t212, 0.0)
+            if (-delta) * price >= self.p.min_order_eur:
+                if self.dry_run:
+                    _log.info("  [DRY] dip TRIM %s %.4f (~€%.0f)", s, -delta, -delta * price)
+                    continue
+                try:
+                    _place_with_precision(self.client, t212, -abs(delta))
+                    placed += 1
+                    _log.info("  dip TRIM %s %.4f", s, -delta)
+                except Exception as exc:  # noqa: BLE001
+                    _log.error("  dip TRIM FAILED %s: %s", s, exc)
+                    failures.append(f"SELL {s}")
+        if placed and not self.dry_run:
+            time.sleep(12)
+            try:
+                portfolio = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
+                             for p in self.client.get_portfolio()}
+            except Exception:  # noqa: BLE001
+                pass
+
+        # BUYS (add to the dippers), cash-aware and precision-tolerant.
+        buys = []
+        for s in held_syms:
+            t212, price = ticker_map.get(s), float(prices.get(s, 0) or 0)
+            if not t212 or price <= 0:
+                continue
+            delta = target_shares.get(s, 0.0) - portfolio.get(t212, 0.0)
+            if delta * price >= self.p.min_order_eur:
+                buys.append((s, t212, delta, price))
+        for i, (s, t212, delta, price) in enumerate(buys):
+            if self.dry_run:
+                _log.info("  [DRY] dip BUY %s %.4f (~€%.0f)", s, delta, delta * price)
+                continue
+            try:
+                if i > 0:
+                    time.sleep(1.5)
+                q = _place_buy_capped(self.client, t212, delta, price,
+                                      max_eur=delta * price, min_eur=self.p.min_order_eur)
+                if q > 0:
+                    placed += 1
+                    _log.info("  dip BUY %s %.4f (~€%.0f)", s, q, q * price)
+            except Exception as exc:  # noqa: BLE001
+                _log.error("  dip BUY FAILED %s: %s", s, exc)
+                failures.append(f"BUY {s}")
+
+        # Persist the new tiers/anchors/target so we don't re-trigger and the
+        # monthly drift check compares against the tilted book (pending-aware).
+        # In dry-run, persist nothing — don't "use up" dips without trading.
+        if not self.dry_run:
+            state["dip_anchors"] = anchors
+            state["dip_tiers"] = tiers
+            state["dip_last"] = dip_last
+            state["target"] = target_shares
+            self._save_state(state)
+
+        names = ", ".join(s for s, _, _ in triggered)
+        if failures:
+            _notify(f"⚠️ Momentum dip {month}: added to [{names}] — {placed} orders, "
+                    f"{len(failures)} FAILED: {', '.join(failures[:6])}")
+        else:
+            _notify(f"✅ Momentum dip {month}: bought the dip in [{names}] — {placed} orders.")
+        return {"action": "dip_rotated", "month": month,
+                "triggered": [s for s, _, _ in triggered], "orders": placed,
+                "failures": failures}

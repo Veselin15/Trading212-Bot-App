@@ -74,16 +74,25 @@ async def run_owner_executor_forever(api_key: str, base_url: str) -> None:
         return
 
     _log.info(
-        "owner_executor: MOMENTUM v6 ready (%s) — top-%d, %s blend, "
-        "monthly rebalance, against %s",
+        "owner_executor: MOMENTUM v8 ready (%s) — top-%d, %s blend, monthly "
+        "rebalance + intra-month dip-rotate, against %s",
         "DRY-RUN (no orders)" if _OWNER_DRY_RUN else "LIVE ORDERS",
         PROD.top_k, "+".join(str(lb) for lb in PROD.lookbacks), base_url,
     )
+
+    # Dip-rotate cycles that found nothing actionable — don't spam the log.
+    _DIP_QUIET = {"dip_hold", "dip_skip_no_month", "dip_skip_no_target",
+                  "dip_skip_prices", "dip_skip_pending", "dip_disabled"}
 
     while True:
         try:
             result = await loop.run_in_executor(None, executor.maybe_rebalance)
             _log.info("owner_executor: %s", result)
+            # When the month is already done, check the intra-month dip overlay.
+            if isinstance(result, dict) and result.get("action") == "hold":
+                dip = await loop.run_in_executor(None, executor.maybe_dip_rotate)
+                if isinstance(dip, dict) and dip.get("action") not in _DIP_QUIET:
+                    _log.info("owner_executor: %s", dip)
         except Exception as exc:
             _log.exception("owner_executor cycle error: %s", exc)
             await asyncio.sleep(60)
