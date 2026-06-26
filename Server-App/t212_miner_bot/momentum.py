@@ -629,23 +629,16 @@ class MomentumExecutor:
                 try:
                     pf = {p["ticker"]: float(p.get("quantity", p.get("currentQuantity", 0)) or 0)
                           for p in self.client.get_portfolio()}
-                    # Count NET in-flight orders (buys + pending trim-sells): an
-                    # order placed while the market is closed already moves the
-                    # position to target even before it fills, so the book is
-                    # complete — mark the month done and let it fill rather than
-                    # cancel + re-place next cycle.
                     pend = self._pending_net_qty()
-                    # "Incomplete" only if a target name is still UNDER-weight by a
-                    # deployable amount (>= min order).  Leftover cash that can't
-                    # buy a full min-order slot anywhere is an unavoidable buffer,
-                    # NOT a reason to re-trade forever (that was a churn loop).
+                    free_now = float(self.client.get_cash().get("free", 0))
                     for sym, tgt in target_shares.items():
                         tt = ticker_map.get(sym)
                         if not tt:
                             continue
                         price = _sizing_price(sym, float(px.get(sym, 0)))
                         have = pf.get(tt, 0.0) + pend.get(tt, 0.0)
-                        if (tgt - have) * price >= self.p.min_order_eur:
+                        gap_eur = (tgt - have) * price
+                        if gap_eur >= self.p.min_order_eur and free_now >= self.p.min_order_eur:
                             _log.info("momentum: %s still under target (have %.3f, want %.3f) — incomplete.",
                                       sym, have, tgt)
                             incomplete = True
