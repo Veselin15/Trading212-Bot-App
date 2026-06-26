@@ -64,7 +64,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`dark h-full antialiased ${fontSans.variable} ${fontMono.variable}`}>
+    <html lang="en" className={`dark antialiased ${fontSans.variable} ${fontMono.variable}`}>
       <body className="flex min-h-full flex-col bg-background font-sans text-foreground">
         <PageBackdrop />
         <SiteHeader />
