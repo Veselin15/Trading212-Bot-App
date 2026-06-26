@@ -41,10 +41,10 @@ type ChartPoint = {
   is_oos?: boolean;
 };
 
-function formatUSD(value: number) {
-  return new Intl.NumberFormat("en-US", {
+function formatEUR(value: number) {
+  return new Intl.NumberFormat("en-IE", {
     style: "currency",
-    currency: "USD",
+    currency: "EUR",
     maximumFractionDigits: 0,
   }).format(value);
 }
@@ -82,7 +82,7 @@ function BacktestTooltip(props: unknown) {
         )}
       </div>
       <div className="mt-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Portfolio Value</div>
-      <div className="mt-1 text-sm font-medium text-emerald-300">{formatUSD(v)}</div>
+      <div className="mt-1 text-sm font-medium text-emerald-300">{formatEUR(v)}</div>
     </div>
   );
 }

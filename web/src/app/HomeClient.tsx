@@ -589,7 +589,9 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
               <div className="p-7 md:p-10">
                 <div className="mb-6">
                   <h2 className="text-2xl font-semibold tracking-tight text-white">Strategy results</h2>
-                  <p className="mt-1.5 text-sm text-slate-500">Monthly view · equity indexed to 100 at start</p>
+                  <p className="mt-1.5 text-sm text-slate-500">
+                    Momentum v8 · monthly equity, indexed to 100 · stitched out-of-sample walk-forward
+                  </p>
                 </div>
 
                 <motion.div
@@ -603,9 +605,39 @@ export function HomeClient({ ctaMode }: { ctaMode: HomeCtaMode }) {
                   <BacktestSummary />
                 </motion.div>
 
-                <p className="mt-5 text-xs leading-relaxed text-slate-700">
-                  Results shown are illustrative and not a guarantee of future performance. Your actual results will vary.
-                  This is not financial advice.
+                {/* ── How the strategy works ── */}
+                <div className="mt-8">
+                  <h3 className="text-lg font-semibold tracking-tight text-white">How it works</h3>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-3">
+                    <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] p-5">
+                      <div className="text-sm font-semibold text-emerald-300">1 · Rank the market</div>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                        Every month it ranks a global universe of large-cap stocks by momentum across a
+                        126/189/252-day blend, and holds the strongest 8 equal-weight.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] p-5">
+                      <div className="text-sm font-semibold text-emerald-300">2 · Respect the regime</div>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                        A 100-day trend filter on the broad basket flips the book to cash when the market
+                        turns risk-off — the monthly check is the core risk control.
+                      </p>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] p-5">
+                      <div className="text-sm font-semibold text-emerald-300">3 · Rotate into dips</div>
+                      <p className="mt-2 text-sm leading-relaxed text-slate-400">
+                        Between rebalances, if a holding drops ~10% it adds to that name — funded by
+                        trimming the others — so capital rotates into temporary weakness without new cash.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <p className="mt-6 text-xs leading-relaxed text-slate-700">
+                  Figures are from a fixed-parameter, stitched out-of-sample walk-forward after estimated
+                  trading costs and slippage; the &ldquo;after-tax&rdquo; figure applies a flat 10% annual
+                  capital-gains rate. Results are illustrative and not a guarantee of future performance.
+                  Your actual results will vary. This is not financial advice.
                 </p>
               </div>
             </GlowHoverCard>

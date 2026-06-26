@@ -9,6 +9,7 @@ import { fetchStrategyDashboard } from "@/lib/strategy-dashboard";
 type HeroMetrics = {
   total_return_pct?: number;
   cagr_pct?: number;
+  after_tax_cagr_pct?: number;
   max_drawdown_pct?: number;
   win_rate_pct?: number;
   sharpe_ratio?: number;
@@ -16,10 +17,14 @@ type HeroMetrics = {
   total_trades?: number;
   oos_months?: number;
   avg_hold_h?: number;
+  turnover_per_yr?: number;
+  worst_year?: number;
 };
 
 type DashboardPayload = {
   generated_at?: string;
+  strategy?: string;
+  period?: { start?: string; end?: string; years?: number; walk_forward?: boolean };
   hero?: HeroMetrics;
   equity_5yr?: Array<{ month: string; equity: number; is_oos?: boolean }>;
   // legacy fields
@@ -101,10 +106,10 @@ export function BacktestSummary() {
 
     const totalReturnPct  = hero?.total_return_pct  ?? legacy?.total_return_pct;
     const cagrPct         = hero?.cagr_pct          ?? legacy?.cagr_pct;
+    const afterTaxCagrPct = hero?.after_tax_cagr_pct;
     const maxDrawdownPct  = hero?.max_drawdown_pct   ?? legacy?.max_drawdown_pct;
     const winRatePct      = hero?.win_rate_pct;
     const sharpeRatio     = hero?.sharpe_ratio;
-    const totalTrades     = hero?.total_trades;
     const oosMonths       = hero?.oos_months;
 
     if (totalReturnPct === undefined && cagrPct === undefined) return null;
@@ -112,11 +117,13 @@ export function BacktestSummary() {
     return {
       totalReturnPct,
       cagrPct,
+      afterTaxCagrPct,
       maxDrawdownPct,
       winRatePct,
       sharpeRatio,
-      totalTrades,
       oosMonths,
+      strategy: payload.strategy,
+      years: payload.period?.years,
       generatedAt: payload.generated_at,
     };
   }, [payload]);
@@ -145,11 +152,14 @@ export function BacktestSummary() {
         <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
           <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Period</div>
           <div className="mt-1 text-sm font-medium text-slate-50">
-            5-year simulation · {summary.oosMonths ?? "?"} months out-of-sample
+            {summary.years ? `${summary.years}-year` : "Multi-year"} walk-forward
+            {summary.oosMonths !== undefined && (
+              <> · {summary.oosMonths} months out-of-sample</>
+            )}
           </div>
           {summary.generatedAt && (
             <div className="mt-1 text-xs text-slate-500">
-              SwingStrategyV3 · AI Ensemble v4 · updated {summary.generatedAt}
+              {summary.strategy ?? "Momentum v8 — dip-rotate"} · updated {summary.generatedAt}
             </div>
           )}
         </div>
@@ -185,11 +195,11 @@ export function BacktestSummary() {
       </div>
 
       {/* Extra metrics row when available */}
-      {(summary.winRatePct !== undefined || summary.sharpeRatio !== undefined || summary.totalTrades !== undefined) && (
+      {(summary.winRatePct !== undefined || summary.sharpeRatio !== undefined || summary.afterTaxCagrPct !== undefined) && (
         <div className="grid gap-3 sm:grid-cols-3">
           {typeof summary.winRatePct === "number" && (
             <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Win rate</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Positive months</div>
               <div className="mt-1 text-xl font-semibold tracking-tight text-slate-50">
                 <MetricCount end={summary.winRatePct} decimals={1} suffix="%" active={inView} />
               </div>
@@ -203,11 +213,11 @@ export function BacktestSummary() {
               </div>
             </div>
           )}
-          {typeof summary.totalTrades === "number" && (
+          {typeof summary.afterTaxCagrPct === "number" && (
             <div className="rounded-2xl border border-white/10 bg-[#0A0A0A] px-4 py-3 transition-[border-color,box-shadow] duration-200 hover:border-emerald-500/25 hover:shadow-[0_0_24px_-10px_rgba(16,185,129,0.22)]">
-              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">Total trades</div>
+              <div className="text-xs font-semibold uppercase tracking-wide text-slate-400">CAGR after tax</div>
               <div className="mt-1 text-xl font-semibold tracking-tight text-slate-50">
-                <MetricCount end={summary.totalTrades} decimals={0} active={inView} />
+                <MetricCount end={summary.afterTaxCagrPct} decimals={1} suffix="%" active={inView} />
               </div>
             </div>
           )}
