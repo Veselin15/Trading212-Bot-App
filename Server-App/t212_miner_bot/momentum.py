@@ -13,7 +13,7 @@ Used by `backend/app/strategy/owner_executor.py` to trade the owner's T212
 account (paper or live — controlled purely by which T212 API key / base URL is
 configured; the strategy code is identical for both).
 
-Data: DAILY bars from Twelve Data (TWELVEDATA_API_KEY).  Signal logic is the same
+Data: DAILY bars from Yahoo Finance (yfinance).  Signal logic is the same
 math as the AI-Trading backtest (`momentum_global.live_target_weights`).
 """
 from __future__ import annotations
@@ -21,7 +21,6 @@ from __future__ import annotations
 import json
 import logging
 import os
-import ssl
 import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -31,7 +30,7 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 import requests
-from requests.adapters import HTTPAdapter
+import yfinance as yf
 
 _log = logging.getLogger("uvicorn.error")
 
@@ -54,9 +53,6 @@ EU = [
 ]
 UK = ["SHEL.L", "AZN.L", "HSBA.L", "ULVR.L", "BP.L", "GSK.L"]
 UNIVERSE = US + EU + UK
-
-SUFFIX_TO_MIC = {"AS": "XAMS", "PA": "XPAR", "DE": "XETR",
-                 "L": "XLON", "SW": "XSWX", "MI": "XMIL"}
 
 # ── Deployed config: GROWTH (chosen profile) ────────────────────────────────
 @dataclass
@@ -81,10 +77,8 @@ class MomentumParams:
 
 PROD = MomentumParams()
 
-# ── Tunables (env-overridable) ──────────────────────────────────────────────
-TD_BASE = "https://api.twelvedata.com/time_series"
+# ── Tunables ───────────────────────────────────────────────────────────────
 FETCH_YEARS = 1.6
-_TD_SLEEP = float(os.getenv("TD_SLEEP_S", "1.2"))   # paid Grow55 plan ~55/min
 
 # ── Safety guards ───────────────────────────────────────────────────────────
 # Never rebalance on a partial/bad data pull: if fewer than this many symbols
@@ -108,72 +102,67 @@ def _notify(msg: str) -> None:
         _log.warning("momentum telegram failed: %s", exc)
 
 
-# ── TwelveData daily fetch (system cert store for corporate CAs) ─────────────
-class _SystemCertAdapter(HTTPAdapter):
-    def init_poolmanager(self, *a, **k):
-        k["ssl_context"] = ssl.create_default_context()
-        return super().init_poolmanager(*a, **k)
-
-
-def _session() -> requests.Session:
-    s = requests.Session()
-    s.mount("https://", _SystemCertAdapter())
-    return s
-
-
-def _route(symbol: str) -> dict:
-    if "." in symbol:
-        ticker, suffix = symbol.rsplit(".", 1)
-        mic = SUFFIX_TO_MIC.get(suffix)
-        if not mic:
-            return {"symbol": symbol}
-        return {"symbol": ticker, "mic_code": mic}
-    return {"symbol": symbol}
-
-
-def _fetch_daily(sess, key: str, symbol: str, years: float) -> pd.Series:
-    params = {**_route(symbol), "interval": "1day", "outputsize": 5000,
-              "timezone": "UTC", "order": "ASC", "format": "JSON", "apikey": key}
-    for attempt in range(1, 4):
-        try:
-            r = sess.get(TD_BASE, params=params, timeout=30)
-            r.raise_for_status()
-            j = r.json()
-        except Exception as exc:
-            _log.debug("  [%s] TD fetch retry %d: %s", symbol, attempt, str(exc)[:60])
-            time.sleep(_TD_SLEEP * attempt)
-            continue
-        finally:
-            time.sleep(_TD_SLEEP)
-        if isinstance(j, dict) and j.get("status") == "error":
-            if j.get("code") == 429:
-                time.sleep(5); continue
-            return pd.Series(dtype=float)
-        vals = j.get("values") if isinstance(j, dict) else None
-        if not vals:
-            return pd.Series(dtype=float)
-        df = pd.DataFrame(vals)
-        idx = pd.to_datetime(df["datetime"], utc=True)
-        s = pd.to_numeric(df["close"], errors="coerce")
-        s.index = idx
-        s = s[~s.index.duplicated(keep="last")].sort_index()
-        cutoff = s.index.max() - pd.Timedelta(days=int(years * 365.25))
-        return s.loc[s.index >= cutoff]
-    return pd.Series(dtype=float)
+# ── Yahoo Finance daily fetch ──────────────────────────────────────────────
+def _yf_ticker(symbol: str) -> str:
+    """Convert our universe symbol to Yahoo Finance format.
+    Most are already correct; yfinance uses the same convention."""
+    return symbol
 
 
 def fetch_universe_closes(years: float = FETCH_YEARS) -> pd.DataFrame:
-    key = os.getenv("TWELVEDATA_API_KEY", "").strip()
-    if not key:
-        raise RuntimeError("TWELVEDATA_API_KEY not set — momentum strategy needs daily data.")
-    sess = _session()
-    cols = {}
-    for sym in UNIVERSE:
-        s = _fetch_daily(sess, key, sym, years)
-        if len(s) > 200:
-            cols[sym] = s
-    closes = pd.DataFrame(cols).sort_index()
-    return closes[~closes.index.duplicated(keep="last")]
+    """Batch-download daily closes for the full universe via yfinance."""
+    tickers = [_yf_ticker(s) for s in UNIVERSE]
+    period_days = int(years * 365.25) + 30
+    start = (datetime.now(tz=timezone.utc) - timedelta(days=period_days)).strftime("%Y-%m-%d")
+    _log.info("momentum: fetching %d symbols from Yahoo Finance (start=%s) …", len(tickers), start)
+    try:
+        df = yf.download(tickers, start=start, auto_adjust=True,
+                         progress=False, threads=True)
+    except Exception as exc:
+        _log.error("momentum: yfinance download failed: %s", exc)
+        return pd.DataFrame()
+    if df.empty:
+        return pd.DataFrame()
+    if isinstance(df.columns, pd.MultiIndex):
+        closes = df["Close"] if "Close" in df.columns.get_level_values(0) else df
+    else:
+        closes = df[["Close"]].rename(columns={"Close": tickers[0]}) if len(tickers) == 1 else df
+    closes = closes.dropna(how="all")
+    if not closes.index.tz:
+        closes.index = closes.index.tz_localize("UTC")
+    elif str(closes.index.tz) != "UTC":
+        closes.index = closes.index.tz_convert("UTC")
+    good = {c: closes[c].dropna() for c in closes.columns if closes[c].dropna().shape[0] > 200}
+    result = pd.DataFrame(good).sort_index()
+    _log.info("momentum: loaded %d/%d symbols from Yahoo Finance.", len(good), len(UNIVERSE))
+    return result[~result.index.duplicated(keep="last")]
+
+
+def _fetch_prices_yf(syms: List[str]) -> Dict[str, float]:
+    """Latest close price for a small set of symbols via yfinance."""
+    if not syms:
+        return {}
+    tickers = [_yf_ticker(s) for s in syms]
+    try:
+        df = yf.download(tickers, period="5d", auto_adjust=True,
+                         progress=False, threads=True)
+    except Exception as exc:
+        _log.warning("momentum dip: yfinance price fetch failed: %s", exc)
+        return {}
+    if df.empty:
+        return {}
+    if isinstance(df.columns, pd.MultiIndex):
+        closes = df["Close"] if "Close" in df.columns.get_level_values(0) else df
+    else:
+        closes = df[["Close"]].rename(columns={"Close": tickers[0]}) if len(tickers) == 1 else df
+    out: Dict[str, float] = {}
+    for sym, yf_sym in zip(syms, tickers):
+        col = yf_sym if yf_sym in closes.columns else sym
+        if col in closes.columns:
+            last = closes[col].dropna()
+            if len(last):
+                out[sym] = _sizing_price(sym, float(last.iloc[-1]))
+    return out
 
 
 # ── Signal: identical math to the AI-Trading backtest ───────────────────────
@@ -696,20 +685,8 @@ class MomentumExecutor:
 
     # ── v8 intra-month dip-rotate overlay ───────────────────────────────────
     def _fetch_prices(self, syms: List[str]) -> Dict[str, float]:
-        """Latest sizing price for a handful of symbols (cheap — only holdings).
-
-        Used by the dip check between monthly rebalances; we only need the
-        current price of the ~8 held names, not the whole universe."""
-        key = os.getenv("TWELVEDATA_API_KEY", "").strip()
-        if not key:
-            return {}
-        sess = _session()
-        out: Dict[str, float] = {}
-        for sym in syms:
-            s = _fetch_daily(sess, key, sym, 0.05)   # ~18d window; we want the last bar
-            if len(s):
-                out[sym] = _sizing_price(sym, float(s.iloc[-1]))
-        return out
+        """Latest sizing price for a handful of symbols (cheap — only holdings)."""
+        return _fetch_prices_yf(syms)
 
     def maybe_dip_rotate(self) -> dict:
         """Intra-month 'buy the dip' rotation (v8).  Runs between monthly
