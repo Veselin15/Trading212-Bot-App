@@ -73,6 +73,13 @@ class MomentumParams:
     dip_drop: float = 0.10       # trigger: holding down >= 10% from its anchor
     dip_cooldown_days: int = 5   # min days between adds on the same name
     dip_max_tiers: int = 2       # max adds per name per month
+    # ── v10 strength tilt ───────────────────────────────────────────────────
+    # Instead of equal-weighting the top-K, lean toward the strongest-ranked
+    # names: w = (1-tilt)*equal + tilt*rank_weight.  Validated in the AI-Trading
+    # walk-forward (momentum_v10): +1.4%/yr after-tax at 0.30 vs equal-weight,
+    # robust across 0.15/0.30/0.45 and beating equal-weight in 9/11 folds.  It's
+    # a risk/return dial — more tilt = more return AND deeper down-years.
+    strength_tilt: float = 0.30  # 0 = equal weight; 0.30 = deployed balance
 
 
 PROD = MomentumParams()
@@ -183,11 +190,29 @@ def _sizing_price(symbol: str, close: float) -> float:
     return close
 
 
+def _tilt_weights(names: pd.Index, tilt: float) -> pd.Series:
+    """Equal weight blended with a rank tilt toward the strongest name (v10).
+
+    ``names`` MUST be ordered strongest-first.  w = (1-tilt)*equal + tilt*rankw,
+    where the top-ranked name gets the largest rank weight.  tilt=0 -> equal.
+    """
+    n = len(names)
+    if n == 0:
+        return pd.Series(dtype=float)
+    ew = pd.Series(1.0 / n, index=names)
+    if tilt <= 0:
+        return ew
+    ranks = pd.Series(np.arange(n, 0, -1), index=names, dtype=float)  # n..1, top=n
+    rw = ranks / ranks.sum()
+    return (1 - tilt) * ew + tilt * rw
+
+
 def target_weights(closes: pd.DataFrame, p: MomentumParams = PROD) -> pd.Series:
-    """Latest-bar target weights (equal-weight top-K momentum, or empty = cash).
+    """Latest-bar target weights (strength-tilted top-K momentum, or empty=cash).
 
     Uses multi-horizon momentum blending: averages the return-rank across all
-    lookback windows in p.lookbacks for a less noisy signal (v6 upgrade).
+    lookback windows in p.lookbacks for a less noisy signal (v6 upgrade), then
+    tilts the top-K toward the strongest names (v10, p.strength_tilt).
     """
     stocks = list(closes.columns)
     rets = closes.pct_change()
@@ -209,7 +234,7 @@ def target_weights(closes: pd.DataFrame, p: MomentumParams = PROD) -> pd.Series:
     top = cand.sort_values(ascending=False).head(p.top_k)
     if not len(top):
         return pd.Series(dtype=float)
-    return pd.Series(1.0 / len(top), index=top.index)
+    return _tilt_weights(top.index, p.strength_tilt)
 
 
 # ── Owner-account executor (monthly rebalance) ──────────────────────────────
@@ -672,6 +697,9 @@ class MomentumExecutor:
             state["dip_anchors"] = {s: _sizing_price(s, float(px.get(s, 0))) for s in target_shares}
             state["dip_tiers"] = {s: 0 for s in target_shares}
             state["dip_last"] = {s: eligible_iso for s in target_shares}
+            # Base (strength-tilted) weight per name, so the dip overlay keeps the
+            # tilt instead of collapsing back to equal weight on a dip event.
+            state["dip_base_w"] = {s: float(tgt_w.get(s, 0.0)) for s in target_shares}
             self._save_state(state)
 
         # Alert: rebalance summary (and prominently flag any failed orders).
@@ -725,6 +753,8 @@ class MomentumExecutor:
         anchors = state.get("dip_anchors")
         tiers = state.get("dip_tiers")
         dip_last = state.get("dip_last")
+        # Base (strength-tilted) weights; equal-weight fallback for pre-tilt state.
+        base_w = state.get("dip_base_w") or {s: 1.0 for s in held_syms}
         # Books rebalanced before this upgrade have no dip baseline — establish it
         # now (anchor at current price), trade nothing this cycle.
         if not anchors or not tiers or not dip_last:
@@ -765,10 +795,15 @@ class MomentumExecutor:
             _log.info("momentum dip: %s fell %.1f%% from anchor → add (tier %d)",
                       s, drop * 100, tiers[s])
 
-        # Exposure-preserving tilt: weight ∝ (1 + tier), summing to total_exposure.
-        denom = sum(1 + int(tiers.get(s, 0)) for s in held_syms) or 1
-        weights = {s: (1 + int(tiers.get(s, 0))) / denom * self.p.total_exposure
-                   for s in held_syms}
+        # Exposure-preserving tilt that PRESERVES the strength tilt: each name's
+        # weight ∝ base_weight × (1 + tier), summing to total_exposure.  With an
+        # equal base this reduces to the old (1 + tier) rule; with the v10 tilt it
+        # keeps the strongest names overweight through dip events (matches the
+        # backtest, where a dip add = one unit of the name's tilted base weight).
+        raw = {s: max(float(base_w.get(s, 0.0)), 0.0) * (1 + int(tiers.get(s, 0)))
+               for s in held_syms}
+        denom = sum(raw.values()) or 1.0
+        weights = {s: raw[s] / denom * self.p.total_exposure for s in held_syms}
 
         if not self._built:
             self.resolver.build()
